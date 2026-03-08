@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is on -->
-    <style name="LaunchTheme" parent="Theme.SplashScreen">
-        <!-- Fond de l'écran splah -->
-        <item name="windowSplashScreenBackground">#FDF6F0</item>
-        
-        <!-- Le logo MyHanut ! -->
-        <item name="windowSplashScreenAnimatedIcon">@drawable/splash</item>
-        
-        <!-- Pour s'assurer qu'il prend toute la place sans déformation (optionnel) -->
-        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
-
-        <item name="postSplashScreenTheme">@style/NormalTheme</item>
+    <!-- Splash screen API Android 12+ (API 31) mode sombre -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <!-- Fond beige chaud même en mode sombre -->
+        <item name="android:windowSplashScreenBackground">#FDF6F0</item>
+        <!-- Logo MyHanut -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash</item>
     </style>
 
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
