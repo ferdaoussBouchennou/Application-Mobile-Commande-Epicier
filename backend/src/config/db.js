@@ -1,9 +1,26 @@
+const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const config = {
-  port: process.env.PORT || 3000,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  dbUri: process.env.DB_URI || '',
-};
+const sequelize = new Sequelize(
+  process.env.DB_NAME,
+  process.env.DB_USER,
+  process.env.DB_PASS || '',
+  {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    dialect: 'mysql',
+    logging: false, // Passer à true pour voir les requêtes SQL
+  }
+);
 
-module.exports = config;
+// Test de la connexion
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('Connexion à la base de données réussie.');
+  } catch (error) {
+    console.error('Impossible de se connecter à la base de données :', error);
+  }
+})();
+
+module.exports = sequelize;

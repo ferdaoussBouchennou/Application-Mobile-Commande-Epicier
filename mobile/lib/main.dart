@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/theme/app_theme.dart';
 import 'screens/auth/welcome_screen.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,11 +16,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MyHanut',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const WelcomeScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp(
+        title: 'MyHanut',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const WelcomeScreen(),
+      ),
     );
   }
 }
