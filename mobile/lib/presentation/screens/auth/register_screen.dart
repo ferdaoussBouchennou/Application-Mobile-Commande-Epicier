@@ -67,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'prenom': prenom,
           'email': email,
           'mdp': mdp,
-          'adresse': 'Adresse à configurer', // Placeholder
+          'adresse': 'null', // Placeholder
         });
       }
 
