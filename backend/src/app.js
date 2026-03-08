@@ -5,6 +5,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const config = require('./config/db');
+const routes = require('./routes/index');
 
 const app = express();
 
@@ -19,6 +20,9 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
   res.json({ message: 'API is running 🚀', env: config.nodeEnv });
 });
+
+// Routes principales de l'API
+app.use('/api', routes);
 
 // 404 Handler
 app.use((req, res) => {
