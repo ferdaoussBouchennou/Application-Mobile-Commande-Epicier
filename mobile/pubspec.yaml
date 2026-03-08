@@ -41,6 +41,9 @@ dependencies:
   # Load environment variables from a .env file
   flutter_dotenv: ^5.2.1
 
+  # Splash screen
+  flutter_native_splash: ^2.4.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -93,3 +96,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# ================================
+# Configuration du Splash Screen
+# ================================
+flutter_native_splash:
+  color: "#FDF6F0"               # Fond beige chaud 
+  image: assets/images/logo.png
+  android: true
+  ios: true
+  web: true
