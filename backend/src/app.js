@@ -4,8 +4,9 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
 
-const config = require('./config/db');
+const sequelize = require('./config/db');
 const routes = require('./routes/index');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
@@ -18,11 +19,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running 🚀', env: config.nodeEnv });
+  res.json({ message: 'API is running 🚀', env: process.env.NODE_ENV || 'development' });
 });
 
 // Routes principales de l'API
 app.use('/api', routes);
+app.use('/api/auth', authRoutes);
 
 // 404 Handler
 app.use((req, res) => {
@@ -35,8 +37,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-app.listen(config.port, () => {
-  console.log(`Server running on http://localhost:${config.port}`);
+const PORT = process.env.PORT || 3000;
+
+sequelize.sync({ alter: true }).then(() => {
+  console.log('Base de données synchronisée.');
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}).catch((error) => {
+  console.error('Erreur lors de la synchronisation de la base de données:', error);
 });
 
 module.exports = app;

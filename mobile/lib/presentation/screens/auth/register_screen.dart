@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -32,8 +34,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
-    // TODO: implement logication d'inscription
+  Future<void> _register() async {
+    final nom = _nomController.text.trim();
+    final prenom = _prenomController.text.trim();
+    final email = _emailController.text.trim();
+    final mdp = _passwordController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    if (nom.isEmpty || prenom.isEmpty || email.isEmpty || mdp.isEmpty || (_isEpicier && phone.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez remplir tous les champs obligatoires')),
+      );
+      return;
+    }
+
+    try {
+      bool success = false;
+      final provider = context.read<AuthProvider>();
+
+      if (_isEpicier) {
+        success = await provider.registerEpicier({
+          'nom': nom,
+          'prenom': prenom,
+          'email': email,
+          'mdp': mdp,
+          'adresse': 'Adresse à configurer', // Placeholder pour l'instant
+          'telephone': phone,
+        });
+      } else {
+        success = await provider.registerClient({
+          'nom': nom,
+          'prenom': prenom,
+          'email': email,
+          'mdp': mdp,
+          'adresse': 'null', // Placeholder
+        });
+      }
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Compte créé avec succès ! Connectez-vous.'), backgroundColor: Colors.green),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
   }
 
   @override
@@ -281,28 +334,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   
                   const SizedBox(height: 20),
                   
-                  // Bouton S'inscrire
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: _register,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D5016), // Mint
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  Consumer<AuthProvider>(
+                    builder: (context, auth, _) {
+                      return SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: auth.isLoading ? null : _register,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2D5016), // Mint
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: auth.isLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text(
+                                'S\'inscrire',
+                                style: TextStyle(
+                                  fontSize: 18, 
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                         ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'S\'inscrire',
-                        style: TextStyle(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                      );
+                    }
                   ),
                   
                   const SizedBox(height: 16),
