@@ -3,11 +3,17 @@
     <!-- Splash screen API Android 12+ (API 31) mode sombre -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <!-- Fond beige chaud même en mode sombre -->
-        <item name="android:windowSplashScreenBackground">#FDF6F0</item>
         <!-- Logo MyHanut -->
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash</item>
+        <!-- Désactiver l'indicateur de chargement (points) -->
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowSplashScreenBackground">#FDF6F0</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/android12branding</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#FDF6F0</item>
     </style>
-
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
