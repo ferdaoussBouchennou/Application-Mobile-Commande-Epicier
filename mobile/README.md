@@ -1,6 +1,6 @@
 # mobile
 
-A new Flutter project.
+Application Mobile Commande Epicier
 
 ## Getting Started
 
