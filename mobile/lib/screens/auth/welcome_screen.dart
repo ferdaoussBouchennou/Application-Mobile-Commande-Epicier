@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import '../../../presentation/screens/auth/login_screen.dart';
+import '../../../presentation/screens/auth/register_screen.dart';
+import '../../../presentation/screens/client/map_screen/map_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
+  void _goTo(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF6F0), // Beige chaud
+      backgroundColor: const Color(0xFFFDF6F0),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28.0),
@@ -54,11 +61,9 @@ class WelcomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: naviguer vers LoginScreen
-                  },
+                  onPressed: () => _goTo(context, const LoginScreen()),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2D5016), // Vert foncé
+                    backgroundColor: const Color(0xFF2D5016),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -79,9 +84,7 @@ class WelcomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: OutlinedButton(
-                  onPressed: () {
-                    // TODO: naviguer vers RegisterScreen
-                  },
+                  onPressed: () => _goTo(context, const RegisterScreen()),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF2D1A0E),
                     side: const BorderSide(
@@ -95,6 +98,22 @@ class WelcomeScreen extends StatelessWidget {
                   child: const Text(
                     'Créer un compte',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Lien "Parcourir sans compte"
+              GestureDetector(
+                onTap: () => _goTo(context, const MapScreen()),
+                child: const Text(
+                  'Parcourir sans compte',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF7A5C44),
+                    decoration: TextDecoration.underline,
+                    decorationColor: Color(0xFF7A5C44),
                   ),
                 ),
               ),
