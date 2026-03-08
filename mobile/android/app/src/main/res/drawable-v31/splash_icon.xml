@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fond beige identique au splash screen pour masquer le cercle -->
+    <item>
+        <color android:color="#FDF6F0"/>
+    </item>
+    <!-- Logo centré avec marges pour le réduire et éviter le rognage -->
+    <item
+        android:top="18dp"
+        android:bottom="18dp"
+        android:left="18dp"
+        android:right="18dp">
+        <bitmap
+            android:src="@drawable/android12branding"
+            android:gravity="center"
+            android:antialias="true"/>
+    </item>
+</layer-list>
