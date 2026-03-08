@@ -41,6 +41,9 @@ dependencies:
   # Load environment variables from a .env file
   flutter_dotenv: ^5.2.1
 
+  # Splash screen
+  flutter_native_splash: ^2.4.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -66,6 +69,7 @@ flutter:
   # Assets (fichiers statiques inclus dans l'application)
   assets:
     - .env
+    - assets/images/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -92,3 +96,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# ================================
+# Configuration du Splash Screen
+# ================================
+flutter_native_splash:
+  color: "#FDF6F0"               # Fond beige chaud 
+  image: assets/images/logo.png
+  android: true
+  ios: true
+  web: true
