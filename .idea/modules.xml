@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/Application-Mobile-Commande-Epicier.iml" filepath="$PROJECT_DIR$/.idea/Application-Mobile-Commande-Epicier.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mobile/android/android.iml" filepath="$PROJECT_DIR$/mobile/android/android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mobile/windows/flutter/ephemeral/.plugin_symlinks/file_picker/android/android2.iml" filepath="$PROJECT_DIR$/mobile/windows/flutter/ephemeral/.plugin_symlinks/file_picker/android/android2.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mobile/linux/flutter/ephemeral/.plugin_symlinks/file_picker/android/android3.iml" filepath="$PROJECT_DIR$/mobile/linux/flutter/ephemeral/.plugin_symlinks/file_picker/android/android3.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mobile/linux/flutter/ephemeral/.plugin_symlinks/file_picker/example/example.iml" filepath="$PROJECT_DIR$/mobile/linux/flutter/ephemeral/.plugin_symlinks/file_picker/example/example.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mobile/windows/flutter/ephemeral/.plugin_symlinks/file_picker/example/example2.iml" filepath="$PROJECT_DIR$/mobile/windows/flutter/ephemeral/.plugin_symlinks/file_picker/example/example2.iml" />
+    </modules>
+  </component>
+</project>
