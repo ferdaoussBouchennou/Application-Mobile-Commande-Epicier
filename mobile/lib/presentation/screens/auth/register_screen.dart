@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
+import 'package:file_picker/file_picker.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -21,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   // Champs spécifiques Epicier
   final _phoneController = TextEditingController();
+  String? _docFileName;
   
   bool _obscureText = true;
 
@@ -32,6 +34,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _phoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDocument() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+    );
+    if (result != null) {
+      setState(() {
+        _docFileName = result.files.single.name;
+      });
+    }
   }
 
   Future<void> _register() async {
@@ -48,6 +62,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_isEpicier && _docFileName == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez joindre un document de vérification')),
+      );
+      return;
+    }
+
     try {
       bool success = false;
       final provider = context.read<AuthProvider>();
@@ -60,6 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'mdp': mdp,
           'adresse': 'Adresse à configurer', // Placeholder pour l'instant
           'telephone': phone,
+          'doc_verf': _docFileName != null ? (_docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName) : 'doc_test',
         });
       } else {
         success = await provider.registerClient({
@@ -72,8 +94,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       if (success && mounted) {
+        final message = _isEpicier
+            ? 'Demande d\'inscription envoyée ! En attente de validation admin.'
+            : 'Compte créé avec succès ! Connectez-vous.';
+            
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Compte créé avec succès ! Connectez-vous.'), backgroundColor: Colors.green),
+          SnackBar(content: Text(message), backgroundColor: Colors.green),
         );
         Navigator.pushReplacement(
           context,
@@ -294,14 +320,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('Document de vérification', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E))),
-                                Text('Kbis, Registre de commerce...', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                Text(_docFileName ?? 'Kbis, Registre de commerce...', style: TextStyle(fontSize: 12, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis),
                               ],
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              // TODO: Upload system
-                            },
+                            onPressed: _pickDocument,
                             style: TextButton.styleFrom(
                               backgroundColor: const Color(0xFFFDF6F0),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

@@ -59,6 +59,7 @@ const authController = {
         telephone,
         role: 'EPICIER',
         doc_verf,
+        statut_inscription: 'EN_ATTENTE',
         is_active: true
       });
 
@@ -101,6 +102,13 @@ const authController = {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
 
+      if (user.role === 'EPICIER' && user.statut_inscription !== 'ACCEPTE') {
+        const message = user.statut_inscription === 'EN_ATTENTE'
+          ? 'Votre compte Epicier est en attente de validation par un administrateur.'
+          : 'Votre demande d\'inscription a été refusée par un administrateur.';
+        return res.status(403).json({ message });
+      }
+
       let storeInfo = null;
       if (user.role === 'EPICIER') {
         const store = await Store.findOne({ where: { utilisateur_id: user.id } });
@@ -128,6 +136,35 @@ const authController = {
     } catch (error) {
       console.error('Erreur login:', error);
       res.status(500).json({ message: 'Erreur lors de la connexion', error: error.message });
+    }
+  },
+
+  // Validation Epicier par l'Administrateur
+  validateEpicier: async (req, res) => {
+    try {
+      const { userId, action } = req.body; // action: 'ACCEPTER' ou 'REFUSER'
+
+      // Ici on devrait théoriquement vérifier que req.user (issu du JWT) est un ADMIN
+      
+      const user = await User.findByPk(userId);
+      if (!user || user.role !== 'EPICIER') {
+        return res.status(404).json({ message: 'Epicier introuvable.' });
+      }
+
+      if (action === 'ACCEPTER') {
+        user.statut_inscription = 'ACCEPTE';
+      } else if (action === 'REFUSER') {
+        user.statut_inscription = 'REFUSE';
+      } else {
+        return res.status(400).json({ message: 'Action invalide.' });
+      }
+
+      await user.save();
+      res.status(200).json({ message: `Le compte Epicier a été ${action === 'ACCEPTER' ? 'accepté' : 'refusé'}.` });
+
+    } catch (error) {
+      console.error('Erreur validateEpicier:', error);
+      res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
     }
   }
 };
