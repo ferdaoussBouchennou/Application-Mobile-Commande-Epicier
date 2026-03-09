@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/store_provider.dart';
+import '../../../core/constants/api_constants.dart';
 
 class StoreDetailsScreen extends StatefulWidget {
   final int storeId;
@@ -37,15 +38,28 @@ class _StoreDetailsScreenState extends State<StoreDetailsScreen> {
               SliverAppBar(
                 expandedHeight: 250,
                 pinned: true,
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black.withOpacity(0.3),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                ),
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(store.nomBoutique, style: const TextStyle(fontWeight: FontWeight.bold)),
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
                       Image.network(
-                        store.imageUrl ?? 'https://via.placeholder.com/500x300',
+                        ApiConstants.formatImageUrl(store.imageUrl),
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade300),
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.store, size: 50, color: Colors.grey),
+                        ),
                       ),
                       const DecoratedBox(
                         decoration: BoxDecoration(
