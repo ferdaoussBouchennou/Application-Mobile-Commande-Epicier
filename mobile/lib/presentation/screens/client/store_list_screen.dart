@@ -13,8 +13,6 @@ class StoreListScreen extends StatefulWidget {
 
 class _StoreListScreenState extends State<StoreListScreen> {
   String _searchQuery = "";
-  double _minRating = 0.0;
-  bool _onlyOpen = false;
 
   @override
   void initState() {
@@ -32,79 +30,130 @@ class _StoreListScreenState extends State<StoreListScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Filtrer par note minimale',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF2D1A0E),
-                      fontFamily: 'Georgia',
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildRatingOption(0.0, 'Toutes les épiceries', setModalState),
-                  _buildRatingOption(3.0, '3.0 étoiles et plus', setModalState),
-                  _buildRatingOption(3.5, '3.5 étoiles et plus', setModalState),
-                  _buildRatingOption(4.0, '4.0 étoiles et plus', setModalState),
-                  const SizedBox(height: 20),
-                ],
+        final storeProvider = context.read<StoreProvider>();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
               ),
-            );
-          },
+              const SizedBox(height: 24),
+              const Text(
+                'Note de l\'épicerie',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF2D1A0E)),
+              ),
+              const SizedBox(height: 16),
+              _buildRatingOption(null, 'Toutes les notes', storeProvider),
+              _buildRatingOption(0.0, 'Entre 0 et 1 ★', storeProvider),
+              _buildRatingOption(1.0, 'Entre 1 et 2 ★', storeProvider),
+              _buildRatingOption(2.0, 'Entre 2 et 3 ★', storeProvider),
+              _buildRatingOption(3.0, 'Entre 3 et 4 ★', storeProvider),
+              _buildRatingOption(4.0, 'Entre 4 et 5 ★', storeProvider),
+              const SizedBox(height: 20),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildRatingOption(double rating, String label, StateSetter setModalState) {
+  void _showStatusFilter() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final storeProvider = context.read<StoreProvider>();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Statut de l\'épicerie',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF2D1A0E)),
+              ),
+              const SizedBox(height: 16),
+              _buildStatusOption(null, 'Tous les statuts', storeProvider),
+              _buildStatusOption(true, 'Ouvert seulement', storeProvider),
+              _buildStatusOption(false, 'Fermé seulement', storeProvider),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRatingOption(double? range, String label, StoreProvider provider) {
+    bool isSelected = provider.ratingRange == range;
     return InkWell(
       onTap: () {
-        setState(() => _minRating = rating);
-        context.read<StoreProvider>().updateFilters(rating: rating);
-        setModalState(() {});
+        provider.updateFilters(ratingRange: range, clearRating: range == null);
         Navigator.pop(context);
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
             Icon(
-              rating == 0.0 ? Icons.all_inclusive : Icons.star_border_rounded,
-              color: _minRating == rating ? const Color(0xFFD97E4A) : Colors.black87,
-              size: 24,
+              range == null ? Icons.all_inclusive : Icons.star_rounded,
+              color: isSelected ? const Color(0xFFD97E4A) : Colors.black54,
             ),
             const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: _minRating == rating ? FontWeight.w700 : FontWeight.w500,
-                  color: _minRating == rating ? const Color(0xFFD97E4A) : Colors.black87,
-                ),
-              ),
+            Text(label, style: TextStyle(
+              fontSize: 16, 
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? const Color(0xFFD97E4A) : Colors.black87,
+            )),
+            const Spacer(),
+            if (isSelected) const Icon(Icons.check, color: Color(0xFFD97E4A)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusOption(bool? status, String label, StoreProvider provider) {
+    bool isSelected = provider.statusFilter == status;
+    return InkWell(
+      onTap: () {
+        provider.updateFilters(status: status, clearStatus: status == null);
+        Navigator.pop(context);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              status == null ? Icons.dashboard_outlined : (status ? Icons.circle : Icons.circle_outlined),
+              size: status == null ? 24 : 12,
+              color: isSelected ? const Color(0xFF4C6444) : Colors.black54,
             ),
-            if (_minRating == rating)
-              const Icon(Icons.check, color: Color(0xFFD97E4A), size: 20),
+            const SizedBox(width: 16),
+            Text(label, style: TextStyle(
+              fontSize: 16, 
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? const Color(0xFF4C6444) : Colors.black87,
+            )),
+            const Spacer(),
+            if (isSelected) const Icon(Icons.check, color: Color(0xFF4C6444)),
           ],
         ),
       ),
@@ -172,16 +221,21 @@ class _StoreListScreenState extends State<StoreListScreen> {
                       Row(
                         children: [
                           _buildFilterChip(
-                            label: 'Ouvert maintenant',
-                            isSelected: _onlyOpen,
-                            onTap: () => setState(() => _onlyOpen = !_onlyOpen),
+                            label: storeProvider.statusFilter == null 
+                                ? 'Statut' 
+                                : (storeProvider.statusFilter! ? 'Ouvert' : 'Fermé'),
+                            isSelected: storeProvider.statusFilter != null,
+                            onTap: _showStatusFilter,
                             icon: Icons.circle,
                             iconSize: 8,
+                            hasArrow: true,
                           ),
                           const SizedBox(width: 12),
                           _buildFilterChip(
-                            label: _minRating == 0.0 ? 'Note' : '≥ $_minRating',
-                            isSelected: _minRating > 0.0,
+                            label: storeProvider.ratingRange == null 
+                                ? 'Note' 
+                                : '[${storeProvider.ratingRange!.toInt()}-${(storeProvider.ratingRange! + 1).toInt()}]',
+                            isSelected: storeProvider.ratingRange != null,
                             onTap: _showRatingFilter,
                             icon: Icons.star_rounded,
                             hasArrow: true,
