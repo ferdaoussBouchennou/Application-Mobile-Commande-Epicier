@@ -11,13 +11,16 @@ class StoreProvider with ChangeNotifier {
   int _currentPage = 1;
   final int _itemsPerPage = 4; // Comme dans la maquette (on affiche 4 épiciers par page)
   String _searchQuery = "";
-  double _minRating = 0.0;
+  double? _ratingRange; // null = Toutes, 0 = [0-1], 1 = [1-2], etc.
+  bool? _statusFilter; // null = Toutes, true = Ouvert, false = Fermé
 
   List<Store> get stores => _stores;
   Store? get selectedStore => _selectedStore;
   bool get isLoading => _isLoading;
   int get currentPage => _currentPage;
   int get itemsPerPage => _itemsPerPage;
+  double? get ratingRange => _ratingRange;
+  bool? get statusFilter => _statusFilter;
   
   int get totalPages {
     final filtered = filteredStores;
@@ -28,8 +31,18 @@ class StoreProvider with ChangeNotifier {
   List<Store> get filteredStores {
     return _stores.where((s) {
       final matchesSearch = s.nomBoutique.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesRating = s.rating >= _minRating;
-      return matchesSearch && matchesRating;
+      
+      bool matchesRating = true;
+      if (_ratingRange != null) {
+        matchesRating = s.rating >= _ratingRange! && s.rating < (_ratingRange! + 1.0);
+      }
+
+      bool matchesStatus = true;
+      if (_statusFilter != null) {
+        matchesStatus = s.isOpen == _statusFilter;
+      }
+
+      return matchesSearch && matchesRating && matchesStatus;
     }).toList();
   }
 
@@ -42,9 +55,21 @@ class StoreProvider with ChangeNotifier {
     return filtered.sublist(start, end > filtered.length ? filtered.length : end);
   }
 
-  void updateFilters({String? search, double? rating}) {
+  void updateFilters({String? search, double? ratingRange, bool? clearRating, bool? status, bool? clearStatus}) {
     if (search != null) _searchQuery = search;
-    if (rating != null) _minRating = rating;
+    
+    if (clearRating == true) {
+      _ratingRange = null;
+    } else if (ratingRange != null) {
+      _ratingRange = ratingRange;
+    }
+
+    if (clearStatus == true) {
+      _statusFilter = null;
+    } else if (status != null) {
+      _statusFilter = status;
+    }
+
     _currentPage = 1; // Retour à la page 1 si on change de filtre
     notifyListeners();
   }
