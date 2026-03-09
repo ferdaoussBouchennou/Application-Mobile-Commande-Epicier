@@ -41,8 +41,8 @@ const PORT = process.env.PORT || 3000;
 
 sequelize.sync({ alter: true }).then(() => {
   console.log('Base de données synchronisée.');
-  app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT} (Listening on all interfaces)`);
   });
 }).catch((error) => {
   console.error('Erreur lors de la synchronisation de la base de données:', error);
