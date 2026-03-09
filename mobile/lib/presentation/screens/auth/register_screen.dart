@@ -62,9 +62,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (_isEpicier && _docFileName == null) {
+    if (_isEpicier) {
+      final phoneRegex = RegExp(r'^\d{10}$');
+      if (!phoneRegex.hasMatch(phone)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Le numéro de téléphone doit contenir exactement 10 chiffres')),
+        );
+        return;
+      }
+
+      if (_docFileName == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Veuillez joindre un document de vérification')),
+        );
+        return;
+      }
+    }
+
+    // Validation du mot de passe (au moins 8 caractères, 1 majuscule, 1 chiffre)
+    final passwordRegex = RegExp(r'^(?=.*[A-Z])(?=.*\d).{8,}$');
+    if (!passwordRegex.hasMatch(mdp)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez joindre un document de vérification')),
+        const SnackBar(content: Text('Le mot de passe doit contenir au moins 8 caractères, une majuscule et un chiffre')),
       );
       return;
     }
