@@ -7,6 +7,7 @@ require('dotenv').config();
 const sequelize = require('./config/db');
 const routes = require('./routes/index');
 const authRoutes = require('./routes/authRoutes');
+const storeRoutes = require('./routes/storeRoutes');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.get('/', (req, res) => {
 // Routes principales de l'API
 app.use('/api', routes);
 app.use('/api/auth', authRoutes);
+app.use('/api/stores', storeRoutes);
 
 // 404 Handler
 app.use((req, res) => {

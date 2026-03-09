@@ -23,8 +23,6 @@ const authController = {
         prenom,
         email,
         mdp,
-        adresse,
-        telephone,
         role: 'CLIENT',
         is_active: true
       });
@@ -55,8 +53,6 @@ const authController = {
         prenom,
         email,
         mdp,
-        adresse,
-        telephone,
         role: 'EPICIER',
         doc_verf,
         statut_inscription: 'EN_ATTENTE',
