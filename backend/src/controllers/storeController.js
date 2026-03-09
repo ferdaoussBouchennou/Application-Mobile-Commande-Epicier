@@ -14,6 +14,10 @@ const storeController = {
             as: 'utilisateur',
             attributes: ['nom', 'prenom', 'statut_inscription'],
             where: { statut_inscription: 'ACCEPTE' } // Uniquement les acceptés
+          },
+          {
+            model: Availability,
+            as: 'disponibilites'
           }
         ]
       });

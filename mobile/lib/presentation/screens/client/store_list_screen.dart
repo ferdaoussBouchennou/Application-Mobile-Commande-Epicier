@@ -76,10 +76,10 @@ class _StoreListScreenState extends State<StoreListScreen> {
   }
 
   Widget _buildRatingOption(double rating, String label, StateSetter setModalState) {
-    bool isSelected = _minRating == rating;
     return InkWell(
       onTap: () {
         setState(() => _minRating = rating);
+        context.read<StoreProvider>().updateFilters(rating: rating);
         setModalState(() {});
         Navigator.pop(context);
       },
@@ -89,7 +89,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
           children: [
             Icon(
               rating == 0.0 ? Icons.all_inclusive : Icons.star_border_rounded,
-              color: isSelected ? const Color(0xFFD97E4A) : Colors.black87,
+              color: _minRating == rating ? const Color(0xFFD97E4A) : Colors.black87,
               size: 24,
             ),
             const SizedBox(width: 16),
@@ -98,12 +98,12 @@ class _StoreListScreenState extends State<StoreListScreen> {
                 label,
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? const Color(0xFFD97E4A) : Colors.black87,
+                  fontWeight: _minRating == rating ? FontWeight.w700 : FontWeight.w500,
+                  color: _minRating == rating ? const Color(0xFFD97E4A) : Colors.black87,
                 ),
               ),
             ),
-            if (isSelected)
+            if (_minRating == rating)
               const Icon(Icons.check, color: Color(0xFFD97E4A), size: 20),
           ],
         ),
@@ -114,18 +114,15 @@ class _StoreListScreenState extends State<StoreListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2EBE3), // Beige background from mockups
+      backgroundColor: const Color(0xFFF2EBE3),
       body: Consumer<StoreProvider>(
         builder: (context, storeProvider, child) {
           if (storeProvider.isLoading) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFF4C6444)));
           }
 
-          final filteredStores = storeProvider.stores.where((s) {
-            final matchesSearch = s.nomBoutique.toLowerCase().contains(_searchQuery.toLowerCase());
-            final matchesRating = s.rating >= _minRating;
-            return matchesSearch && matchesRating;
-          }).toList();
+          final storesToDisplay = storeProvider.paginatedStores;
+          final totalFiltered = storeProvider.filteredStores.length;
 
           return CustomScrollView(
             slivers: [
@@ -134,13 +131,12 @@ class _StoreListScreenState extends State<StoreListScreen> {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                   decoration: const BoxDecoration(
-                    color: Color(0xFF4C6444), // Green header
+                    color: Color(0xFF4C6444),
                   ),
                   child: SafeArea(
                     bottom: false,
                     child: Column(
                       children: [
-                        // Search Bar
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
@@ -148,7 +144,10 @@ class _StoreListScreenState extends State<StoreListScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: TextField(
-                            onChanged: (val) => setState(() => _searchQuery = val),
+                            onChanged: (val) {
+                              setState(() => _searchQuery = val);
+                              storeProvider.updateFilters(search: val);
+                            },
                             decoration: const InputDecoration(
                               hintText: 'Rechercher une épicerie...',
                               hintStyle: TextStyle(color: Colors.grey),
@@ -172,7 +171,6 @@ class _StoreListScreenState extends State<StoreListScreen> {
                     children: [
                       Row(
                         children: [
-                          // Open Now Filter
                           _buildFilterChip(
                             label: 'Ouvert maintenant',
                             isSelected: _onlyOpen,
@@ -181,9 +179,8 @@ class _StoreListScreenState extends State<StoreListScreen> {
                             iconSize: 8,
                           ),
                           const SizedBox(width: 12),
-                          // Rating Filter
                           _buildFilterChip(
-                            label: _minRating == 0.0 ? 'Note' : '≥ ${_minRating}',
+                            label: _minRating == 0.0 ? 'Note' : '≥ $_minRating',
                             isSelected: _minRating > 0.0,
                             onTap: _showRatingFilter,
                             icon: Icons.star_rounded,
@@ -197,7 +194,7 @@ class _StoreListScreenState extends State<StoreListScreen> {
                           const Icon(Icons.store, size: 18, color: Color(0xFF7A5C44)),
                           const SizedBox(width: 8),
                           Text(
-                            '${filteredStores.length} épiceries trouvées',
+                            '$totalFiltered épiceries trouvées',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -212,17 +209,17 @@ class _StoreListScreenState extends State<StoreListScreen> {
               ),
 
               // List of Stores
-              if (filteredStores.isEmpty)
+              if (storesToDisplay.isEmpty)
                 const SliverFillRemaining(
                   child: Center(child: Text('Aucun épicier trouvé.')),
                 )
-              else
+              else 
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        final store = filteredStores[index];
+                        final store = storesToDisplay[index];
                         return StoreCard(
                           store: store,
                           onTap: () {
@@ -235,7 +232,71 @@ class _StoreListScreenState extends State<StoreListScreen> {
                           },
                         );
                       },
-                      childCount: filteredStores.length,
+                      childCount: storesToDisplay.length,
+                    ),
+                  ),
+                ),
+
+              // Pagination Controls (Only if list not empty)
+              if (storesToDisplay.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
+                    child: Column(
+                      children: [
+                        Text(
+                          "Page ${storeProvider.currentPage} sur ${storeProvider.totalPages}",
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton(
+                              onPressed: storeProvider.currentPage > 1 
+                                ? () => storeProvider.previousPage() 
+                                : null,
+                              child: Text(
+                                '‹ Précédent',
+                                style: TextStyle(
+                                  color: storeProvider.currentPage > 1 ? const Color(0xFF4C6444) : Colors.grey.shade400,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              children: List.generate(storeProvider.totalPages, (index) {
+                                bool isActive = index + 1 == storeProvider.currentPage;
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  width: isActive ? 24 : 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: isActive ? const Color(0xFF4C6444) : const Color(0xFFD4C9BD),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                );
+                              }),
+                            ),
+                            TextButton(
+                              onPressed: storeProvider.currentPage < storeProvider.totalPages 
+                                ? () => storeProvider.nextPage() 
+                                : null,
+                              child: Text(
+                                'Suivant ›',
+                                style: TextStyle(
+                                  color: storeProvider.currentPage < storeProvider.totalPages ? const Color(0xFF4C6444) : Colors.grey.shade400,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
