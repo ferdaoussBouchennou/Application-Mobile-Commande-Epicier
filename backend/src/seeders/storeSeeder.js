@@ -24,8 +24,8 @@ const seedStores = async () => {
         nom_boutique: 'Épicerie Ahmed',
         adresse: 'Rue de la Liberté, Tunis',
         telephone: '0555112233',
-        description: 'Produits frais du terroir et épices fines.',
-        image_url: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?q=80&w=500',
+        description: 'Produits frais, lait, pain et alimentation générale.',
+        image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 4.5,
       },
       {
@@ -35,8 +35,8 @@ const seedStores = async () => {
         nom_boutique: 'Hanut Sami',
         adresse: 'Avenue Habib Bourguiba, Sfax',
         telephone: '0555445566',
-        description: 'Votre Hanut de quartier ouvert tard le soir.',
-        image_url: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?q=80&w=500',
+        description: 'Votre Hanut de quartier : pain chaud et lait tous les matins.',
+        image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 4.2,
       },
       {
@@ -46,8 +46,8 @@ const seedStores = async () => {
         nom_boutique: 'Chez Leila',
         adresse: 'Route de la Plage, Hammamet',
         telephone: '0555778899',
-        description: 'Fruits de mer et alimentation générale.',
-        image_url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=500',
+        description: 'Alimentation générale et produits de première nécessité.',
+        image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 4.8,
       },
       {
@@ -57,8 +57,8 @@ const seedStores = async () => {
         nom_boutique: 'Karim Market',
         adresse: 'Boulevard de l\'Environnement, Sousse',
         telephone: '0555001122',
-        description: 'Le meilleur couscous et produits locaux.',
-        image_url: 'https://images.unsplash.com/photo-1574634534894-89d7576c8259?q=80&w=500',
+        description: 'Épicerie fine, semoule, huile et pain traditionnel.',
+        image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 3.9,
       },
       {
@@ -68,8 +68,8 @@ const seedStores = async () => {
         nom_boutique: 'Mondher Express',
         adresse: 'Cité des Jeunes, Bizerte',
         telephone: '0555334455',
-        description: 'Rapide, efficace et toujours avec le sourire.',
-        image_url: 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?q=80&w=500',
+        description: 'Service rapide : lait, sucre, pain et plus.',
+        image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 4.0,
       }
     ];

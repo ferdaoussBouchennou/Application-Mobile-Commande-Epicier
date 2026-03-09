@@ -60,9 +60,10 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
-      appBar: AppBar(
+      appBar: _currentIndex == 1 ? null : AppBar(
         backgroundColor: const Color(0xFF2D5016),
         foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           'MyHanut',
           style: TextStyle(fontWeight: FontWeight.bold),

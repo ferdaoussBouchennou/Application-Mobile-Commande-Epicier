@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/store.dart';
+import '../../core/constants/api_constants.dart';
 
 class StoreCard extends StatelessWidget {
   final Store store;
@@ -37,25 +38,28 @@ class StoreCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                   child: Image.network(
-                    store.imageUrl ?? 'https://via.placeholder.com/500x200',
+                    ApiConstants.formatImageUrl(store.imageUrl),
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 180,
+                      width: double.infinity,
                       color: const Color(0xFFE5DED4),
                       child: const Icon(Icons.storefront, size: 50, color: Color(0xFF7A5C44)),
                     ),
                   ),
                 ),
-                // Status Badge (Ouvert)
+                // Status Badge (Ouvert/Fermé)
                 Positioned(
                   top: 12,
                   right: 12,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4C8451), // Green from mockup
+                      color: store.isOpen 
+                          ? const Color(0xFF4C8451) // Green for Open
+                          : Colors.grey.shade600,   // Grey for Closed
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -70,9 +74,9 @@ class StoreCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
-                          'Ouvert',
-                          style: TextStyle(
+                        Text(
+                          store.isOpen ? 'Ouvert' : 'Fermé',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,

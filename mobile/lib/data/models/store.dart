@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class Store {
   final int id;
   final int utilisateurId;
@@ -28,6 +30,49 @@ class Store {
     this.tags = const [],
     this.distance,
   });
+
+  bool get isOpen {
+    if (disponibilites == null || disponibilites!.isEmpty) return false;
+
+    final now = DateTime.now();
+    final joursMap = {
+      1: 'lundi',
+      2: 'mardi',
+      3: 'mercredi',
+      4: 'jeudi',
+      5: 'vendredi',
+      6: 'samedi',
+      7: 'dimanche',
+    };
+
+    final jourActuel = joursMap[now.weekday];
+    
+    // Trouver la disponibilité pour aujourd'hui
+    final disposAujourdhui = disponibilites!.where((d) => d.jour.toLowerCase() == jourActuel).toList();
+    
+    if (disposAujourdhui.isEmpty) return false;
+
+    for (var dispo in disposAujourdhui) {
+      try {
+        final nowTime = TimeOfDay.fromDateTime(now);
+        final startParts = dispo.heureDebut.split(':');
+        final endParts = dispo.heureFin.split(':');
+        
+        final startTime = TimeOfDay(hour: int.parse(startParts[0]), minute: int.parse(startParts[1]));
+        final endTime = TimeOfDay(hour: int.parse(endParts[0]), minute: int.parse(endParts[1]));
+
+        double toDouble(TimeOfDay myTime) => myTime.hour + myTime.minute / 60.0;
+        
+        if (toDouble(nowTime) >= toDouble(startTime) && toDouble(nowTime) <= toDouble(endTime)) {
+          return true;
+        }
+      } catch (e) {
+        print("Erreur parsing heure: $e");
+      }
+    }
+
+    return false;
+  }
 
   factory Store.fromJson(Map<String, dynamic> json) {
     var rawDispos = json['disponibilites'] as List?;

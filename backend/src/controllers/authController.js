@@ -40,7 +40,7 @@ const authController = {
   // Inscription Epicier
   registerEpicier: async (req, res) => {
     try {
-      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique } = req.body;
+      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique, image_url } = req.body;
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
@@ -63,10 +63,24 @@ const authController = {
       const newStore = await Store.create({
         utilisateur_id: newUser.id,
         nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
-        adresse, // Même adresse que l'utilisateur par défaut, sinon on peut la demander séparément
+        adresse,
         telephone,
         description: description_boutique,
+        image_url: image_url || null,
+        is_active: true
       });
+
+      // Ajouter des disponibilités par défaut
+      const Availability = require('../models/Availability');
+      const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      for (const jour of jours) {
+        await Availability.create({
+          epicier_id: newStore.id,
+          jour: jour,
+          heure_debut: '08:00:00',
+          heure_fin: '22:00:00'
+        });
+      }
 
       res.status(201).json({
         message: 'Epicier créé avec succès',
