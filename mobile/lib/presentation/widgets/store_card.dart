@@ -82,32 +82,6 @@ class StoreCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Distance Badge
-                Positioned(
-                  bottom: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF5D4837), // Brownish from mockup
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on, color: Color(0xFFFF6D61), size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          store.distance ?? "350 m",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
             
@@ -149,13 +123,6 @@ class StoreCard extends StatelessWidget {
                               color: Color(0xFF2D1A0E),
                             ),
                           ),
-                          Text(
-                            " (203)", // Dummy count for mockup
-                            style: TextStyle(
-                              color: Colors.grey.shade400,
-                              fontSize: 12,
-                            ),
-                          ),
                         ],
                       ),
                     ],
@@ -181,29 +148,6 @@ class StoreCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   
-                  // Tags
-                  Row(
-                    children: store.tags.map((tag) => Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE5DED4), width: 1.5),
-                      ),
-                      child: Text(
-                        tag,
-                        style: const TextStyle(
-                          color: Color(0xFF7A5C44),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )).toList(),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
                   // Action Button
                   SizedBox(
                     width: double.infinity,
@@ -219,7 +163,7 @@ class StoreCard extends StatelessWidget {
                         ),
                       ),
                       child: const Text(
-                        'Voir le catalogue',
+                        'Voir l\'épicier',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

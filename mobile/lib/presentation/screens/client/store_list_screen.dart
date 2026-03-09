@@ -132,47 +132,33 @@ class _StoreListScreenState extends State<StoreListScreen> {
               // Search Header
               SliverToBoxAdapter(
                 child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                   decoration: const BoxDecoration(
                     color: Color(0xFF4C6444), // Green header
                   ),
-                  child: Column(
-                    children: [
-                      // Logo and App Name
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'MyHanut',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Column(
+                      children: [
+                        // Search Bar
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: TextField(
+                            onChanged: (val) => setState(() => _searchQuery = val),
+                            decoration: const InputDecoration(
+                              hintText: 'Rechercher une épicerie...',
+                              hintStyle: TextStyle(color: Colors.grey),
+                              border: InputBorder.none,
+                              icon: Icon(Icons.search, color: Colors.black54),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      // Search Bar
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
                         ),
-                        child: TextField(
-                          onChanged: (val) => setState(() => _searchQuery = val),
-                          decoration: const InputDecoration(
-                            hintText: 'Rechercher une épicerie...',
-                            hintStyle: TextStyle(color: Colors.grey),
-                            border: InputBorder.none,
-                            icon: Icon(Icons.search, color: Colors.black54),
-                          ),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
