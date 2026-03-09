@@ -32,14 +32,6 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
-  telephone: {
-    type: DataTypes.STRING(20),
-    allowNull: true,
-  },
-  adresse: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-  },
   role: {
     type: DataTypes.ENUM('CLIENT', 'ADMIN', 'EPICIER'),
     allowNull: false,

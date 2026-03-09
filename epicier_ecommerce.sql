@@ -16,8 +16,6 @@ CREATE TABLE utilisateurs (
     email         VARCHAR(150) NOT NULL UNIQUE,
     mdp           VARCHAR(255) NOT NULL,
     id_google     VARCHAR(100),
-    telephone     VARCHAR(20),
-    adresse       VARCHAR(255) NOT NULL,
     role          ENUM('CLIENT', 'ADMIN', 'EPICIER') NOT NULL DEFAULT 'CLIENT',
     doc_verf      VARCHAR(20),
     is_active     BOOLEAN DEFAULT TRUE,
