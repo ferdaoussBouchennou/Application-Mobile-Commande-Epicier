@@ -8,12 +8,18 @@ const { Sequelize } = require('../config/db');
 router.get('/store/:storeId', async (req, res) => {
   try {
     const { storeId } = req.params;
+    const { q } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
     
+    const whereClause = {
+      nom: { [Sequelize.Op.like]: `%${q || ''}%` }
+    };
+
     // On récupère toutes les catégories qui ont au moins un produit pour cet épicier
     const allCategories = await Category.findAll({
+      where: q ? whereClause : {},
       attributes: [
         'id',
         'nom',

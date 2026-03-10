@@ -16,6 +16,8 @@ class StoreCatalogScreen extends StatefulWidget {
 }
 
 class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
+  int? _selectedCategoryId;
+
   @override
   void initState() {
     super.initState();
@@ -34,7 +36,7 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
             hintText: "Rechercher...",
             showBackButton: true,
             onChanged: (val) {
-              // Future: Handle product search
+              context.read<CategoryProvider>().searchCategories(widget.store.id, val);
             },
           ),
           
@@ -88,13 +90,12 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
                                 childAspectRatio: 0.85, // Adjust for more vertical cards
                               ),
                               itemCount: categoryProvider.categories.length,
-                              itemBuilder: (context, index) {
-                                final category = categoryProvider.categories[index];
-                                // Matching the mockup: first one is green, others are white
-                                final bool isHighlighted = index == 0;
-                                
-                                return _buildMockupCard(category, isHighlighted);
-                              },
+                                itemBuilder: (context, index) {
+                                  final category = categoryProvider.categories[index];
+                                  final bool isSelected = _selectedCategoryId == category.id;
+                                  
+                                  return _buildMockupCard(category, isSelected);
+                                },
                             ),
                           ],
                         ),
@@ -166,6 +167,9 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
+            setState(() {
+              _selectedCategoryId = category.id;
+            });
             Navigator.push(
               context,
               MaterialPageRoute(

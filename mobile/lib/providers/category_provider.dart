@@ -21,7 +21,7 @@ class CategoryProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.get('/categories/store/$storeId?page=$page&limit=8');
+      final response = await _apiService.get('/categories/store/$storeId?page=$page&limit=9');
       
       if (response is Map<String, dynamic>) {
         final List<dynamic> catList = response['categories'];
@@ -45,6 +45,31 @@ class CategoryProvider with ChangeNotifier {
   void previousPage(int storeId) {
     if (_currentPage > 1) {
       fetchCategories(storeId, page: _currentPage - 1);
+    }
+  }
+
+  Future<void> searchCategories(int storeId, String query) async {
+    if (query.isEmpty) {
+      return fetchCategories(storeId);
+    }
+    
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.get('/categories/store/$storeId?q=$query&limit=9');
+      
+      if (response is Map<String, dynamic>) {
+        final List<dynamic> catList = response['categories'];
+        _categories = catList.map((data) => Category.fromJson(data)).toList();
+        _totalPages = response['totalPages'];
+        _currentPage = 1;
+      }
+    } catch (e) {
+      print('Erreur searchCategories: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 }
