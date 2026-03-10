@@ -16,7 +16,12 @@ const app = express();
 
 // Middlewares
 app.use(cors());
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false, // Optionnel, mais aide en dev web
+  })
+);
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -24,7 +29,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running 🚀', env: process.env.NODE_ENV || 'development' });
+  res.json({ message: 'API is running ', env: process.env.NODE_ENV || 'development' });
 });
 
 // Routes principales de l'API
