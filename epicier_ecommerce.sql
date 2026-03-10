@@ -74,28 +74,6 @@ CREATE TABLE disponibilites (
     FOREIGN KEY (epicier_id) REFERENCES epiciers(id)
 );
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : paniers
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE paniers (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    client_id     INT NOT NULL UNIQUE,
-    date_creation DATE NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES utilisateurs(id)
-);
-
--- ══════════════════════════════════════════════════════════════
--- TABLE : panier_produits
--- CORRECTION : REFERENCES articles(id) → REFERENCES produits(id)
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE panier_produits (
-    panier_id  INT NOT NULL,
-    produit_id INT NOT NULL,
-    quantite   INT NOT NULL DEFAULT 1,
-    PRIMARY KEY (panier_id, produit_id),
-    FOREIGN KEY (panier_id)  REFERENCES paniers(id),
-    FOREIGN KEY (produit_id) REFERENCES produits(id)
-);
 
 -- ══════════════════════════════════════════════════════════════
 -- TABLE : commandes
