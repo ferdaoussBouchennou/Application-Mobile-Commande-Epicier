@@ -92,7 +92,9 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
                               itemCount: categoryProvider.categories.length,
                                 itemBuilder: (context, index) {
                                   final category = categoryProvider.categories[index];
-                                  final bool isSelected = _selectedCategoryId == category.id;
+                                  // Highlight first item by default on launch, then follow selection
+                                  final bool isSelected = (_selectedCategoryId == null && index == 0 && categoryProvider.currentPage == 1) || 
+                                                        (_selectedCategoryId == category.id);
                                   
                                   return _buildMockupCard(category, isSelected);
                                 },
