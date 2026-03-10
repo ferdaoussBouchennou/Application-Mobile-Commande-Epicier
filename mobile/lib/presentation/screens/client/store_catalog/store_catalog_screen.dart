@@ -4,6 +4,7 @@ import '../../../../data/models/store.dart';
 import '../../../../providers/category_provider.dart';
 import '../../../widgets/custom_bottom_nav_bar.dart';
 import '../../../widgets/custom_header.dart';
+import '../product_list_screen.dart';
 
 class StoreCatalogScreen extends StatefulWidget {
   final Store store;
@@ -165,7 +166,15 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            // Future: Navigate
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductListScreen(
+                  store: widget.store,
+                  category: category,
+                ),
+              ),
+            );
           },
           child: Padding(
             padding: const EdgeInsets.all(12.0),
