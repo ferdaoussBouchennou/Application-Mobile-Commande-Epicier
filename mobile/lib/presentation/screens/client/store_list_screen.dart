@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/store_provider.dart';
 import '../../widgets/store_card.dart';
+import '../../widgets/custom_header.dart';
 import 'store_details_screen.dart';
 
 class StoreListScreen extends StatefulWidget {
@@ -177,37 +178,12 @@ class _StoreListScreenState extends State<StoreListScreen> {
             slivers: [
               // Search Header
               SliverToBoxAdapter(
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF4C6444),
-                  ),
-                  child: SafeArea(
-                    bottom: false,
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: TextField(
-                            onChanged: (val) {
-                              setState(() => _searchQuery = val);
-                              storeProvider.updateFilters(search: val);
-                            },
-                            decoration: const InputDecoration(
-                              hintText: 'Rechercher une épicerie...',
-                              hintStyle: TextStyle(color: Colors.grey),
-                              border: InputBorder.none,
-                              icon: Icon(Icons.search, color: Colors.black54),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                child: CustomHeader(
+                  hintText: 'Rechercher une épicerie...',
+                  onChanged: (val) {
+                    setState(() => _searchQuery = val);
+                    storeProvider.updateFilters(search: val);
+                  },
                 ),
               ),
 
