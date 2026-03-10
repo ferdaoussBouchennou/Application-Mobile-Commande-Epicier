@@ -150,7 +150,7 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
   Widget _buildMockupCard(dynamic category, bool isHighlighted) {
     return Container(
       decoration: BoxDecoration(
-        color: isHighlighted ? const Color(0xFF2D5016) : Colors.white,
+        color: isHighlighted ? const Color(0xFFA75F37) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
