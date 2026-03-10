@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../data/models/store.dart';
 import '../../../data/models/category.dart';
 import '../../../providers/product_provider.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../widgets/custom_header.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 
@@ -144,7 +145,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 child: product.imagePrincipale != null
                     ? Image.network(
-                        "http://10.0.2.2:3000${product.imagePrincipale}", // Assuming local dev setup
+                        ApiConstants.formatImageUrl(product.imagePrincipale),
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) => 
                           const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
