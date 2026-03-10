@@ -49,7 +49,6 @@ class _StoreDetailsScreenState extends State<StoreDetailsScreen> {
                   ),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(store.nomBoutique, style: const TextStyle(fontWeight: FontWeight.bold)),
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
