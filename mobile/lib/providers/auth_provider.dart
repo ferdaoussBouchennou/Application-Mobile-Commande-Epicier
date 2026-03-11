@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../data/services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -44,6 +46,47 @@ class AuthProvider with ChangeNotifier {
       _token = response['token'];
       _user = response['user'];
       _store = response['store'];
+      _isLoggedIn = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', _token!);
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<bool> loginWithGoogle() async {
+    _setLoading(true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        scopes: ['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        _setLoading(false);
+        return false; // Annulé par l'utilisateur
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw Exception("Erreur lors de la récupération du token Google");
+      }
+
+      // Envoi du token au backend pour vérification et connexion/inscription
+      final response = await _apiService.post('/auth/google', {
+        'idToken': idToken,
+      });
+
+      _token = response['token'];
+      _user = response['user'];
       _isLoggedIn = true;
 
       final prefs = await SharedPreferences.getInstance();

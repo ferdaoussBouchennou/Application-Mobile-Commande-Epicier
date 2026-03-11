@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
 
@@ -165,6 +166,78 @@ const authController = {
     } catch (error) {
       console.error('Erreur validateEpicier:', error);
       res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
+    }
+  },
+
+  // Connexion via Google
+  googleLogin: async (req, res) => {
+    try {
+      const { idToken } = req.body;
+      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+      // Vérification du token auprès de Google
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      const { email, name, given_name, family_name, sub: googleId } = payload;
+
+      // Chercher ou créer l'utilisateur
+      let user = await User.findOne({ 
+        where: { 
+          [require('sequelize').Op.or]: [
+            { email },
+            { id_google: googleId }
+          ]
+        } 
+      });
+
+      if (!user) {
+        // Créer un nouvel utilisateur (rôle CLIENT par défaut)
+        user = await User.create({
+          nom: family_name || name,
+          prenom: given_name || '',
+          email,
+          mdp: await bcrypt.hash(Math.random().toString(36), 10),
+          id_google: googleId,
+          adresse: 'Google Auth',
+          role: 'CLIENT',
+          is_active: true
+        });
+      } else if (!user.id_google) {
+        // Si l'utilisateur existait déjà par email mais n'avait pas d'ID Google lié
+        user.id_google = googleId;
+        await user.save();
+      }
+
+      if (!user.is_active) {
+        return res.status(403).json({ message: 'Ce compte est inactif.' });
+      }
+
+      // Générer le JWT MyHanut
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.status(200).json({
+        message: 'Connexion Google réussie',
+        token,
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+        }
+      });
+
+    } catch (error) {
+      console.error('Erreur googleLogin:', error);
+      res.status(401).json({ message: 'Échec de l\'authentification Google', error: error.message });
     }
   }
 };

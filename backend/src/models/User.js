@@ -32,6 +32,14 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+  id_facebook: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  id_instagram: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
   telephone: {
     type: DataTypes.STRING(20),
     allowNull: true,

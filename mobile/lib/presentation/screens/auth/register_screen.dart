@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import '../client/map_screen/map_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -434,7 +435,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           iconData: FontAwesomeIcons.google,
                           iconColor: const Color(0xFFDB4437),
                           label: 'Google',
-                          onPressed: () {},
+                          onPressed: () async {
+                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                            try {
+                              final success = await authProvider.loginWithGoogle();
+                              if (success && mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const MapScreen()),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Erreur Google: $e')),
+                                );
+                              }
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
