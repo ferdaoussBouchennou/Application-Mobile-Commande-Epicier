@@ -261,7 +261,23 @@ class _LoginScreenState extends State<LoginScreen> {
                           iconData: FontAwesomeIcons.google,
                           iconColor: const Color(0xFFDB4437),
                           label: 'Google',
-                          onPressed: () {},
+                          onPressed: () async {
+                            try {
+                              final success = await context.read<AuthProvider>().loginWithGoogle();
+                              if (success && mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const MapScreen()),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Erreur Google: $e')),
+                                );
+                              }
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
