@@ -7,13 +7,15 @@ const storeController = {
   getAllStores: async (req, res) => {
     try {
       const stores = await Store.findAll({
-        where: { is_active: true },
+        where: { 
+          is_active: true,
+          statut_inscription: 'ACCEPTE' 
+        },
         include: [
           {
             model: User,
             as: 'utilisateur',
-            attributes: ['nom', 'prenom', 'statut_inscription'],
-            where: { statut_inscription: 'ACCEPTE' } // Uniquement les acceptés
+            attributes: ['nom', 'prenom']
           },
           {
             model: Availability,
