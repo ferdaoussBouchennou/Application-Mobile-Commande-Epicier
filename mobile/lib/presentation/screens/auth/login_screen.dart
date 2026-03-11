@@ -3,7 +3,7 @@ import 'register_screen.dart';
 import '../client/map_screen/map_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
-import '../client/store_catalog/store_catalog_screen.dart'; // TODO: replace when actual home is accessible
+import '../grocer/grocer_main_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -37,11 +37,18 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      final success = await context.read<AuthProvider>().login(email, mdp);
+      final auth = context.read<AuthProvider>();
+      final success = await auth.login(email, mdp);
       if (success && mounted) {
+        final role = auth.user?['role'] as String?;
+        final isEpicier = role == 'EPICIER';
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const MapScreen()),
+          MaterialPageRoute(
+            builder: (_) => isEpicier
+                ? const GrocerMainScreen()
+                : const MapScreen(),
+          ),
         );
       }
     } catch (e) {

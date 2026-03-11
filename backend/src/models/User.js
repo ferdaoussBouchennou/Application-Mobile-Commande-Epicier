@@ -1,6 +1,6 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const bcrypt = require('bcrypt');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
+const bcrypt = require("bcrypt");
 
 const User = sequelize.define('User', {
   id: {
@@ -29,14 +29,6 @@ const User = sequelize.define('User', {
     allowNull: false,
   },
   id_google: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-  },
-  id_facebook: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-  },
-  id_instagram: {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
