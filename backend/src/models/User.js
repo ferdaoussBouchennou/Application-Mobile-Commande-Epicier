@@ -41,11 +41,6 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255), // Augmenté pour laisser place aux noms de fichiers longs
     allowNull: true,
   },
-  statut_inscription: {
-    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
-    allowNull: false,
-    defaultValue: 'ACCEPTE', // Par défaut pour le CLIENT. Pour l'épicier, on forcera EN_ATTENTE.
-  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
