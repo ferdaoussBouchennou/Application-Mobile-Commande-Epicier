@@ -39,7 +39,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-sequelize.sync({ alter: true }).then(() => {
+sequelize.sync({ alter: { drop: false } }).then(() => {
   console.log('Base de données synchronisée.');
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Listening on all interfaces)`);
