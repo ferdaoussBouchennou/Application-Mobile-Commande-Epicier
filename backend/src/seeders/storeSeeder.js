@@ -85,7 +85,6 @@ const seedStores = async () => {
         email: data.email,
         mdp: 'Password123', // hooks will hash it
         role: 'EPICIER',
-        statut_inscription: 'ACCEPTE',
         is_active: true
       });
 
@@ -97,6 +96,7 @@ const seedStores = async () => {
         description: data.description,
         image_url: data.image_url,
         rating: data.rating,
+        statut_inscription: 'ACCEPTE',
         is_active: true
       });
 

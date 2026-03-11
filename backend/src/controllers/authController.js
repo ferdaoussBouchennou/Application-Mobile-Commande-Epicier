@@ -24,6 +24,8 @@ const authController = {
         email,
         mdp,
         role: 'CLIENT',
+        telephone: telephone || null,
+        adresse: adresse || null,
         is_active: true
       });
 
@@ -58,16 +60,16 @@ const authController = {
         is_active: true
       });
 
-      // Créer l'entrée dans la table epiciers
+      // Créer l'entrée dans la table epiciers (statut_inscription sur la boutique)
       const newStore = await Store.create({
         utilisateur_id: newUser.id,
         nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
-        adresse,
-        telephone,
+        adresse: adresse || 'À configurer',
+        telephone: telephone || null,
         description: description_boutique,
         image_url: image_url || null,
-        is_active: true,
-        statut_inscription: 'EN_ATTENTE'
+        statut_inscription: 'EN_ATTENTE',
+        is_active: true
       });
 
       // Ajouter des disponibilités par défaut
@@ -125,7 +127,16 @@ const authController = {
       let storeInfo = null;
       if (user.role === 'EPICIER') {
         const store = await Store.findOne({ where: { utilisateur_id: user.id } });
-        storeInfo = store ? { id: store.id, nom_boutique: store.nom_boutique } : null;
+        if (!store) {
+          return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        }
+        if (store.statut_inscription !== 'ACCEPTE') {
+          const message = store.statut_inscription === 'EN_ATTENTE'
+            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
+            : 'Votre demande d\'inscription a été refusée par un administrateur.';
+          return res.status(403).json({ message });
+        }
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
       }
 
       const token = jwt.sign(
@@ -152,16 +163,21 @@ const authController = {
     }
   },
 
-  // Validation Epicier par l'Administrateur
+  // Validation Epicier par l'Administrateur (statut sur la table epiciers)
   validateEpicier: async (req, res) => {
     try {
       const { userId, action } = req.body; // action: 'ACCEPTER' ou 'REFUSER'
 
       // Ici on devrait théoriquement vérifier que req.user (issu du JWT) est un ADMIN
-      
+
+      const user = await User.findByPk(userId);
+      if (!user || user.role !== 'EPICIER') {
+        return res.status(404).json({ message: 'Epicier introuvable.' });
+      }
+
       const store = await Store.findOne({ where: { utilisateur_id: userId } });
       if (!store) {
-        return res.status(404).json({ message: 'Boutique introuvable pour cet épicier.' });
+        return res.status(404).json({ message: 'Boutique épicier introuvable.' });
       }
 
       if (action === 'ACCEPTER') {
