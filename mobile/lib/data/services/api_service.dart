@@ -54,6 +54,20 @@ class ApiService {
     }
   }
 
+  Future<dynamic> patch(String endpoint, Map<String, dynamic> body, {String? token}) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$_baseUrl$endpoint'),
+        headers: _headers(token: token),
+        body: jsonEncode(body),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      Logger.error('PATCH $endpoint → $e');
+      rethrow;
+    }
+  }
+
   Future<dynamic> delete(String endpoint, {String? token}) async {
     try {
       final response = await http.delete(
