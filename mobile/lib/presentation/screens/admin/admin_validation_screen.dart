@@ -111,8 +111,10 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            _buildStatsRow(),
-                            const SizedBox(height: 20),
+                            if (_selectedRole == 'Tous' || _selectedRole == 'Épicier') ...[
+                              _buildStatsRow(),
+                              const SizedBox(height: 20),
+                            ],
                             _buildFilterBar(),
                             const SizedBox(height: 20),
                             _buildStoreList(),
