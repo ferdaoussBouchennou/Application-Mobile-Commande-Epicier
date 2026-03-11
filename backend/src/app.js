@@ -12,6 +12,7 @@ const storeRoutes = require('./routes/storeRoutes');
 const grocerRoutes = require('./routes/grocerRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const productRoutes = require('./routes/productRoutes');
+const panierRoutes = require('./routes/panierRoutes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/epicier', grocerRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/panier', panierRoutes);
 
 // 404 Handler
 app.use((req, res) => {

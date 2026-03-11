@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/custom_bottom_nav_bar.dart';
 import '../store_list_screen.dart';
+import '../cart_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -15,8 +16,8 @@ class _MapScreenState extends State<MapScreen> {
   // Placeholder pour les différentes pages :
   // 0 : Accueil (Carte)
   // 1 : Épiciers
-  // 2 : Commandes
-  // 3 : Panier
+  // 2 : Panier
+  // 3 : Commandes
   final List<Widget> _pages = [
     // Page 0 : Accueil (Carte & Recherche)
     const Center(
@@ -37,19 +38,13 @@ class _MapScreenState extends State<MapScreen> {
     // Page 1 : Épiciers (Liste)
     const StoreListScreen(),
 
-    // Page 2 : Commandes
+    // Page 2 : Panier
+    const CartScreen(),
+
+    // Page 3 : Commandes
     const Center(
       child: Text(
         'Historique des Commandes\n(Bientôt disponible)',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 18, color: Color(0xFF7A5C44)),
-      ),
-    ),
-
-    // Page 3 : Panier
-    const Center(
-      child: Text(
-        'Votre Panier\n(Bientôt disponible)',
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 18, color: Color(0xFF7A5C44)),
       ),

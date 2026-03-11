@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/store.dart';
 import '../../../data/models/category.dart';
+import '../../../data/models/product.dart';
 import '../../../providers/product_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/cart_provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../widgets/custom_header.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
@@ -97,7 +100,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         itemCount: productProvider.products.length,
                         itemBuilder: (context, index) {
                           final product = productProvider.products[index];
-                          return _buildProductCard(product);
+                          return _buildProductCard(context, product);
                         },
                       ),
                     ),
@@ -117,7 +120,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     );
   }
 
-  Widget _buildProductCard(dynamic product) {
+  Widget _buildProductCard(BuildContext context, Product product) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -194,14 +197,34 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         color: Color(0xFF2D5016),
                       ),
                     ),
-                    Container(
-                      height: 32,
-                      width: 32,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2D5016),
-                        shape: BoxShape.circle,
+                    InkWell(
+                      onTap: () async {
+                        final token = context.read<AuthProvider>().token;
+                        if (token == null || token.isEmpty) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Connectez-vous pour ajouter au panier.')),
+                            );
+                          }
+                          return;
+                        }
+                        await context.read<CartProvider>().addToCart(token, product.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${product.nom} ajouté au panier')),
+                          );
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        height: 32,
+                        width: 32,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2D5016),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Icons.add, color: Colors.white, size: 20),
                     ),
                   ],
                 ),
