@@ -32,13 +32,13 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
-  telephone: {
-    type: DataTypes.STRING(20),
+  id_facebook: {
+    type: DataTypes.STRING(100),
     allowNull: true,
   },
-  adresse: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
+  id_instagram: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
   },
   role: {
     type: DataTypes.ENUM('CLIENT', 'ADMIN', 'EPICIER'),
@@ -48,11 +48,6 @@ const User = sequelize.define('User', {
   doc_verf: {
     type: DataTypes.STRING(255), // Augmenté pour laisser place aux noms de fichiers longs
     allowNull: true,
-  },
-  statut_inscription: {
-    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
-    allowNull: false,
-    defaultValue: 'ACCEPTE', // Par défaut pour le CLIENT. Pour l'épicier, on forcera EN_ATTENTE.
   },
   is_active: {
     type: DataTypes.BOOLEAN,
