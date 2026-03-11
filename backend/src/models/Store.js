@@ -33,9 +33,27 @@ const Store = sequelize.define('Store', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  image_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
+  rating: {
+    type: DataTypes.DECIMAL(2, 1),
+    defaultValue: 0.0,
+  },
+  statut_inscription: {
+    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
+    allowNull: false,
+    defaultValue: 'EN_ATTENTE',
+  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
+  },
+  statut_inscription: {
+    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
+    allowNull: false,
+    defaultValue: 'EN_ATTENTE',
   },
 }, {
   tableName: 'epiciers',

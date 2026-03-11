@@ -24,9 +24,9 @@ const authController = {
         prenom,
         email,
         mdp,
-        adresse,
-        telephone,
         role: 'CLIENT',
+        telephone: telephone || null,
+        adresse: adresse || null,
         is_active: true
       });
 
@@ -43,7 +43,7 @@ const authController = {
   // Inscription Epicier
   registerEpicier: async (req, res) => {
     try {
-      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique } = req.body;
+      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique, image_url } = req.body;
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
@@ -56,22 +56,34 @@ const authController = {
         prenom,
         email,
         mdp,
-        adresse,
-        telephone,
         role: 'EPICIER',
         doc_verf,
+        is_active: true
+      });
+
+      // Créer l'entrée dans la table epiciers (statut_inscription sur la boutique)
+      const newStore = await Store.create({
+        utilisateur_id: newUser.id,
+        nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
+        adresse: adresse || 'À configurer',
+        telephone: telephone || null,
+        description: description_boutique,
+        image_url: image_url || null,
         statut_inscription: 'EN_ATTENTE',
         is_active: true
       });
 
-      // Créer l'entrée dans la table epiciers
-      const newStore = await Store.create({
-        utilisateur_id: newUser.id,
-        nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
-        adresse, // Même adresse que l'utilisateur par défaut, sinon on peut la demander séparément
-        telephone,
-        description: description_boutique,
-      });
+      // Ajouter des disponibilités par défaut
+      const Availability = require('../models/Availability');
+      const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+      for (const jour of jours) {
+        await Availability.create({
+          epicier_id: newStore.id,
+          jour: jour,
+          heure_debut: '08:00:00',
+          heure_fin: '22:00:00'
+        });
+      }
 
       res.status(201).json({
         message: 'Epicier créé avec succès',
@@ -103,17 +115,29 @@ const authController = {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
 
-      if (user.role === 'EPICIER' && user.statut_inscription !== 'ACCEPTE') {
-        const message = user.statut_inscription === 'EN_ATTENTE'
-          ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-          : 'Votre demande d\'inscription a été refusée par un administrateur.';
-        return res.status(403).json({ message });
+      if (user.role === 'EPICIER') {
+        const store = await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (store && store.statut_inscription !== 'ACCEPTE') {
+          const message = store.statut_inscription === 'EN_ATTENTE'
+            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
+            : 'Votre demande d\'inscription a été refusée par un administrateur.';
+          return res.status(403).json({ message });
+        }
       }
 
       let storeInfo = null;
       if (user.role === 'EPICIER') {
         const store = await Store.findOne({ where: { utilisateur_id: user.id } });
-        storeInfo = store ? { id: store.id, nom_boutique: store.nom_boutique } : null;
+        if (!store) {
+          return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        }
+        if (store.statut_inscription !== 'ACCEPTE') {
+          const message = store.statut_inscription === 'EN_ATTENTE'
+            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
+            : 'Votre demande d\'inscription a été refusée par un administrateur.';
+          return res.status(403).json({ message });
+        }
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
       }
 
       const token = jwt.sign(
@@ -140,27 +164,32 @@ const authController = {
     }
   },
 
-  // Validation Epicier par l'Administrateur
+  // Validation Epicier par l'Administrateur (statut sur la table epiciers)
   validateEpicier: async (req, res) => {
     try {
       const { userId, action } = req.body; // action: 'ACCEPTER' ou 'REFUSER'
 
       // Ici on devrait théoriquement vérifier que req.user (issu du JWT) est un ADMIN
-      
+
       const user = await User.findByPk(userId);
       if (!user || user.role !== 'EPICIER') {
         return res.status(404).json({ message: 'Epicier introuvable.' });
       }
 
+      const store = await Store.findOne({ where: { utilisateur_id: userId } });
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique épicier introuvable.' });
+      }
+
       if (action === 'ACCEPTER') {
-        user.statut_inscription = 'ACCEPTE';
+        store.statut_inscription = 'ACCEPTE';
       } else if (action === 'REFUSER') {
-        user.statut_inscription = 'REFUSE';
+        store.statut_inscription = 'REFUSE';
       } else {
         return res.status(400).json({ message: 'Action invalide.' });
       }
 
-      await user.save();
+      await store.save();
       res.status(200).json({ message: `Le compte Epicier a été ${action === 'ACCEPTER' ? 'accepté' : 'refusé'}.` });
 
     } catch (error) {
