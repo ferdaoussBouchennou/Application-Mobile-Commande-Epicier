@@ -50,6 +50,11 @@ const Store = sequelize.define('Store', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  statut_inscription: {
+    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
+    allowNull: false,
+    defaultValue: 'EN_ATTENTE',
+  },
 }, {
   tableName: 'epiciers',
   timestamps: true,

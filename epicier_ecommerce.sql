@@ -1,10 +1,41 @@
--- ============================================================
--- Base de données : Épicier E-Commerce (VERSION CORRIGÉE)
--- ============================================================
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Hôte : 127.0.0.1
+-- Généré le : mer. 11 mars 2026 à 16:50
+-- Version du serveur : 10.4.32-MariaDB
+-- Version de PHP : 8.2.12
 
-CREATE DATABASE IF NOT EXISTS epicier_ecommerce;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
 
-USE epicier_ecommerce;
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Base de données : `epicier_ecommerce`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `avis`
+--
+
+CREATE TABLE `avis` (
+  `id` int(11) NOT NULL,
+  `note` tinyint(4) NOT NULL CHECK (`note` between 1 and 5),
+  `commentaire` text DEFAULT NULL,
+  `client_id` int(11) NOT NULL,
+  `epicier_id` int(11) NOT NULL,
+  `commande_id` int(11) DEFAULT NULL,
+  `date_avis` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ══════════════════════════════════════════════════════════════
 -- TABLE : utilisateurs  (clients + admins via role)
@@ -41,7 +72,8 @@ CREATE TABLE epiciers (
     telephone      VARCHAR(20),
     description    TEXT,
     is_active      BOOLEAN DEFAULT TRUE,
-    date_creation  TIMESTAMP DEFAULT CURRENT_TIMESSCADE
+    date_creation  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE
 );
 
 -- ══════════════════════════════════════════════════════════════
@@ -165,3 +197,4 @@ CREATE TABLE notifications (
     client_id  INT NOT NULL,
     lue        BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (client_id) REFERENCES utilisateurs(id)
+);

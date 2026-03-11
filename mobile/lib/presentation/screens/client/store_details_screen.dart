@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+                                                                 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/store_provider.dart';
 import '../../../core/constants/api_constants.dart';
+import './store_catalog/store_catalog_screen.dart';
 
 class StoreDetailsScreen extends StatefulWidget {
   final int storeId;
@@ -148,7 +149,12 @@ class _StoreDetailsScreenState extends State<StoreDetailsScreen> {
                         height: 55,
                         child: ElevatedButton(
                           onPressed: () {
-                            // Voir les produits
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => StoreCatalogScreen(store: store),
+                              ),
+                            );
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2D5016),
