@@ -41,8 +41,7 @@ CREATE TABLE epiciers (
     telephone      VARCHAR(20),
     description    TEXT,
     is_active      BOOLEAN DEFAULT TRUE,
-    date_creation  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE
+    date_creation  TIMESTAMP DEFAULT CURRENT_TIMESSCADE
 );
 
 -- ══════════════════════════════════════════════════════════════
@@ -166,4 +165,3 @@ CREATE TABLE notifications (
     client_id  INT NOT NULL,
     lue        BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (client_id) REFERENCES utilisateurs(id)
-);
