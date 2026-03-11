@@ -258,7 +258,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       Expanded(
                         child: _buildSocialButton(
-                          iconPath: 'assets/images/google_logo.png',
+                          iconData: FontAwesomeIcons.google,
+                          iconColor: const Color(0xFFDB4437),
                           label: 'Google',
                           onPressed: () {},
                         ),
@@ -275,7 +276,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildSocialButton(
-                          iconPath: 'assets/images/instagram_logo.png',
+                          iconData: FontAwesomeIcons.instagram,
+                          iconColor: const Color(0xFFE4405F),
                           label: 'Instagram',
                           onPressed: () {},
                         ),
