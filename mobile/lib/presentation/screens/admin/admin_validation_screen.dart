@@ -3,6 +3,7 @@ import '../../../data/services/api_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_theme.dart';
 import 'add_epicier_screen.dart';
+import 'admin_orders_screen.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -507,6 +508,14 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
       currentIndex: 1,
       selectedItemColor: const Color(0xFF2D5016),
       unselectedItemColor: Colors.grey,
+      onTap: (index) {
+        if (index == 2) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
+          );
+        }
+      },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
         BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
