@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : jeu. 12 mars 2026 à 02:21
+-- Généré le : jeu. 12 mars 2026 à 02:35
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -662,6 +662,7 @@ CREATE TABLE `utilisateurs` (
 --
 
 INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `id_facebook`, `id_instagram`, `role`, `doc_verf`, `is_active`, `date_creation`) VALUES
+(1, 'Admin', 'Application', 'admin@hanut.com', '$2b$10$wll4z6Kmk3d7MASYdI6uX.All3XmUjEea0EWgNZK.IAwiNxeZq/m.', NULL, NULL, NULL, 'ADMIN', NULL, 1, '2026-03-12 01:34:10'),
 (2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57'),
 (3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26'),
 (5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51'),
