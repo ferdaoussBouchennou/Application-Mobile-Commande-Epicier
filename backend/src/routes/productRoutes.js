@@ -11,7 +11,8 @@ router.get('/store/:storeId/category/:categoryId', async (req, res) => {
     const products = await Product.findAll({
       where: {
         epicier_id: storeId,
-        categorie_id: categoryId
+        categorie_id: categoryId,
+        is_active: true,
       },
       order: [['nom', 'ASC']]
     });
@@ -34,6 +35,7 @@ router.get('/store/:storeId/search', async (req, res) => {
     const products = await Product.findAll({
       where: {
         epicier_id: storeId,
+        is_active: true,
         nom: {
           [Sequelize.Op.like]: `%${q}%`
         }
