@@ -152,8 +152,17 @@ class _AdminCategoryProductsScreenState
   Future<void> _toggleRuptureStock(Map<String, dynamic> p) async {
     final token = _token;
     if (token == null) return;
+    final epicierId = p['epicier_id'];
+    if (epicierId == null) {
+      _snack('Données incomplètes (epicier_id manquant)');
+      return;
+    }
     try {
-      await _api.patch('/admin/products/${p['id']}/rupture-stock', {}, token: token);
+      await _api.patch(
+        '/admin/products/${p['id']}/rupture-stock',
+        {'epicier_id': epicierId},
+        token: token,
+      );
       final isRupture = p['rupture_stock'] == true;
       if (mounted) {
         _snack(isRupture ? 'Produit remis en stock' : 'Produit marqué en rupture de stock');

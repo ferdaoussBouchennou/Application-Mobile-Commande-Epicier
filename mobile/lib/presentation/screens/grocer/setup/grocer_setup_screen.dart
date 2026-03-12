@@ -88,11 +88,11 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
       final data = await _apiService.get('/epicier/profile', token: token);
       if (data != null && mounted) {
         setState(() {
-          _nomBoutiqueController.text = data['nom_boutique'] ?? '';
-          _telephoneController.text = data['telephone'] ?? '';
-          _descriptionController.text = data['description'] ?? '';
-          final adresse = data['adresse'] ?? '';
-          if (adresse != 'À configurer' && adresse != 'Adresse à configurer') {
+          _nomBoutiqueController.text = (data['nom_boutique'] ?? '').toString().trim();
+          _telephoneController.text = (data['telephone'] ?? '').toString().trim();
+          _descriptionController.text = (data['description'] ?? '').toString().trim();
+          final adresse = (data['adresse'] ?? '').toString().trim();
+          if (adresse.isNotEmpty && adresse != 'À configurer' && adresse != 'Adresse à configurer') {
             _adresseController.text = adresse;
           }
           if (data['latitude'] != null) {
@@ -101,12 +101,57 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
           if (data['longitude'] != null) {
             _longitude = double.tryParse(data['longitude'].toString());
           }
+          if (data['image_url'] != null && (data['image_url'] as String).isNotEmpty) {
+            _uploadedImageUrl = data['image_url'] as String;
+          }
+          _applyDisponibilites(data['disponibilites']);
           _isLoadingProfile = false;
         });
+      } else {
+        setState(() => _isLoadingProfile = false);
       }
     } catch (e) {
       if (mounted) setState(() => _isLoadingProfile = false);
     }
+  }
+
+  void _applyDisponibilites(dynamic disponibilites) {
+    if (disponibilites == null || disponibilites is! List) return;
+    final joursOuverts = <String>{};
+    for (final d in disponibilites) {
+      if (d is! Map<String, dynamic>) continue;
+      final jour = (d['jour'] ?? '').toString().toLowerCase();
+      if (jour.isEmpty) continue;
+      joursOuverts.add(jour);
+      for (final daySchedule in _horaires) {
+        if (daySchedule.jour == jour) {
+          daySchedule.isOpen = true;
+          daySchedule.heureDebut = _formatTime(d['heure_debut']);
+          daySchedule.heureFin = _formatTime(d['heure_fin']);
+          break;
+        }
+      }
+    }
+    if (joursOuverts.isNotEmpty) {
+      for (final daySchedule in _horaires) {
+        if (!joursOuverts.contains(daySchedule.jour)) {
+          daySchedule.isOpen = false;
+        }
+      }
+    }
+  }
+
+  String _formatTime(dynamic value) {
+    if (value == null) return '08:00';
+    final s = value.toString().trim();
+    if (s.isEmpty) return '08:00';
+    final parts = s.split(':');
+    if (parts.length >= 2) {
+      final h = parts[0].padLeft(2, '0');
+      final m = parts[1].padLeft(2, '0');
+      return '$h:$m';
+    }
+    return '08:00';
   }
 
   @override
@@ -938,22 +983,32 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
                   BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4)),
                 ],
               ),
-              child: _imageBytes != null
+              child: _imageBytes != null || (_uploadedImageUrl != null && _uploadedImageUrl!.isNotEmpty)
                   ? Stack(
                       fit: StackFit.expand,
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(18),
-                          child: Image.memory(_imageBytes!, fit: BoxFit.cover),
+                          child: _imageBytes != null
+                              ? Image.memory(_imageBytes!, fit: BoxFit.cover)
+                              : Image.network(
+                                  ApiConstants.formatImageUrl(_uploadedImageUrl!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: GrocerTheme.border.withOpacity(0.2),
+                                    child: const Icon(Icons.broken_image_outlined, size: 48, color: GrocerTheme.textMuted),
+                                  ),
+                                ),
                         ),
                         Positioned(
                           top: 10,
                           right: 10,
-                          child: GestureDetector(
-                            onTap: () => setState(() {
-                              _imageBytes = null;
-                              _imageFilename = null;
-                            }),
+                            child: GestureDetector(
+                              onTap: () => setState(() {
+                                _imageBytes = null;
+                                _imageFilename = null;
+                                _uploadedImageUrl = null;
+                              }),
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
