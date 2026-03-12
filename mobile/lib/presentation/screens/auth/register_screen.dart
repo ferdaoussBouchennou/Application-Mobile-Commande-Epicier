@@ -474,9 +474,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Erreur Google: $e')),
-                                );
+                                if (e.toString().contains('en attente de validation') && _isEpicier) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.green),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Erreur Google: $e')),
+                                  );
+                                }
                               }
                             }
                           },
