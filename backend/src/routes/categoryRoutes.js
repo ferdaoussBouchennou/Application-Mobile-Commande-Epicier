@@ -40,7 +40,7 @@ router.get('/store/:storeId', async (req, res) => {
     }
     const { q } = req.query;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 200;
     const includeRetired = req.query.includeRetired === 'true';
     const offset = (page - 1) * limit;
 
@@ -49,41 +49,54 @@ router.get('/store/:storeId', async (req, res) => {
     };
 
     // Catégories qui ont au moins un produit (actif ou inactif) pour cet épicier
-    const allCategories = await Category.findAll({
+    const rawCategories = await Category.findAll({
       where: q ? whereClause : {},
       attributes: [
         'id',
         'nom',
         [
           Sequelize.literal(`(
-            SELECT COUNT(*) FROM produits AS p
-            WHERE p.categorie_id = Category.id AND p.epicier_id = ${storeIdInt}
-            AND (p.is_active = 1 OR p.is_active IS NULL)
+            SELECT COUNT(*) FROM epicier_produits AS ep
+            INNER JOIN produits AS p ON p.id = ep.produit_id AND p.categorie_id = Category.id
+            WHERE ep.epicier_id = ${storeIdInt} AND ep.is_active = 1
           )`),
           'productCount'
         ],
         [
           Sequelize.literal(`(
-            SELECT COUNT(*) FROM produits AS p
-            WHERE p.categorie_id = Category.id AND p.epicier_id = ${storeIdInt}
-            AND p.is_active = 0
+            SELECT COUNT(*) FROM epicier_produits AS ep
+            INNER JOIN produits AS p ON p.id = ep.produit_id AND p.categorie_id = Category.id
+            WHERE ep.epicier_id = ${storeIdInt} AND ep.is_active = 0
           )`),
           'retiredCount'
         ]
       ],
-      having: includeRetired 
-        ? Sequelize.literal('(productCount + retiredCount) > 0')
-        : Sequelize.literal('productCount > 0')
+    });
+
+    const toNum = (v) => (typeof v === 'string' ? parseInt(v, 10) : null) ?? v ?? 0;
+    const allCategories = rawCategories.filter((c) => {
+      const productCount = toNum(c.get ? c.get('productCount') : c.productCount);
+      const retiredCount = toNum(c.get ? c.get('retiredCount') : c.retiredCount);
+      return includeRetired ? productCount + retiredCount > 0 : productCount > 0;
     });
 
     const totalItems = allCategories.length;
     const paginatedCategories = allCategories.slice(offset, offset + limit);
 
+    const categories = paginatedCategories.map((c) => {
+      const json = c.toJSON ? c.toJSON() : { id: c.id, nom: c.nom };
+      return {
+        ...json,
+        productCount: toNum(json.productCount ?? (c.get ? c.get('productCount') : c.productCount)),
+        retiredCount: toNum(json.retiredCount ?? (c.get ? c.get('retiredCount') : c.retiredCount)),
+      };
+    });
+
     res.json({
       totalItems,
       totalPages: Math.ceil(totalItems / limit),
       currentPage: page,
-      categories: paginatedCategories
+      categories
     });
   } catch (error) {
     console.error('Erreur categories store:', error);

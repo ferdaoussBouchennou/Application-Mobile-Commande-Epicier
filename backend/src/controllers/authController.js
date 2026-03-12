@@ -73,18 +73,6 @@ const authController = {
         is_active: true
       });
 
-      // Ajouter des disponibilités par défaut
-      const Availability = require('../models/Availability');
-      const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-      for (const jour of jours) {
-        await Availability.create({
-          epicier_id: newStore.id,
-          jour: jour,
-          heure_debut: '08:00:00',
-          heure_fin: '22:00:00'
-        });
-      }
-
       res.status(201).json({
         message: 'Epicier créé avec succès',
         user: { id: newUser.id, nom: newUser.nom, email: newUser.email, role: newUser.role },
@@ -115,29 +103,25 @@ const authController = {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
 
-      if (user.role === 'EPICIER') {
-        const store = await Store.findOne({ where: { utilisateur_id: user.id } });
-        if (store && store.statut_inscription !== 'ACCEPTE') {
-          const message = store.statut_inscription === 'EN_ATTENTE'
-            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-            : 'Votre demande d\'inscription a été refusée par un administrateur.';
-          return res.status(403).json({ message });
-        }
-      }
-
       let storeInfo = null;
       if (user.role === 'EPICIER') {
         const store = await Store.findOne({ where: { utilisateur_id: user.id } });
         if (!store) {
           return res.status(403).json({ message: 'Profil épicier introuvable.' });
         }
-        if (store.statut_inscription !== 'ACCEPTE') {
-          const message = store.statut_inscription === 'EN_ATTENTE'
-            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-            : 'Votre demande d\'inscription a été refusée par un administrateur.';
-          return res.status(403).json({ message });
+
+        if (store.statut_inscription === 'EN_ATTENTE') {
+          return res.status(403).json({ message: 'Votre compte Epicier est en attente de validation par un administrateur.' });
         }
-        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
+        if (store.statut_inscription === 'REFUSE') {
+          return res.status(403).json({ message: 'Votre demande d\'inscription a été refusée par un administrateur.' });
+        }
+
+        storeInfo = {
+          id: store.id,
+          nom_boutique: store.nom_boutique,
+          statut_inscription: store.statut_inscription,
+        };
       }
 
       const token = jwt.sign(
@@ -251,17 +235,6 @@ const authController = {
             statut_inscription: 'EN_ATTENTE',
             is_active: true
           });
-
-          const Availability = require('../models/Availability');
-          const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-          for (const jour of jours) {
-            await Availability.create({
-              epicier_id: newStore.id,
-              jour: jour,
-              heure_debut: '08:00:00',
-              heure_fin: '22:00:00'
-            });
-          }
         } else {
           // Créer un nouvel utilisateur (rôle CLIENT par défaut)
           user = await User.create({
@@ -303,7 +276,7 @@ const authController = {
             : 'Votre demande d\'inscription a été refusée par un administrateur.';
           return res.status(403).json({ message });
         }
-        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription, };
       }
 
       // Générer le JWT MyHanut

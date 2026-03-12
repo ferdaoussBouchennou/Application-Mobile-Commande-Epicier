@@ -1,5 +1,6 @@
 const Category = require('../models/Category');
 const Product = require('../models/Product');
+const EpicierProduct = require('../models/EpicierProduct');
 const Store = require('../models/Store');
 const sequelize = require('../config/db');
 
@@ -82,21 +83,25 @@ const seedProducts = async () => {
       { nom: 'Kamoun (Cumin) 50g', prix: 10.00, description: 'Cumin moulu pur.', categorie: 'Épices', image: 'uploads/epices/cumin.jpg' }
     ];
 
-    // Clear existing products to avoid duplicates or keep them? 
-    // The user said "Remplacer", so I'll clear first.
+    await EpicierProduct.destroy({ where: {} });
     await Product.destroy({ where: {} });
-    console.log('Anciens produits supprimés.');
+    console.log('Anciens produits et liens épicier supprimés.');
 
-    for (const store of stores) {
-      for (const pData of productsData) {
-        const category = categories.find(c => c.nom === pData.categorie);
-        await Product.create({
+    for (const pData of productsData) {
+      const category = categories.find(c => c.nom === pData.categorie);
+      const [product] = await Product.findOrCreate({
+        where: { nom: pData.nom, categorie_id: category.id },
+        defaults: {
           nom: pData.nom,
-          prix: pData.prix,
           description: pData.description,
           categorie_id: category.id,
-          epicier_id: store.id,
           image_principale: pData.image
+        }
+      });
+      for (const store of stores) {
+        await EpicierProduct.findOrCreate({
+          where: { epicier_id: store.id, produit_id: product.id },
+          defaults: { epicier_id: store.id, produit_id: product.id, prix: pData.prix, is_active: true }
         });
       }
     }

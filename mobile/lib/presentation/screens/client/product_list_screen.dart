@@ -118,6 +118,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   }
 
   Widget _buildProductCard(dynamic product) {
+    final isRupture = product.ruptureStock == true;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -135,23 +136,63 @@ class _ProductListScreenState extends State<ProductListScreen> {
         children: [
           // Image Section
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: product.imagePrincipale != null
-                    ? Image.network(
-                        ApiConstants.formatImageUrl(product.imagePrincipale),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => 
-                          const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
-                      )
-                    : const Icon(Icons.image_outlined, color: Colors.grey, size: 40),
-              ),
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: product.imagePrincipale != null
+                        ? Image.network(
+                            ApiConstants.formatImageUrl(product.imagePrincipale),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.image_not_supported_outlined, color: Colors.grey),
+                          )
+                        : const Icon(Icons.image_outlined, color: Colors.grey, size: 40),
+                  ),
+                ),
+                if (isRupture)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade700,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        'Rupture de stock',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (isRupture)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.15),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           
@@ -188,21 +229,39 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   children: [
                     Text(
                       "${product.prix.toStringAsFixed(0)} DH",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
-                        color: Color(0xFF2D5016),
+                        color: isRupture ? Colors.grey.shade500 : const Color(0xFF2D5016),
                       ),
                     ),
-                    Container(
-                      height: 32,
-                      width: 32,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2D5016),
-                        shape: BoxShape.circle,
+                    if (isRupture)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Text(
+                          'Indisponible',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      )
+                    else
+                      Container(
+                        height: 32,
+                        width: 32,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2D5016),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Icons.add, color: Colors.white, size: 20),
-                    ),
                   ],
                 ),
               ],

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
+const EpicierProduct = require('../models/EpicierProduct');
 const { Op } = require('sequelize');
 
 function sanitizeName(str) {
@@ -20,7 +21,7 @@ function sanitizeName(str) {
 
 exports.getStats = async (req, res) => {
   try {
-    const pendingCount = await User.count({ where: { statut_inscription: 'EN_ATTENTE', role: 'EPICIER' } });
+    const pendingCount = await Store.count({ where: { statut_inscription: 'EN_ATTENTE' } });
     const activeCount = await User.count({ where: { is_active: true, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
     const suspendedCount = await User.count({ where: { is_active: false, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
 
@@ -40,12 +41,11 @@ exports.getUsers = async (req, res) => {
     let where = { role: { [Op.ne]: 'ADMIN' } };
 
     if (role) where.role = role;
-    
+
     if (status === 'EN_ATTENTE') {
-      where.statut_inscription = 'EN_ATTENTE';
+      where['$epicier.statut_inscription$'] = 'EN_ATTENTE';
     } else if (status === 'Actif') {
       where.is_active = true;
-      where.statut_inscription = 'ACCEPTE';
     } else if (status === 'Suspendu') {
       where.is_active = false;
     }
@@ -74,11 +74,24 @@ exports.updateUserStatus = async (req, res) => {
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
-    if (statut_inscription) user.statut_inscription = statut_inscription;
-    if (is_active !== undefined) user.is_active = is_active;
+    if (is_active !== undefined) {
+      user.is_active = is_active;
+      await user.save();
+    }
 
-    await user.save();
-    res.json({ message: 'Statut mis à jour avec succès', user });
+    if (statut_inscription && user.role === 'EPICIER') {
+      const store = await Store.findOne({ where: { utilisateur_id: id } });
+      if (store) {
+        store.statut_inscription = statut_inscription;
+        await store.save();
+      }
+    }
+
+    const updatedUser = await User.findByPk(id, {
+      include: [{ model: Store, as: 'epicier', required: false }],
+    });
+
+    res.json({ message: 'Statut mis à jour avec succès', user: updatedUser });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -93,38 +106,24 @@ exports.registerEpicier = async (req, res) => {
       return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
     }
 
-    // Créer l'utilisateur (Accepté par défaut car créé par l'admin)
     const newUser = await User.create({
       nom,
       prenom,
       email,
       mdp,
       role: 'EPICIER',
-      statut_inscription: 'ACCEPTE',
       is_active: true
     });
 
-    // Créer la boutique
     const newStore = await Store.create({
       utilisateur_id: newUser.id,
       nom_boutique: nom_boutique || `Épicerie de ${prenom}`,
       adresse,
       telephone,
       description: description_boutique,
+      statut_inscription: 'ACCEPTE',
       is_active: true
     });
-
-    // Ajouter des disponibilités par défaut
-    const Availability = require('../models/Availability');
-    const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-    for (const jour of jours) {
-      await Availability.create({
-        epicier_id: newStore.id,
-        jour: jour,
-        heure_debut: '08:00:00',
-        heure_fin: '22:00:00'
-      });
-    }
 
     res.status(201).json({
       message: 'Épicier créé manuellement avec succès',
@@ -147,8 +146,9 @@ exports.getCategories = async (req, res) => {
     const list = await Promise.all(
       categories.map(async (c) => {
         const count = await Product.count({ where: { categorie_id: c.id } });
-        const activeCount = await Product.count({
-          where: { categorie_id: c.id, is_active: true }
+        const activeCount = await EpicierProduct.count({
+          include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
+          where: { is_active: true }
         });
         return {
           id: c.id,
@@ -211,12 +211,12 @@ exports.deleteCategory = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const productCount = await Product.count({ where: { categorie_id: id } });
+    const productIds = await Product.findAll({ where: { categorie_id: id }, attributes: ['id'] }).then((rows) => rows.map((r) => r.id));
+    const productCount = productIds.length;
     if (productCount > 0) {
-      // Désactiver la catégorie = désactiver tous les produits de cette catégorie pour tous les épiciers
-      await Product.update(
+      await EpicierProduct.update(
         { is_active: false },
-        { where: { categorie_id: id } }
+        { where: { produit_id: productIds } }
       );
       return res.json({
         message: `Catégorie désactivée : ${productCount} produit(s) ont été retirés du catalogue pour tous les épiciers.`,
@@ -238,10 +238,10 @@ exports.activateCategory = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const [updatedCount] = await Product.update(
-      { is_active: true },
-      { where: { categorie_id: id } }
-    );
+    const productIds = await Product.findAll({ where: { categorie_id: id }, attributes: ['id'] }).then((rows) => rows.map((r) => r.id));
+    const [updatedCount] = productIds.length
+      ? await EpicierProduct.update({ is_active: true }, { where: { produit_id: productIds } })
+      : [0];
     res.json({
       message: `Catégorie réactivée : ${updatedCount} produit(s) remis au catalogue.`,
       productCount: updatedCount
@@ -256,7 +256,7 @@ exports.activateCategory = async (req, res) => {
 exports.getStores = async (req, res) => {
   try {
     const stores = await Store.findAll({
-      where: { statut_inscription: 'ACCEPTE', is_active: true },
+      where: { statut_inscription: { [Op.in]: ['ACCEPTE', 'COMPLETE'] }, is_active: true },
       attributes: ['id', 'nom_boutique'],
       order: [['nom_boutique', 'ASC']]
     });
@@ -276,21 +276,24 @@ exports.getCategoryProducts = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const products = await Product.findAll({
-      where: { categorie_id: categoryId },
-      include: [{ model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] }],
-      order: [['nom', 'ASC']]
+    const linkList = await EpicierProduct.findAll({
+      include: [
+        { model: Product, as: 'produit', where: { categorie_id: categoryId } },
+        { model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] }
+      ],
+      order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']]
     });
-    const list = products.map(p => ({
-      id: p.id,
-      nom: p.nom,
-      prix: parseFloat(p.prix),
-      description: p.description,
-      epicier_id: p.epicier_id,
-      categorie_id: p.categorie_id,
-      image_principale: p.image_principale,
-      is_active: !!p.is_active,
-      store_name: p.epicier?.nom_boutique ?? null
+    const list = linkList.filter(ep => ep.produit).map(ep => ({
+      id: ep.produit.id,
+      nom: ep.produit.nom,
+      prix: parseFloat(ep.prix),
+      description: ep.produit.description,
+      epicier_id: ep.epicier_id,
+      categorie_id: ep.produit.categorie_id,
+      image_principale: ep.produit.image_principale,
+      is_active: !!ep.is_active,
+      rupture_stock: !!ep.rupture_stock,
+      store_name: ep.epicier?.nom_boutique ?? null
     }));
     res.json(list);
   } catch (error) {
@@ -312,21 +315,30 @@ exports.createProduct = async (req, res) => {
     if (!store) {
       return res.status(404).json({ message: 'Épicier (boutique) non trouvé.' });
     }
-    const product = await Product.create({
-      nom: nom.trim(),
-      prix: parseFloat(prix),
-      description: description?.trim() || null,
-      epicier_id: parseInt(epicier_id, 10),
-      categorie_id: parseInt(categorie_id, 10),
-      image_principale: image_principale?.trim() || null,
-      is_active: true
+    const [product] = await Product.findOrCreate({
+      where: { nom: nom.trim(), categorie_id: parseInt(categorie_id, 10) },
+      defaults: {
+        nom: nom.trim(),
+        description: description?.trim() || null,
+        categorie_id: parseInt(categorie_id, 10),
+        image_principale: image_principale?.trim() || null
+      }
     });
+    const [epicierProduct, created] = await EpicierProduct.findOrCreate({
+      where: { epicier_id: parseInt(epicier_id, 10), produit_id: product.id },
+      defaults: { epicier_id: parseInt(epicier_id, 10), produit_id: product.id, prix: parseFloat(prix), is_active: true }
+    });
+    if (!created) {
+      epicierProduct.prix = parseFloat(prix);
+      epicierProduct.is_active = true;
+      await epicierProduct.save();
+    }
     res.status(201).json({
       id: product.id,
       nom: product.nom,
-      prix: parseFloat(product.prix),
+      prix: parseFloat(epicierProduct.prix),
       description: product.description,
-      epicier_id: product.epicier_id,
+      epicier_id: parseInt(epicier_id, 10),
       categorie_id: product.categorie_id,
       image_principale: product.image_principale,
       is_active: true,
@@ -340,26 +352,34 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, prix, description, image_principale } = req.body;
+    const { nom, prix, description, image_principale, epicier_id } = req.body;
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé.' });
     }
     if (nom != null && typeof nom === 'string') product.nom = nom.trim();
-    if (prix != null) product.prix = parseFloat(prix);
     if (description !== undefined) product.description = description?.trim() || null;
     if (image_principale !== undefined) product.image_principale = image_principale?.trim() || null;
     await product.save();
-    const store = await Store.findByPk(product.epicier_id, { attributes: ['nom_boutique'] });
+    if (epicier_id != null && prix != null) {
+      const link = await EpicierProduct.findOne({ where: { epicier_id: parseInt(epicier_id, 10), produit_id: product.id } });
+      if (link) {
+        link.prix = parseFloat(prix);
+        await link.save();
+      }
+    }
+    const epicierId = epicier_id != null ? parseInt(epicier_id, 10) : (await EpicierProduct.findOne({ where: { produit_id: product.id } }))?.epicier_id;
+    const store = epicierId ? await Store.findByPk(epicierId, { attributes: ['nom_boutique'] }) : null;
+    const link = epicierId ? await EpicierProduct.findOne({ where: { epicier_id: epicierId, produit_id: product.id } }) : null;
     res.json({
       id: product.id,
       nom: product.nom,
-      prix: parseFloat(product.prix),
+      prix: link ? parseFloat(link.prix) : 0,
       description: product.description,
-      epicier_id: product.epicier_id,
+      epicier_id: epicierId ?? null,
       categorie_id: product.categorie_id,
       image_principale: product.image_principale,
-      is_active: !!product.is_active,
+      is_active: link ? !!link.is_active : false,
       store_name: store?.nom_boutique ?? null
     });
   } catch (error) {
@@ -369,14 +389,23 @@ exports.updateProduct = async (req, res) => {
 
 exports.deactivateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const product = await Product.findByPk(id);
+    const produitId = parseInt(req.params.id, 10);
+    const epicierId = req.body?.epicier_id != null ? parseInt(req.body.epicier_id, 10) : null;
+    if (Number.isNaN(produitId)) {
+      return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+    }
+    if (epicierId == null || Number.isNaN(epicierId)) {
+      return res.status(400).json({ message: 'epicier_id est requis pour désactiver un produit pour un épicier spécifique.' });
+    }
+    const product = await Product.findByPk(produitId);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé.' });
     }
-    product.is_active = false;
-    await product.save();
-    res.json({ message: 'Produit retiré du catalogue (désactivé).' });
+    const [updated] = await EpicierProduct.update(
+      { is_active: false },
+      { where: { produit_id: produitId, epicier_id: epicierId } }
+    );
+    res.json({ message: 'Produit retiré du catalogue pour cet épicier.', updatedCount: updated });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -384,14 +413,51 @@ exports.deactivateProduct = async (req, res) => {
 
 exports.activateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const product = await Product.findByPk(id);
+    const produitId = parseInt(req.params.id, 10);
+    const epicierId = req.body?.epicier_id != null ? parseInt(req.body.epicier_id, 10) : null;
+    if (Number.isNaN(produitId)) {
+      return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+    }
+    if (epicierId == null || Number.isNaN(epicierId)) {
+      return res.status(400).json({ message: 'epicier_id est requis pour activer un produit pour un épicier spécifique.' });
+    }
+    const product = await Product.findByPk(produitId);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé.' });
     }
-    product.is_active = true;
-    await product.save();
-    res.json({ message: 'Produit réactivé dans le catalogue.' });
+    const [updated] = await EpicierProduct.update(
+      { is_active: true },
+      { where: { produit_id: produitId, epicier_id: epicierId } }
+    );
+    res.json({ message: 'Produit réactivé dans le catalogue pour cet épicier.', updatedCount: updated });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.toggleRuptureStock = async (req, res) => {
+  try {
+    const produitId = parseInt(req.params.id, 10);
+    const epicierId = req.body?.epicier_id != null ? parseInt(req.body.epicier_id, 10) : null;
+    if (Number.isNaN(produitId)) {
+      return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+    }
+    if (epicierId == null || Number.isNaN(epicierId)) {
+      return res.status(400).json({ message: 'epicier_id est requis pour la rupture de stock.' });
+    }
+    const epicierProduct = await EpicierProduct.findOne({
+      where: { produit_id: produitId, epicier_id: epicierId },
+      include: [{ model: Product, as: 'produit', attributes: ['id', 'nom'] }],
+    });
+    if (!epicierProduct || !epicierProduct.produit) {
+      return res.status(404).json({ message: 'Lien épicier-produit non trouvé.' });
+    }
+    epicierProduct.rupture_stock = !epicierProduct.rupture_stock;
+    await epicierProduct.save();
+    res.json({
+      message: epicierProduct.rupture_stock ? 'Produit marqué en rupture de stock.' : 'Produit remis en stock.',
+      rupture_stock: epicierProduct.rupture_stock,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

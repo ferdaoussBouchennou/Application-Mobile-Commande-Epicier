@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
+import '../auth/login_screen.dart';
 import 'admin_category_products_screen.dart';
 import 'admin_orders_screen.dart';
 
@@ -236,16 +237,19 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                 ),
                 child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _statChip('$_totalCategories', 'Catégories', Colors.white),
-              const SizedBox(width: 10),
-              _statChip('$_totalActive', 'Actifs', const Color(0xFF4CBB5E)),
-              const SizedBox(width: 10),
-              _statChip('${_totalProducts - _totalActive}', 'Inactifs', const Color(0xFFF2A93B)),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                onPressed: () {
+                  context.read<AuthProvider>().logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                tooltip: 'Déconnexion',
+              ),
             ],
           ),
         ],
@@ -433,10 +437,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   children: [
                     Text(c['nom'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text(
-                      '$active actif(s) / $total produit(s)',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
                   ],
                 ),
               ),

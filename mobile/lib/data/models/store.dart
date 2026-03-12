@@ -10,11 +10,14 @@ class Store {
   final String? description;
   final String? imageUrl;
   final double rating;
+  final double? latitude;
+  final double? longitude;
+  final String statutInscription;
   final bool isActive;
   final List<Availability>? disponibilites;
   final String? ownerName;
   final List<String> tags;
-  final String? distance;
+  final double? distanceKm;
 
   Store({
     required this.id,
@@ -25,12 +28,23 @@ class Store {
     this.description,
     this.imageUrl,
     this.rating = 0.0,
+    this.latitude,
+    this.longitude,
+    this.statutInscription = 'EN_ATTENTE',
     this.isActive = true,
     this.disponibilites,
     this.ownerName,
     this.tags = const [],
-    this.distance,
+    this.distanceKm,
   });
+
+  String? get formattedDistance {
+    if (distanceKm == null) return null;
+    if (distanceKm! < 1) {
+      return '${(distanceKm! * 1000).round()} m';
+    }
+    return '${distanceKm!.toStringAsFixed(1)} km';
+  }
 
   bool get isOpen {
     if (disponibilites == null || disponibilites!.isEmpty) return false;
@@ -75,6 +89,14 @@ class Store {
     return false;
   }
 
+  static bool _parseBool(dynamic value, bool defaultValue) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    return defaultValue;
+  }
+
   factory Store.fromJson(Map<String, dynamic> json) {
     var rawDispos = json['disponibilites'] as List?;
     List<Availability>? dispos = rawDispos != null 
@@ -95,11 +117,14 @@ class Store {
       description: json['description'],
       imageUrl: json['image_url'],
       rating: double.tryParse(json['rating'].toString()) ?? 0.0,
-      isActive: json['is_active'] ?? true,
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
+      statutInscription: json['statut_inscription'] ?? 'EN_ATTENTE',
+      isActive: _parseBool(json['is_active'], true),
       disponibilites: dispos,
       ownerName: owner,
-      tags: json['tags'] != null ? List<String>.from(json['tags']) : ['Épices', 'Légumes', 'Fruits'], // Default tags for UI
-      distance: json['distance'] ?? "350 m", // Placeholder distance for UI mockup
+      tags: json['tags'] != null ? List<String>.from(json['tags']) : ['Épices', 'Légumes', 'Fruits'],
+      distanceKm: json['distance_km'] != null ? double.tryParse(json['distance_km'].toString()) : null,
     );
   }
 }

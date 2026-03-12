@@ -5,6 +5,9 @@ const { QueryTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const EpicierProduct = require('../models/EpicierProduct');
+const Store = require('../models/Store');
+const Availability = require('../models/Availability');
 
 /** Sanitise une chaîne pour en faire un nom de dossier ou de fichier (sans espaces ni caractères spéciaux). */
 function sanitizeName(str) {
@@ -22,7 +25,7 @@ function sanitizeName(str) {
 /**
  * Si l'image du produit a un nom générique (image, image-1, ...), renomme le fichier
  * avec le nom du produit en base et met à jour image_principale.
- * @param {Object} product - Instance Sequelize avec nom, image_principale
+ * @param {Object} product - Instance Sequelize Product avec nom, image_principale
  * @returns {Promise<string|null>} Nouveau chemin ou null si pas de changement
  */
 async function renameImageToProductName(product) {
@@ -51,6 +54,22 @@ async function renameImageToProductName(product) {
   return newRelative;
 }
 
+/** Construit un objet catalogue (produit + lien épicier) pour les réponses API. */
+function toCatalogueItem(epicierProduct, product) {
+  const p = product || epicierProduct.produit;
+  return {
+    id: p.id,
+    nom: p.nom,
+    prix: parseFloat(epicierProduct.prix),
+    description: p.description,
+    epicier_id: epicierProduct.epicier_id,
+    categorie_id: p.categorie_id,
+    categorie_nom: p.categorie?.nom ?? null,
+    image_principale: p.image_principale,
+    rupture_stock: !!epicierProduct.rupture_stock,
+  };
+}
+
 const grocerController = {
   // Liste des produits du catalogue de l'épicier connecté (optionnel: filtre par categorie_id)
   getMyProducts: async (req, res) => {
@@ -61,24 +80,22 @@ const grocerController = {
       }
       const categorieId = req.query.categorie_id ? parseInt(req.query.categorie_id, 10) : null;
       const where = { epicier_id: epicierId, is_active: true };
-      if (categorieId != null && !Number.isNaN(categorieId)) {
-        where.categorie_id = categorieId;
-      }
-      const products = await Product.findAll({
-        where,
+      const produitInclude = {
+        model: Product,
+        as: 'produit',
         include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-        order: [['nom', 'ASC']],
+      };
+      if (categorieId && !Number.isNaN(categorieId)) {
+        produitInclude.where = { categorie_id: categorieId };
+        produitInclude.required = true;
+      }
+      const epInclude = [produitInclude];
+      const linkList = await EpicierProduct.findAll({
+        where,
+        include: epInclude,
+        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
       });
-      const list = products.map((p) => ({
-        id: p.id,
-        nom: p.nom,
-        prix: parseFloat(p.prix),
-        description: p.description,
-        epicier_id: p.epicier_id,
-        categorie_id: p.categorie_id,
-        categorie_nom: p.categorie?.nom ?? null,
-        image_principale: p.image_principale,
-      }));
+      const list = linkList.map((ep) => toCatalogueItem(ep));
       res.status(200).json(list);
     } catch (error) {
       console.error('Erreur getMyProducts:', error);
@@ -96,24 +113,34 @@ const grocerController = {
       if (!nom || prix == null || !categorie_id) {
         return res.status(400).json({ message: 'Nom, prix et catégorie sont requis.' });
       }
-      const product = await Product.create({
-        nom: nom.trim(),
-        prix: parseFloat(prix),
-        description: description?.trim() || null,
-        epicier_id: epicierId,
-        categorie_id: parseInt(categorie_id, 10),
-        image_principale: image_principale?.trim() || null,
+      const [product] = await Product.findOrCreate({
+        where: { nom: nom.trim(), categorie_id: parseInt(categorie_id, 10) },
+        defaults: {
+          nom: nom.trim(),
+          description: description?.trim() || null,
+          categorie_id: parseInt(categorie_id, 10),
+          image_principale: image_principale?.trim() || null,
+        },
       });
       await renameImageToProductName(product);
+      const [epicierProduct, created] = await EpicierProduct.findOrCreate({
+        where: { epicier_id: epicierId, produit_id: product.id },
+        defaults: { epicier_id: epicierId, produit_id: product.id, prix: parseFloat(prix), is_active: true },
+      });
+      if (!created) {
+        epicierProduct.prix = parseFloat(prix);
+        epicierProduct.is_active = true;
+        await epicierProduct.save();
+      }
       const withCategory = await Product.findByPk(product.id, {
         include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
       });
       res.status(201).json({
         id: withCategory.id,
         nom: withCategory.nom,
-        prix: parseFloat(withCategory.prix),
+        prix: parseFloat(epicierProduct.prix),
         description: withCategory.description,
-        epicier_id: withCategory.epicier_id,
+        epicier_id: epicierId,
         categorie_id: withCategory.categorie_id,
         categorie_nom: withCategory.categorie?.nom ?? null,
         image_principale: withCategory.image_principale,
@@ -130,32 +157,25 @@ const grocerController = {
       if (!epicierId) {
         return res.status(403).json({ message: 'Store ID manquant' });
       }
-      const { id } = req.params;
-      const product = await Product.findOne({ where: { id, epicier_id: epicierId, is_active: true } });
-      if (!product) {
+      const produitId = parseInt(req.params.id, 10);
+      const epicierProduct = await EpicierProduct.findOne({
+        where: { epicier_id: epicierId, produit_id: produitId, is_active: true },
+        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+      });
+      if (!epicierProduct || !epicierProduct.produit) {
         return res.status(404).json({ message: 'Produit introuvable.' });
       }
+      const product = epicierProduct.produit;
       const { nom, prix, description, categorie_id, image_principale } = req.body;
       if (nom != null) product.nom = nom.trim();
-      if (prix != null) product.prix = parseFloat(prix);
       if (description !== undefined) product.description = description?.trim() || null;
       if (categorie_id != null) product.categorie_id = parseInt(categorie_id, 10);
       if (image_principale !== undefined) product.image_principale = image_principale?.trim() || null;
+      if (prix != null) epicierProduct.prix = parseFloat(prix);
       await product.save();
+      await epicierProduct.save();
       await renameImageToProductName(product);
-      const withCategory = await Product.findByPk(product.id, {
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-      });
-      res.status(200).json({
-        id: withCategory.id,
-        nom: withCategory.nom,
-        prix: parseFloat(withCategory.prix),
-        description: withCategory.description,
-        epicier_id: withCategory.epicier_id,
-        categorie_id: withCategory.categorie_id,
-        categorie_nom: withCategory.categorie?.nom ?? null,
-        image_principale: withCategory.image_principale,
-      });
+      res.status(200).json(toCatalogueItem(epicierProduct));
     } catch (error) {
       console.error('Erreur updateProduct:', error);
       res.status(500).json({ message: 'Erreur lors de la mise à jour du produit', error: error.message });
@@ -207,10 +227,10 @@ const grocerController = {
       if (!epicierId) {
         return res.status(403).json({ message: 'Store ID manquant' });
       }
-      const { id } = req.params;
-      const [updated] = await Product.update(
+      const produitId = parseInt(req.params.id, 10);
+      const [updated] = await EpicierProduct.update(
         { is_active: false },
-        { where: { id, epicier_id: epicierId } }
+        { where: { epicier_id: epicierId, produit_id: produitId } }
       );
       if (!updated) {
         return res.status(404).json({ message: 'Produit introuvable.' });
@@ -233,46 +253,35 @@ const grocerController = {
       if (Number.isNaN(categoryId)) {
         return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
       }
-      const myActiveProducts = await Product.findAll({
-        where: { epicier_id: epicierId, categorie_id: categoryId, is_active: true },
-        attributes: ['nom'],
+      const myActive = await EpicierProduct.findAll({
+        where: { epicier_id: epicierId, is_active: true },
+        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, attributes: ['nom'] }],
       });
-      const myNoms = myActiveProducts.map((p) => p.nom.trim().toLowerCase());
-      const others = await Product.findAll({
-        where: {
-          categorie_id: categoryId,
-          epicier_id: { [Op.ne]: epicierId },
-          is_active: true,
-        },
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-        order: [['nom', 'ASC']],
+      const myNoms = myActive.map((ep) => ep.produit?.nom?.trim().toLowerCase()).filter(Boolean);
+      const others = await EpicierProduct.findAll({
+        where: { epicier_id: { [Op.ne]: epicierId }, is_active: true },
+        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
       });
-      const myRetired = await Product.findAll({
-        where: { epicier_id: epicierId, categorie_id: categoryId, is_active: false },
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-        order: [['nom', 'ASC']],
+      const myRetired = await EpicierProduct.findAll({
+        where: { epicier_id: epicierId, is_active: false },
+        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
       });
-      const toItem = (p, isRetiredMine) => ({
-        id: p.id,
-        nom: p.nom,
-        prix: parseFloat(p.prix),
-        description: p.description,
-        epicier_id: p.epicier_id,
-        categorie_id: p.categorie_id,
-        categorie_nom: p.categorie?.nom ?? null,
-        image_principale: p.image_principale,
+      const toItem = (ep, isRetiredMine) => ({
+        ...toCatalogueItem(ep),
         is_retired_mine: isRetiredMine,
       });
       const byNom = new Map();
-      myRetired.forEach((p) => {
-        const key = p.nom.trim().toLowerCase();
-        if (!byNom.has(key)) byNom.set(key, toItem(p, true));
+      myRetired.filter((ep) => ep.produit).forEach((ep) => {
+        const key = ep.produit.nom.trim().toLowerCase();
+        if (!byNom.has(key)) byNom.set(key, toItem(ep, true));
       });
       others
-        .filter((p) => !myNoms.includes(p.nom.trim().toLowerCase()))
-        .forEach((p) => {
-          const key = p.nom.trim().toLowerCase();
-          if (!byNom.has(key)) byNom.set(key, toItem(p, false));
+        .filter((ep) => ep.produit && !myNoms.includes(ep.produit.nom.trim().toLowerCase()))
+        .forEach((ep) => {
+          const key = ep.produit.nom.trim().toLowerCase();
+          if (!byNom.has(key)) byNom.set(key, toItem(ep, false));
         });
       const list = Array.from(byNom.values()).sort((a, b) => a.nom.localeCompare(b.nom));
       res.status(200).json(list);
@@ -293,29 +302,20 @@ const grocerController = {
       if (Number.isNaN(productId)) {
         return res.status(400).json({ message: 'Identifiant de produit invalide.' });
       }
-      const product = await Product.findOne({ where: { id: productId, epicier_id: epicierId } });
-      if (!product) {
+      const epicierProduct = await EpicierProduct.findOne({
+        where: { epicier_id: epicierId, produit_id: productId },
+        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+      });
+      if (!epicierProduct || !epicierProduct.produit) {
         return res.status(404).json({ message: 'Produit introuvable.' });
       }
       const { prix } = req.body || {};
-      product.is_active = true;
+      epicierProduct.is_active = true;
       if (typeof prix === 'number' && !Number.isNaN(prix)) {
-        product.prix = prix;
+        epicierProduct.prix = prix;
       }
-      await product.save();
-      const withCategory = await Product.findByPk(product.id, {
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-      });
-      res.status(200).json({
-        id: withCategory.id,
-        nom: withCategory.nom,
-        prix: parseFloat(withCategory.prix),
-        description: withCategory.description,
-        epicier_id: withCategory.epicier_id,
-        categorie_id: withCategory.categorie_id,
-        categorie_nom: withCategory.categorie?.nom ?? null,
-        image_principale: withCategory.image_principale,
-      });
+      await epicierProduct.save();
+      res.status(200).json(toCatalogueItem(epicierProduct));
     } catch (error) {
       console.error('Erreur restoreProductToCatalogue:', error);
       res.status(500).json({ message: 'Erreur lors de la réintégration du produit', error: error.message });
@@ -333,37 +333,34 @@ const grocerController = {
       if (Number.isNaN(sourceProductId)) {
         return res.status(400).json({ message: 'Identifiant de produit invalide.' });
       }
-      const source = await Product.findByPk(sourceProductId, {
+      const sourceProduct = await Product.findByPk(sourceProductId, {
         include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
       });
-      if (!source) {
+      if (!sourceProduct) {
         return res.status(404).json({ message: 'Produit source introuvable.' });
       }
-      if (source.epicier_id === epicierId) {
+      const existingLink = await EpicierProduct.findOne({ where: { epicier_id: epicierId, produit_id: sourceProductId } });
+      if (existingLink) {
         return res.status(400).json({ message: 'Ce produit appartient déjà à votre catalogue.' });
       }
+      const sourceLink = await EpicierProduct.findOne({ where: { produit_id: sourceProductId } });
+      const prixSource = sourceLink ? parseFloat(sourceLink.prix) : 0;
       const { prix } = req.body || {};
-      const newProduct = await Product.create({
-        nom: source.nom,
-        prix: typeof prix === 'number' && !Number.isNaN(prix) ? prix : parseFloat(source.prix),
-        description: source.description,
+      const epicierProduct = await EpicierProduct.create({
         epicier_id: epicierId,
-        categorie_id: source.categorie_id,
-        image_principale: source.image_principale,
+        produit_id: sourceProduct.id,
+        prix: typeof prix === 'number' && !Number.isNaN(prix) ? prix : prixSource,
         is_active: true,
       });
-      const withCategory = await Product.findByPk(newProduct.id, {
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-      });
       res.status(201).json({
-        id: withCategory.id,
-        nom: withCategory.nom,
-        prix: parseFloat(withCategory.prix),
-        description: withCategory.description,
-        epicier_id: withCategory.epicier_id,
-        categorie_id: withCategory.categorie_id,
-        categorie_nom: withCategory.categorie?.nom ?? null,
-        image_principale: withCategory.image_principale,
+        id: sourceProduct.id,
+        nom: sourceProduct.nom,
+        prix: parseFloat(epicierProduct.prix),
+        description: sourceProduct.description,
+        epicier_id: epicierId,
+        categorie_id: sourceProduct.categorie_id,
+        categorie_nom: sourceProduct.categorie?.nom ?? null,
+        image_principale: sourceProduct.image_principale,
       });
     } catch (error) {
       console.error('Erreur copyProductToCatalogue:', error);
@@ -382,21 +379,12 @@ const grocerController = {
       if (Number.isNaN(categoryId)) {
         return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
       }
-      const products = await Product.findAll({
-        where: { epicier_id: epicierId, categorie_id: categoryId, is_active: false },
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
-        order: [['nom', 'ASC']],
+      const linkList = await EpicierProduct.findAll({
+        where: { epicier_id: epicierId, is_active: false },
+        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
       });
-      const list = products.map((p) => ({
-        id: p.id,
-        nom: p.nom,
-        prix: parseFloat(p.prix),
-        description: p.description,
-        epicier_id: p.epicier_id,
-        categorie_id: p.categorie_id,
-        categorie_nom: p.categorie?.nom ?? null,
-        image_principale: p.image_principale,
-      }));
+      const list = linkList.filter((ep) => ep.produit).map((ep) => toCatalogueItem(ep));
       res.status(200).json(list);
     } catch (error) {
       console.error('Erreur getInactiveProductsForCategory:', error);
@@ -420,9 +408,9 @@ const grocerController = {
         return res.status(400).json({ message: 'Sélectionnez au moins un produit (product_ids).' });
       }
       const ids = productIds.map((id) => parseInt(id, 10)).filter((id) => !Number.isNaN(id));
-      const [updatedCount] = await Product.update(
+      const [updatedCount] = await EpicierProduct.update(
         { is_active: true },
-        { where: { id: ids, epicier_id: epicierId, categorie_id: categoryId, is_active: false } }
+        { where: { epicier_id: epicierId, produit_id: ids, is_active: false } }
       );
       res.status(200).json({
         message: 'Catégorie restaurée avec les produits sélectionnés.',
@@ -445,10 +433,10 @@ const grocerController = {
       if (Number.isNaN(categoryId)) {
         return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
       }
-      const [updatedCount] = await Product.update(
-        { is_active: false },
-        { where: { epicier_id: epicierId, categorie_id: categoryId } }
-      );
+      const productIds = await Product.findAll({ where: { categorie_id: categoryId }, attributes: ['id'] }).then((rows) => rows.map((r) => r.id));
+      const [updatedCount] = productIds.length
+        ? await EpicierProduct.update({ is_active: false }, { where: { epicier_id: epicierId, produit_id: productIds } })
+        : [0];
       res.status(200).json({
         message: 'Catégorie retirée du catalogue.',
         deletedCount: updatedCount,
@@ -456,6 +444,137 @@ const grocerController = {
     } catch (error) {
       console.error('Erreur removeCategoryFromCatalogue:', error);
       res.status(500).json({ message: 'Erreur lors du retrait de la catégorie', error: error.message });
+    }
+  },
+
+  toggleRuptureStock: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const produitId = parseInt(req.params.id, 10);
+      if (Number.isNaN(produitId)) {
+        return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+      }
+      const epicierProduct = await EpicierProduct.findOne({
+        where: { epicier_id: epicierId, produit_id: produitId, is_active: true },
+        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+      });
+      if (!epicierProduct || !epicierProduct.produit) {
+        return res.status(404).json({ message: 'Produit introuvable.' });
+      }
+      epicierProduct.rupture_stock = !epicierProduct.rupture_stock;
+      await epicierProduct.save();
+      res.status(200).json(toCatalogueItem(epicierProduct));
+    } catch (error) {
+      console.error('Erreur toggleRuptureStock:', error);
+      res.status(500).json({ message: 'Erreur lors du changement de statut de stock', error: error.message });
+    }
+  },
+
+  getStoreProfile: async (req, res) => {
+    try {
+      const storeId = req.user.storeId;
+      if (!storeId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const store = await Store.findByPk(storeId, {
+        include: [{ model: Availability, as: 'disponibilites' }],
+      });
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique introuvable.' });
+      }
+      res.status(200).json(store);
+    } catch (error) {
+      console.error('Erreur getStoreProfile:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: error.message });
+    }
+  },
+
+  completeRegistration: async (req, res) => {
+    try {
+      const storeId = req.user.storeId;
+      if (!storeId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+
+      const store = await Store.findByPk(storeId);
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique introuvable.' });
+      }
+
+      if (store.statut_inscription !== 'ACCEPTE') {
+        return res.status(400).json({
+          message: 'Votre compte doit être accepté par un administrateur avant de compléter votre profil.'
+        });
+      }
+
+      const {
+        nom_boutique, description, telephone,
+        adresse, latitude, longitude,
+        horaires,
+        image_url,
+      } = req.body;
+
+      if (nom_boutique) store.nom_boutique = nom_boutique.trim();
+      if (description !== undefined) store.description = description?.trim() || null;
+      if (telephone) store.telephone = telephone.trim();
+      if (adresse) store.adresse = adresse.trim();
+      if (latitude != null) store.latitude = parseFloat(latitude);
+      if (longitude != null) store.longitude = parseFloat(longitude);
+      if (image_url) store.image_url = image_url.trim();
+
+      store.statut_inscription = 'COMPLETE';
+      await store.save();
+
+      if (horaires && Array.isArray(horaires)) {
+        await Availability.destroy({ where: { epicier_id: storeId } });
+
+        for (const h of horaires) {
+          if (h.jour && h.heure_debut && h.heure_fin && h.is_open !== false) {
+            await Availability.create({
+              epicier_id: storeId,
+              jour: h.jour,
+              heure_debut: h.heure_debut,
+              heure_fin: h.heure_fin,
+            });
+          }
+        }
+      }
+
+      const updatedStore = await Store.findByPk(storeId, {
+        include: [{ model: Availability, as: 'disponibilites' }],
+      });
+
+      res.status(200).json({
+        message: 'Inscription complétée avec succès !',
+        store: updatedStore,
+      });
+    } catch (error) {
+      console.error('Erreur completeRegistration:', error);
+      res.status(500).json({ message: 'Erreur lors de la finalisation de l\'inscription', error: error.message });
+    }
+  },
+
+  uploadStoreImage: async (req, res) => {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+      }
+      const dir = path.join(__dirname, '..', '..', 'uploads', 'stores');
+      fs.mkdirSync(dir, { recursive: true });
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext.toLowerCase()) ? ext : '.jpg';
+      const storeId = req.user.storeId || Date.now();
+      const filename = `store_${storeId}_${Date.now()}${safeExt}`;
+      const filePath = path.join(dir, filename);
+      fs.writeFileSync(filePath, req.file.buffer);
+      const relativePath = `uploads/stores/${filename}`;
+      res.status(200).json({ image_url: relativePath });
+    } catch (error) {
+      console.error('Erreur uploadStoreImage:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
     }
   },
 

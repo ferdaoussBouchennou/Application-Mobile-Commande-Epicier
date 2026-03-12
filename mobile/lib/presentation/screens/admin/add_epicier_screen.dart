@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
+import '../../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 
 class AddEpicierScreen extends StatefulWidget {
   const AddEpicierScreen({super.key});
@@ -77,6 +80,25 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
         backgroundColor: const Color(0xFF2D5016),
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () {
+              context.read<AuthProvider>().logout();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => LoginScreen()),
+                (route) => false,
+              );
+            },
+            tooltip: 'Déconnexion',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

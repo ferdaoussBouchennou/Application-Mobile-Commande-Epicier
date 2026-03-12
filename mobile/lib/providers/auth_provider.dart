@@ -19,6 +19,9 @@ class AuthProvider with ChangeNotifier {
   Map<String, dynamic>? get store => _store;
   bool get isLoading => _isLoading;
 
+  String? get storeStatut => _store?['statut_inscription'];
+  bool get needsSetup => _user?['role'] == 'EPICIER' && storeStatut == 'ACCEPTE';
+
   AuthProvider() {
     _loadUserFromPrefs();
   }
@@ -26,9 +29,6 @@ class AuthProvider with ChangeNotifier {
   Future<void> _loadUserFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    
-    // Simplification : si on a un token, on considère être connecté. 
-    // Dans une vraie application, on ferait un appel /api/auth/me avec ce token.
     if (_token != null) {
       _isLoggedIn = true;
       notifyListeners();
@@ -113,7 +113,7 @@ class AuthProvider with ChangeNotifier {
     try {
       await _apiService.post('/auth/register/client', data);
       _setLoading(false);
-      return true; // Succès de l'inscription
+      return true;
     } catch (e) {
       _setLoading(false);
       rethrow;
@@ -125,10 +125,17 @@ class AuthProvider with ChangeNotifier {
     try {
       await _apiService.post('/auth/register/epicier', data);
       _setLoading(false);
-      return true; // Succès de l'inscription
+      return true;
     } catch (e) {
       _setLoading(false);
       rethrow;
+    }
+  }
+
+  void markSetupComplete() {
+    if (_store != null) {
+      _store!['statut_inscription'] = 'COMPLETE';
+      notifyListeners();
     }
   }
 
