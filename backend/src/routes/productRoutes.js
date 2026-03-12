@@ -23,6 +23,7 @@ router.get('/store/:storeId/category/:categoryId', async (req, res) => {
       epicier_id: ep.epicier_id,
       categorie_id: ep.produit.categorie_id,
       image_principale: ep.produit.image_principale,
+      rupture_stock: !!ep.rupture_stock,
     }));
     res.json(products);
   } catch (error) {
@@ -53,6 +54,7 @@ router.get('/store/:storeId/search', async (req, res) => {
       epicier_id: ep.epicier_id,
       categorie_id: ep.produit.categorie_id,
       image_principale: ep.produit.image_principale,
+      rupture_stock: !!ep.rupture_stock,
     }));
     res.json(products);
   } catch (error) {

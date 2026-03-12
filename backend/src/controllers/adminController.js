@@ -292,6 +292,7 @@ exports.getCategoryProducts = async (req, res) => {
       categorie_id: ep.produit.categorie_id,
       image_principale: ep.produit.image_principale,
       is_active: !!ep.is_active,
+      rupture_stock: !!ep.rupture_stock,
       store_name: ep.epicier?.nom_boutique ?? null
     }));
     res.json(list);
@@ -422,16 +423,26 @@ exports.activateProduct = async (req, res) => {
 
 exports.toggleRuptureStock = async (req, res) => {
   try {
-    const { id } = req.params;
-    const product = await Product.findByPk(id);
-    if (!product) {
-      return res.status(404).json({ message: 'Produit non trouvé.' });
+    const produitId = parseInt(req.params.id, 10);
+    const epicierId = req.body?.epicier_id != null ? parseInt(req.body.epicier_id, 10) : null;
+    if (Number.isNaN(produitId)) {
+      return res.status(400).json({ message: 'Identifiant de produit invalide.' });
     }
-    product.rupture_stock = !product.rupture_stock;
-    await product.save();
+    if (epicierId == null || Number.isNaN(epicierId)) {
+      return res.status(400).json({ message: 'epicier_id est requis pour la rupture de stock.' });
+    }
+    const epicierProduct = await EpicierProduct.findOne({
+      where: { produit_id: produitId, epicier_id: epicierId },
+      include: [{ model: Product, as: 'produit', attributes: ['id', 'nom'] }],
+    });
+    if (!epicierProduct || !epicierProduct.produit) {
+      return res.status(404).json({ message: 'Lien épicier-produit non trouvé.' });
+    }
+    epicierProduct.rupture_stock = !epicierProduct.rupture_stock;
+    await epicierProduct.save();
     res.json({
-      message: product.rupture_stock ? 'Produit marqué en rupture de stock.' : 'Produit remis en stock.',
-      rupture_stock: product.rupture_stock,
+      message: epicierProduct.rupture_stock ? 'Produit marqué en rupture de stock.' : 'Produit remis en stock.',
+      rupture_stock: epicierProduct.rupture_stock,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

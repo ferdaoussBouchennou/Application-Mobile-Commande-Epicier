@@ -6,6 +6,8 @@ const { Op } = require('sequelize');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const EpicierProduct = require('../models/EpicierProduct');
+const Store = require('../models/Store');
+const Availability = require('../models/Availability');
 
 /** Sanitise une chaîne pour en faire un nom de dossier ou de fichier (sans espaces ni caractères spéciaux). */
 function sanitizeName(str) {
@@ -64,6 +66,7 @@ function toCatalogueItem(epicierProduct, product) {
     categorie_id: p.categorie_id,
     categorie_nom: p.categorie?.nom ?? null,
     image_principale: p.image_principale,
+    rupture_stock: !!epicierProduct.rupture_stock,
   };
 }
 
@@ -77,7 +80,16 @@ const grocerController = {
       }
       const categorieId = req.query.categorie_id ? parseInt(req.query.categorie_id, 10) : null;
       const where = { epicier_id: epicierId, is_active: true };
-      const epInclude = [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }];
+      const produitInclude = {
+        model: Product,
+        as: 'produit',
+        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
+      };
+      if (categorieId && !Number.isNaN(categorieId)) {
+        produitInclude.where = { categorie_id: categorieId };
+        produitInclude.required = true;
+      }
+      const epInclude = [produitInclude];
       const linkList = await EpicierProduct.findAll({
         where,
         include: epInclude,
@@ -441,17 +453,20 @@ const grocerController = {
       if (!epicierId) {
         return res.status(403).json({ message: 'Store ID manquant' });
       }
-      const { id } = req.params;
-      const product = await Product.findOne({ where: { id, epicier_id: epicierId, is_active: true } });
-      if (!product) {
+      const produitId = parseInt(req.params.id, 10);
+      if (Number.isNaN(produitId)) {
+        return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+      }
+      const epicierProduct = await EpicierProduct.findOne({
+        where: { epicier_id: epicierId, produit_id: produitId, is_active: true },
+        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+      });
+      if (!epicierProduct || !epicierProduct.produit) {
         return res.status(404).json({ message: 'Produit introuvable.' });
       }
-      product.rupture_stock = !product.rupture_stock;
-      await product.save();
-      res.status(200).json({
-        message: product.rupture_stock ? 'Produit marqué en rupture de stock.' : 'Produit remis en stock.',
-        rupture_stock: product.rupture_stock,
-      });
+      epicierProduct.rupture_stock = !epicierProduct.rupture_stock;
+      await epicierProduct.save();
+      res.status(200).json(toCatalogueItem(epicierProduct));
     } catch (error) {
       console.error('Erreur toggleRuptureStock:', error);
       res.status(500).json({ message: 'Erreur lors du changement de statut de stock', error: error.message });
