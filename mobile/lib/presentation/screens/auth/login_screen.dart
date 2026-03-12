@@ -63,10 +63,6 @@ class _LoginScreenState extends State<LoginScreen> {
               MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
             );
           }
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => GrocerMainScreen()),
-          );
         } else {
           Navigator.pushReplacement(
             context,
@@ -297,15 +293,29 @@ class _LoginScreenState extends State<LoginScreen> {
                               final success = await auth.loginWithGoogle();
                               if (success && mounted) {
                                 final role = auth.user?['role'] as String?;
-                                final isEpicier = role == 'EPICIER';
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => isEpicier
-                                        ? GrocerMainScreen()
-                                        : MapScreen(),
-                                  ),
-                                );
+                                if (role == 'ADMIN') {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+                                  );
+                                } else if (role == 'EPICIER') {
+                                  if (auth.needsSetup) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+                                    );
+                                  } else {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+                                    );
+                                  }
+                                } else {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => MapScreen()),
+                                  );
+                                }
                               }
                             } catch (e) {
                               if (mounted) {
