@@ -41,6 +41,7 @@ router.get('/store/:storeId', async (req, res) => {
     const { q } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const includeRetired = req.query.includeRetired === 'true';
     const offset = (page - 1) * limit;
 
     const whereClause = {
@@ -70,7 +71,9 @@ router.get('/store/:storeId', async (req, res) => {
           'retiredCount'
         ]
       ],
-      having: Sequelize.literal('(productCount + retiredCount) > 0')
+      having: includeRetired 
+        ? Sequelize.literal('(productCount + retiredCount) > 0')
+        : Sequelize.literal('productCount > 0')
     });
 
     const totalItems = allCategories.length;
