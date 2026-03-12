@@ -40,7 +40,7 @@ class WelcomeScreen extends StatelessWidget {
                 Image.asset(
                   'assets/images/loading.png',
                   height: 220,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, color: Color(0xFF2D5016), size: 100),
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, color: Color(0xFF2D5016), size: 120),
                 ),
   
                 const SizedBox(height: 36),
