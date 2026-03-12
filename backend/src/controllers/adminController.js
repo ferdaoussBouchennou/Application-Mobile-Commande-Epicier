@@ -389,16 +389,23 @@ exports.updateProduct = async (req, res) => {
 
 exports.deactivateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { epicier_id } = req.body || {};
-    const product = await Product.findByPk(id);
+    const produitId = parseInt(req.params.id, 10);
+    const epicierId = req.body?.epicier_id != null ? parseInt(req.body.epicier_id, 10) : null;
+    if (Number.isNaN(produitId)) {
+      return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+    }
+    if (epicierId == null || Number.isNaN(epicierId)) {
+      return res.status(400).json({ message: 'epicier_id est requis pour désactiver un produit pour un épicier spécifique.' });
+    }
+    const product = await Product.findByPk(produitId);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé.' });
     }
-    const where = { produit_id: product.id };
-    if (epicier_id != null) where.epicier_id = parseInt(epicier_id, 10);
-    const [updated] = await EpicierProduct.update({ is_active: false }, { where });
-    res.json({ message: 'Produit retiré du catalogue (désactivé).', updatedCount: updated });
+    const [updated] = await EpicierProduct.update(
+      { is_active: false },
+      { where: { produit_id: produitId, epicier_id: epicierId } }
+    );
+    res.json({ message: 'Produit retiré du catalogue pour cet épicier.', updatedCount: updated });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -406,16 +413,23 @@ exports.deactivateProduct = async (req, res) => {
 
 exports.activateProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { epicier_id } = req.body || {};
-    const product = await Product.findByPk(id);
+    const produitId = parseInt(req.params.id, 10);
+    const epicierId = req.body?.epicier_id != null ? parseInt(req.body.epicier_id, 10) : null;
+    if (Number.isNaN(produitId)) {
+      return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+    }
+    if (epicierId == null || Number.isNaN(epicierId)) {
+      return res.status(400).json({ message: 'epicier_id est requis pour activer un produit pour un épicier spécifique.' });
+    }
+    const product = await Product.findByPk(produitId);
     if (!product) {
       return res.status(404).json({ message: 'Produit non trouvé.' });
     }
-    const where = { produit_id: product.id };
-    if (epicier_id != null) where.epicier_id = parseInt(epicier_id, 10);
-    const [updated] = await EpicierProduct.update({ is_active: true }, { where });
-    res.json({ message: 'Produit réactivé dans le catalogue.', updatedCount: updated });
+    const [updated] = await EpicierProduct.update(
+      { is_active: true },
+      { where: { produit_id: produitId, epicier_id: epicierId } }
+    );
+    res.json({ message: 'Produit réactivé dans le catalogue pour cet épicier.', updatedCount: updated });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
