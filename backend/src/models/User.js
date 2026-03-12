@@ -1,6 +1,6 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const bcrypt = require('bcrypt');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
+const bcrypt = require("bcrypt");
 
 const User = sequelize.define('User', {
   id: {
@@ -32,6 +32,14 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+  id_facebook: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  id_instagram: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
   role: {
     type: DataTypes.ENUM('CLIENT', 'ADMIN', 'EPICIER'),
     allowNull: false,
@@ -50,6 +58,13 @@ const User = sequelize.define('User', {
   timestamps: true,
   createdAt: 'date_creation',
   updatedAt: false, 
+  validate: {
+    checkEpicierDoc() {
+      if (this.role === 'EPICIER' && !this.doc_verf) {
+        throw new Error("Un document de vérification est obligatoire pour s'inscrire en tant qu'épicier.");
+      }
+    }
+  },
   hooks: {
     beforeCreate: async (user) => {
       if (user.mdp) {
