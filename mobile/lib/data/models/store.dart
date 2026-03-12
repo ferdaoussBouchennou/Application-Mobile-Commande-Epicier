@@ -17,7 +17,7 @@ class Store {
   final List<Availability>? disponibilites;
   final String? ownerName;
   final List<String> tags;
-  final String? distance;
+  final double? distanceKm;
 
   Store({
     required this.id,
@@ -35,8 +35,16 @@ class Store {
     this.disponibilites,
     this.ownerName,
     this.tags = const [],
-    this.distance,
+    this.distanceKm,
   });
+
+  String? get formattedDistance {
+    if (distanceKm == null) return null;
+    if (distanceKm! < 1) {
+      return '${(distanceKm! * 1000).round()} m';
+    }
+    return '${distanceKm!.toStringAsFixed(1)} km';
+  }
 
   bool get isOpen {
     if (disponibilites == null || disponibilites!.isEmpty) return false;
@@ -108,7 +116,7 @@ class Store {
       disponibilites: dispos,
       ownerName: owner,
       tags: json['tags'] != null ? List<String>.from(json['tags']) : ['Épices', 'Légumes', 'Fruits'],
-      distance: json['distance'] ?? "350 m",
+      distanceKm: json['distance_km'] != null ? double.tryParse(json['distance_km'].toString()) : null,
     );
   }
 }

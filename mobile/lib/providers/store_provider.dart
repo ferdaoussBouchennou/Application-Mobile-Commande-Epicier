@@ -88,13 +88,26 @@ class StoreProvider with ChangeNotifier {
     }
   }
 
+  double? _clientLat;
+  double? _clientLng;
+  bool get hasClientLocation => _clientLat != null && _clientLng != null;
+
+  void setClientLocation(double lat, double lng) {
+    _clientLat = lat;
+    _clientLng = lng;
+  }
+
   Future<void> fetchStores() async {
     _isLoading = true;
-    _currentPage = 1; // Reset page on fetch
+    _currentPage = 1;
     notifyListeners();
 
     try {
-      final List<dynamic> response = await _apiService.get('/stores');
+      String endpoint = '/stores';
+      if (_clientLat != null && _clientLng != null) {
+        endpoint = '/stores?lat=$_clientLat&lng=$_clientLng';
+      }
+      final List<dynamic> response = await _apiService.get(endpoint);
       _stores = response.map((data) => Store.fromJson(data)).toList();
     } catch (e) {
       print('Erreur fetchStores: $e');
