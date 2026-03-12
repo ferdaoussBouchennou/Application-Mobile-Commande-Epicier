@@ -6,10 +6,9 @@ class Product {
   final int epicierId;
   final int categoryId;
   final String? imagePrincipale;
-  /// Nom de la catégorie (renvoyé par l'API épicier)
   final String? categoryName;
-  /// true si c'est un produit que j'avais retiré du catalogue (réintégration possible)
   final bool isRetiredMine;
+  final bool ruptureStock;
 
   Product({
     required this.id,
@@ -21,6 +20,7 @@ class Product {
     this.imagePrincipale,
     this.categoryName,
     this.isRetiredMine = false,
+    this.ruptureStock = false,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -34,6 +34,7 @@ class Product {
       imagePrincipale: json['image_principale'],
       categoryName: json['categorie_nom'],
       isRetiredMine: json['is_retired_mine'] == true,
+      ruptureStock: json['rupture_stock'] == true,
     );
   }
 

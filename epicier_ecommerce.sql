@@ -315,7 +315,8 @@ CREATE TABLE `produits` (
   `image_principale` varchar(500) DEFAULT NULL,
   `date_ajout` timestamp NOT NULL DEFAULT current_timestamp(),
   `date_modif` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `is_active` tinyint(1) NOT NULL DEFAULT 1
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `rupture_stock` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

@@ -207,6 +207,19 @@ class GrocerCatalogProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> toggleRuptureStock(String? token, int productId) async {
+    if (token == null) return false;
+    try {
+      await _api.patch('/epicier/products/$productId/rupture-stock', {}, token: token);
+      await _refetchAfterCrud(token);
+      return true;
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteProduct(String? token, int productId) async {
     if (token == null) return false;
     try {

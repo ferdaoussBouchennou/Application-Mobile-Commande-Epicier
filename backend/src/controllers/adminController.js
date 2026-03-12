@@ -300,6 +300,7 @@ exports.getCategoryProducts = async (req, res) => {
       categorie_id: p.categorie_id,
       image_principale: p.image_principale,
       is_active: !!p.is_active,
+      rupture_stock: !!p.rupture_stock,
       store_name: p.epicier?.nom_boutique ?? null
     }));
     res.json(list);
@@ -402,6 +403,24 @@ exports.activateProduct = async (req, res) => {
     product.is_active = true;
     await product.save();
     res.json({ message: 'Produit réactivé dans le catalogue.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.toggleRuptureStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Produit non trouvé.' });
+    }
+    product.rupture_stock = !product.rupture_stock;
+    await product.save();
+    res.json({
+      message: product.rupture_stock ? 'Produit marqué en rupture de stock.' : 'Produit remis en stock.',
+      rupture_stock: product.rupture_stock,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

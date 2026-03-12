@@ -149,6 +149,21 @@ class _AdminCategoryProductsScreenState
     }
   }
 
+  Future<void> _toggleRuptureStock(Map<String, dynamic> p) async {
+    final token = _token;
+    if (token == null) return;
+    try {
+      await _api.patch('/admin/products/${p['id']}/rupture-stock', {}, token: token);
+      final isRupture = p['rupture_stock'] == true;
+      if (mounted) {
+        _snack(isRupture ? 'Produit remis en stock' : 'Produit marqué en rupture de stock');
+        _load();
+      }
+    } catch (e) {
+      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   Future<void> _editProductAll(List<Map<String, dynamic>> items) async {
     final token = _token;
     if (token == null || items.isEmpty) return;
@@ -575,40 +590,77 @@ class _AdminCategoryProductsScreenState
 
   Widget _buildEpicierRow(Map<String, dynamic> p, bool globalInactive) {
     final isActive = p['is_active'] == true;
+    final isRupture = p['rupture_stock'] == true;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      child: Column(
         children: [
-          Icon(Icons.storefront, size: 18, color: isActive ? _primary : Colors.grey.shade400),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  p['store_name'] ?? '—',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 13,
-                    color: isActive ? Colors.black87 : Colors.grey,
-                  ),
+          Row(
+            children: [
+              Icon(Icons.storefront, size: 18, color: isActive ? _primary : Colors.grey.shade400),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            p['store_name'] ?? '—',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                              color: isActive ? Colors.black87 : Colors.grey,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isRupture && isActive) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Text(
+                              'Rupture',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.orange.shade800),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(_prix(p['prix']), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  ],
                 ),
-                Text(_prix(p['prix']), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-              ],
-            ),
-          ),
-          ActiveToggle(
-            value: isActive,
-            onChanged: (v) => _toggleSingle(p, v, globalInactive),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, size: 18),
-            onPressed: () => _editProduct(p),
-            color: _primary,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            tooltip: 'Modifier pour cet épicier',
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                onPressed: () => _editProduct(p),
+                color: _primary,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Modifier pour cet épicier',
+              ),
+              IconButton(
+                icon: Icon(
+                  isRupture ? Icons.check_circle_outline : Icons.remove_shopping_cart_outlined,
+                  size: 18,
+                ),
+                onPressed: isActive ? () => _toggleRuptureStock(p) : null,
+                color: isRupture ? _primary : Colors.orange.shade700,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: isRupture ? 'Remettre en stock' : 'Rupture de stock',
+              ),
+              ActiveToggle(
+                value: isActive,
+                onChanged: (v) => _toggleSingle(p, v, globalInactive),
+              ),
+            ],
           ),
         ],
       ),

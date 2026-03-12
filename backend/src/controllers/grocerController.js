@@ -80,6 +80,7 @@ const grocerController = {
         categorie_id: p.categorie_id,
         categorie_nom: p.categorie?.nom ?? null,
         image_principale: p.image_principale,
+        rupture_stock: !!p.rupture_stock,
       }));
       res.status(200).json(list);
     } catch (error) {
@@ -458,6 +459,29 @@ const grocerController = {
     } catch (error) {
       console.error('Erreur removeCategoryFromCatalogue:', error);
       res.status(500).json({ message: 'Erreur lors du retrait de la catégorie', error: error.message });
+    }
+  },
+
+  toggleRuptureStock: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const { id } = req.params;
+      const product = await Product.findOne({ where: { id, epicier_id: epicierId, is_active: true } });
+      if (!product) {
+        return res.status(404).json({ message: 'Produit introuvable.' });
+      }
+      product.rupture_stock = !product.rupture_stock;
+      await product.save();
+      res.status(200).json({
+        message: product.rupture_stock ? 'Produit marqué en rupture de stock.' : 'Produit remis en stock.',
+        rupture_stock: product.rupture_stock,
+      });
+    } catch (error) {
+      console.error('Erreur toggleRuptureStock:', error);
+      res.status(500).json({ message: 'Erreur lors du changement de statut de stock', error: error.message });
     }
   },
 

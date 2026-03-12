@@ -41,11 +41,15 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING(500),
     allowNull: true,
   },
-  // true = visible dans le catalogue épicier, false = retiré du catalogue (données conservées en BDD)
   is_active: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: true,
+  },
+  rupture_stock: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
 }, {
   tableName: 'produits',
