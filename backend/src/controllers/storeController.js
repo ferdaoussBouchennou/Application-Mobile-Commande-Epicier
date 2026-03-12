@@ -73,14 +73,11 @@ const storeController = {
 
       const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
       const creneaux = [];
-
-      for (let dayOffset = 0; dayOffset <= 1; dayOffset++) {
-        const d = new Date();
-        d.setDate(d.getDate() + dayOffset);
-        const jourName = jours[d.getDay()];
-        const disp = store.disponibilites?.find((av) => av.jour === jourName);
-        if (!disp) continue;
-
+      // Un seul jour (aujourd'hui) pour éviter d'afficher deux plages 8h–22h (aujourd'hui + demain)
+      const d = new Date();
+      const jourName = jours[d.getDay()];
+      const disp = store.disponibilites?.find((av) => av.jour === jourName);
+      if (disp) {
         const heureDebut = disp.heure_debut;
         const heureFin = disp.heure_fin;
         const toMinutes = (t) => {
@@ -93,9 +90,12 @@ const storeController = {
           }
           return 0;
         };
-        let startMin = toMinutes(heureDebut);
         const endMin = toMinutes(heureFin);
         const dateStr = d.toISOString().slice(0, 10);
+        // Ne proposer que les créneaux à partir de l'heure courante (pas les heures passées)
+        const nowMinutes = d.getHours() * 60 + d.getMinutes();
+        const firstSlotStartMin = Math.ceil(nowMinutes / 60) * 60; // début du prochain créneau (heure pleine)
+        let startMin = Math.max(toMinutes(heureDebut), firstSlotStartMin);
 
         while (startMin + 60 <= endMin) {
           const h = Math.floor(startMin / 60);
