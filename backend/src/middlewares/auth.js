@@ -32,4 +32,11 @@ const requireEpicierOrAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { authMiddleware, requireEpicier, requireEpicierOrAdmin };
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+  }
+  next();
+};
+
+module.exports = { authMiddleware, requireEpicier, requireEpicierOrAdmin, requireAdmin };

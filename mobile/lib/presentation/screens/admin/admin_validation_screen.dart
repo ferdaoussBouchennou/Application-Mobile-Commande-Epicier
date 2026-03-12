@@ -4,6 +4,7 @@ import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_theme.dart';
 import 'add_epicier_screen.dart';
 import 'admin_orders_screen.dart';
+import 'admin_categories_screen.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -514,12 +515,18 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
             context,
             MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
           );
+        } else if (index == 3) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
+          );
         }
       },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
         BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
         BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
+        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Réglages'),
       ],
     );
