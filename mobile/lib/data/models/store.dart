@@ -10,6 +10,9 @@ class Store {
   final String? description;
   final String? imageUrl;
   final double rating;
+  final double? latitude;
+  final double? longitude;
+  final String statutInscription;
   final bool isActive;
   final List<Availability>? disponibilites;
   final String? ownerName;
@@ -25,6 +28,9 @@ class Store {
     this.description,
     this.imageUrl,
     this.rating = 0.0,
+    this.latitude,
+    this.longitude,
+    this.statutInscription = 'EN_ATTENTE',
     this.isActive = true,
     this.disponibilites,
     this.ownerName,
@@ -95,11 +101,14 @@ class Store {
       description: json['description'],
       imageUrl: json['image_url'],
       rating: double.tryParse(json['rating'].toString()) ?? 0.0,
+      latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
+      longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
+      statutInscription: json['statut_inscription'] ?? 'EN_ATTENTE',
       isActive: json['is_active'] ?? true,
       disponibilites: dispos,
       ownerName: owner,
-      tags: json['tags'] != null ? List<String>.from(json['tags']) : ['Épices', 'Légumes', 'Fruits'], // Default tags for UI
-      distance: json['distance'] ?? "350 m", // Placeholder distance for UI mockup
+      tags: json['tags'] != null ? List<String>.from(json['tags']) : ['Épices', 'Légumes', 'Fruits'],
+      distance: json['distance'] ?? "350 m",
     );
   }
 }

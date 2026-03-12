@@ -114,29 +114,25 @@ const authController = {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
 
-      if (user.role === 'EPICIER') {
-        const store = await Store.findOne({ where: { utilisateur_id: user.id } });
-        if (store && store.statut_inscription !== 'ACCEPTE') {
-          const message = store.statut_inscription === 'EN_ATTENTE'
-            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-            : 'Votre demande d\'inscription a été refusée par un administrateur.';
-          return res.status(403).json({ message });
-        }
-      }
-
       let storeInfo = null;
       if (user.role === 'EPICIER') {
         const store = await Store.findOne({ where: { utilisateur_id: user.id } });
         if (!store) {
           return res.status(403).json({ message: 'Profil épicier introuvable.' });
         }
-        if (store.statut_inscription !== 'ACCEPTE') {
-          const message = store.statut_inscription === 'EN_ATTENTE'
-            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-            : 'Votre demande d\'inscription a été refusée par un administrateur.';
-          return res.status(403).json({ message });
+
+        if (store.statut_inscription === 'EN_ATTENTE') {
+          return res.status(403).json({ message: 'Votre compte Epicier est en attente de validation par un administrateur.' });
         }
-        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
+        if (store.statut_inscription === 'REFUSE') {
+          return res.status(403).json({ message: 'Votre demande d\'inscription a été refusée par un administrateur.' });
+        }
+
+        storeInfo = {
+          id: store.id,
+          nom_boutique: store.nom_boutique,
+          statut_inscription: store.statut_inscription,
+        };
       }
 
       const token = jwt.sign(
