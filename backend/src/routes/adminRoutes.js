@@ -34,4 +34,10 @@ router.post('/products/upload-image', (req, res, next) => {
   });
 }, authMiddleware, requireAdmin, adminController.uploadProductImage);
 
+// Gestion des commandes et litiges
+router.get('/orders/stats', authMiddleware, requireAdmin, adminController.getOrderStats);
+router.get('/orders/recent', authMiddleware, requireAdmin, adminController.getRecentOrders);
+router.get('/disputes', authMiddleware, requireAdmin, adminController.getDisputes);
+router.patch('/disputes/:id/status', authMiddleware, requireAdmin, adminController.resolveDispute);
+
 module.exports = router;
