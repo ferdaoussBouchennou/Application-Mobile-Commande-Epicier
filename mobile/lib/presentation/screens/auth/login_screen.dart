@@ -48,6 +48,11 @@ class _LoginScreenState extends State<LoginScreen> {
             context,
             MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
           );
+        } else if (role == 'EPICIER') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+          );
         } else {
           Navigator.pushReplacement(
             context,
