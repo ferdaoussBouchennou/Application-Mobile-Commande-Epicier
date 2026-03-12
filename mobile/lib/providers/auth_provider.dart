@@ -59,7 +59,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> loginWithGoogle() async {
+  Future<bool> loginWithGoogle({Map<String, dynamic>? epicierData}) async {
     _setLoading(true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
@@ -80,13 +80,21 @@ class AuthProvider with ChangeNotifier {
         throw Exception("Erreur lors de la récupération du token Google");
       }
 
-      // Envoi du token au backend pour vérification et connexion/inscription
-      final response = await _apiService.post('/auth/google', {
+      // Prepare payload
+      Map<String, dynamic> payload = {
         'idToken': idToken,
-      });
+      };
+
+      if (epicierData != null) {
+        payload.addAll(epicierData);
+      }
+
+      // Envoi du token au backend pour vérification et connexion/inscription
+      final response = await _apiService.post('/auth/google', payload);
 
       _token = response['token'];
       _user = response['user'];
+      _store = response['store'];
       _isLoggedIn = true;
 
       final prefs = await SharedPreferences.getInstance();
