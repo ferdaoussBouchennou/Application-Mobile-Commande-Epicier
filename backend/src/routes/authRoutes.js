@@ -6,6 +6,7 @@ const authController = require('../controllers/authController');
 router.post('/register/client', authController.registerClient);
 router.post('/register/epicier', authController.registerEpicier);
 router.post('/login', authController.login);
+router.post('/google', authController.googleLogin);
 
 // Validation d'un épicier (Idéalement protégée par un middleware Admin)
 router.post('/validate-epicier', authController.validateEpicier);
