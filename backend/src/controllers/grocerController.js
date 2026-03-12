@@ -5,6 +5,8 @@ const { QueryTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
+const Store = require('../models/Store');
+const Availability = require('../models/Availability');
 
 /** Sanitise une chaîne pour en faire un nom de dossier ou de fichier (sans espaces ni caractères spéciaux). */
 function sanitizeName(str) {
@@ -456,6 +458,111 @@ const grocerController = {
     } catch (error) {
       console.error('Erreur removeCategoryFromCatalogue:', error);
       res.status(500).json({ message: 'Erreur lors du retrait de la catégorie', error: error.message });
+    }
+  },
+
+  getStoreProfile: async (req, res) => {
+    try {
+      const storeId = req.user.storeId;
+      if (!storeId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const store = await Store.findByPk(storeId, {
+        include: [{ model: Availability, as: 'disponibilites' }],
+      });
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique introuvable.' });
+      }
+      res.status(200).json(store);
+    } catch (error) {
+      console.error('Erreur getStoreProfile:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: error.message });
+    }
+  },
+
+  completeRegistration: async (req, res) => {
+    try {
+      const storeId = req.user.storeId;
+      if (!storeId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+
+      const store = await Store.findByPk(storeId);
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique introuvable.' });
+      }
+
+      if (store.statut_inscription !== 'ACCEPTE') {
+        return res.status(400).json({
+          message: 'Votre compte doit être accepté par un administrateur avant de compléter votre profil.'
+        });
+      }
+
+      const {
+        nom_boutique, description, telephone,
+        adresse, latitude, longitude,
+        horaires,
+        image_url,
+      } = req.body;
+
+      if (nom_boutique) store.nom_boutique = nom_boutique.trim();
+      if (description !== undefined) store.description = description?.trim() || null;
+      if (telephone) store.telephone = telephone.trim();
+      if (adresse) store.adresse = adresse.trim();
+      if (latitude != null) store.latitude = parseFloat(latitude);
+      if (longitude != null) store.longitude = parseFloat(longitude);
+      if (image_url) store.image_url = image_url.trim();
+
+      store.statut_inscription = 'COMPLETE';
+      await store.save();
+
+      if (horaires && Array.isArray(horaires)) {
+        await Availability.destroy({ where: { epicier_id: storeId } });
+
+        for (const h of horaires) {
+          if (h.jour && h.heure_debut && h.heure_fin && h.is_open !== false) {
+            await Availability.create({
+              epicier_id: storeId,
+              jour: h.jour,
+              heure_debut: h.heure_debut,
+              heure_fin: h.heure_fin,
+            });
+          }
+        }
+      }
+
+      const updatedStore = await Store.findByPk(storeId, {
+        include: [{ model: Availability, as: 'disponibilites' }],
+      });
+
+      res.status(200).json({
+        message: 'Inscription complétée avec succès !',
+        store: updatedStore,
+      });
+    } catch (error) {
+      console.error('Erreur completeRegistration:', error);
+      res.status(500).json({ message: 'Erreur lors de la finalisation de l\'inscription', error: error.message });
+    }
+  },
+
+  uploadStoreImage: async (req, res) => {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+      }
+      const dir = path.join(__dirname, '..', '..', 'uploads', 'stores');
+      fs.mkdirSync(dir, { recursive: true });
+      const ext = path.extname(req.file.originalname) || '.jpg';
+      const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext.toLowerCase()) ? ext : '.jpg';
+      const storeId = req.user.storeId || Date.now();
+      const filename = `store_${storeId}_${Date.now()}${safeExt}`;
+      const filePath = path.join(dir, filename);
+      fs.writeFileSync(filePath, req.file.buffer);
+      const relativePath = `uploads/stores/${filename}`;
+      res.status(200).json({ image_url: relativePath });
+    } catch (error) {
+      console.error('Erreur uploadStoreImage:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
     }
   },
 

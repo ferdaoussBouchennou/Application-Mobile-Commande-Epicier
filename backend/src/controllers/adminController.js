@@ -20,7 +20,7 @@ function sanitizeName(str) {
 
 exports.getStats = async (req, res) => {
   try {
-    const pendingCount = await User.count({ where: { statut_inscription: 'EN_ATTENTE', role: 'EPICIER' } });
+    const pendingCount = await Store.count({ where: { statut_inscription: 'EN_ATTENTE' } });
     const activeCount = await User.count({ where: { is_active: true, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
     const suspendedCount = await User.count({ where: { is_active: false, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
 
@@ -42,10 +42,9 @@ exports.getUsers = async (req, res) => {
     if (role) where.role = role;
     
     if (status === 'EN_ATTENTE') {
-      where.statut_inscription = 'EN_ATTENTE';
+      where['$epicier.statut_inscription$'] = 'EN_ATTENTE';
     } else if (status === 'Actif') {
       where.is_active = true;
-      where.statut_inscription = 'ACCEPTE';
     } else if (status === 'Suspendu') {
       where.is_active = false;
     }
@@ -74,11 +73,24 @@ exports.updateUserStatus = async (req, res) => {
     const user = await User.findByPk(id);
     if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
 
-    if (statut_inscription) user.statut_inscription = statut_inscription;
-    if (is_active !== undefined) user.is_active = is_active;
+    if (is_active !== undefined) {
+      user.is_active = is_active;
+      await user.save();
+    }
 
-    await user.save();
-    res.json({ message: 'Statut mis à jour avec succès', user });
+    if (statut_inscription && user.role === 'EPICIER') {
+      const store = await Store.findOne({ where: { utilisateur_id: id } });
+      if (store) {
+        store.statut_inscription = statut_inscription;
+        await store.save();
+      }
+    }
+
+    const updatedUser = await User.findByPk(id, {
+      include: [{ model: Store, as: 'epicier', required: false }],
+    });
+
+    res.json({ message: 'Statut mis à jour avec succès', user: updatedUser });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -93,24 +105,22 @@ exports.registerEpicier = async (req, res) => {
       return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
     }
 
-    // Créer l'utilisateur (Accepté par défaut car créé par l'admin)
     const newUser = await User.create({
       nom,
       prenom,
       email,
       mdp,
       role: 'EPICIER',
-      statut_inscription: 'ACCEPTE',
       is_active: true
     });
 
-    // Créer la boutique
     const newStore = await Store.create({
       utilisateur_id: newUser.id,
       nom_boutique: nom_boutique || `Épicerie de ${prenom}`,
       adresse,
       telephone,
       description: description_boutique,
+      statut_inscription: 'ACCEPTE',
       is_active: true
     });
 
@@ -256,7 +266,7 @@ exports.activateCategory = async (req, res) => {
 exports.getStores = async (req, res) => {
   try {
     const stores = await Store.findAll({
-      where: { statut_inscription: 'ACCEPTE', is_active: true },
+      where: { statut_inscription: { [Op.in]: ['ACCEPTE', 'COMPLETE'] }, is_active: true },
       attributes: ['id', 'nom_boutique'],
       order: [['nom_boutique', 'ASC']]
     });

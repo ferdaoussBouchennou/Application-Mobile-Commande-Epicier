@@ -5,6 +5,7 @@ import '../admin/admin_validation_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../grocer/grocer_main_screen.dart';
+import '../grocer/setup/grocer_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,10 +50,18 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
           );
         } else if (role == 'EPICIER') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
-          );
+          final auth2 = context.read<AuthProvider>();
+          if (auth2.needsSetup) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+            );
+          }
         } else {
           Navigator.pushReplacement(
             context,

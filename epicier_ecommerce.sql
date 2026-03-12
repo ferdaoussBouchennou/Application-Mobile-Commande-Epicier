@@ -254,25 +254,27 @@ CREATE TABLE `epiciers` (
   `date_creation` datetime NOT NULL,
   `image_url` varchar(500) DEFAULT NULL,
   `rating` decimal(2,1) DEFAULT 0.0,
-  `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE') NOT NULL DEFAULT 'EN_ATTENTE'
+  `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE','COMPLETE') NOT NULL DEFAULT 'EN_ATTENTE',
+  `latitude` decimal(10,8) DEFAULT NULL,
+  `longitude` decimal(11,8) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `epiciers`
 --
 
-INSERT INTO `epiciers` (`id`, `utilisateur_id`, `nom_boutique`, `adresse`, `telephone`, `description`, `is_active`, `date_creation`, `image_url`, `rating`, `statut_inscription`) VALUES
-(1, 3, 'Epicerie de sara', 'Adresse à configurer', '677777777', 'Votre Hanut de confiance : lait frais, pain chaud, sucre et produits de base.', 1, '2026-03-08 23:51:27', 'uploads/Moul-hanoute-epiciers.jpg', 4.0, 'ACCEPTE'),
-(2, 5, 'Epicerie de ali', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 09:55:52', 'uploads/Moul-hanoute-epiciers.jpg', 5.0, 'ACCEPTE'),
-(3, 6, 'Épicerie Fleurie', '12 Rue de la Liberté, Casablanca', '0522345678', 'Produits frais et locaux, arrivages quotidiens.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 4.5, 'ACCEPTE'),
-(4, 7, 'Le Petit Marché', '45 Avenue FAR, Rabat', '0537112233', 'Spécialités régionales et épices fines.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'ACCEPTE'),
-(5, 8, 'Hanut Marrakech', '7 bis Rue Ibn Batouta, Marrakech', '0524112233', 'Tout pour la maison, livraison rapide dans le quartier.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'ACCEPTE'),
-(6, 9, 'Épicerie Ahmed', 'Rue de la Liberté, Tunis', '0555112233', 'Produits frais du terroir et épices fines.', 1, '2026-03-09 14:34:37', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'ACCEPTE'),
-(7, 10, 'Hanut Sami', 'Avenue Habib Bourguiba, Sfax', '0555445566', 'Votre Hanut de quartier ouvert tard le soir.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'ACCEPTE'),
-(8, 11, 'Chez Leila', 'Route de la Plage, Hammamet', '0555778899', 'Fruits de mer et alimentation générale.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'ACCEPTE'),
-(9, 12, 'Karim Market', 'Boulevard de l\'Environnement, Sousse', '0555001122', 'Le meilleur couscous et produits locaux.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 3.0, 'ACCEPTE'),
-(10, 13, 'Mondher Express', 'Cité des Jeunes, Bizerte', '0555334455', 'Rapide, efficace et toujours avec le sourire.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'ACCEPTE'),
-(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 19:54:35', 'uploads/Moul-hanoute-epiciers.jpg', 2.5, 'ACCEPTE');
+INSERT INTO `epiciers` (`id`, `utilisateur_id`, `nom_boutique`, `adresse`, `telephone`, `description`, `is_active`, `date_creation`, `image_url`, `rating`, `statut_inscription`, `latitude`, `longitude`) VALUES
+(1, 3, 'Epicerie de sara', 'Adresse à configurer', '677777777', 'Votre Hanut de confiance : lait frais, pain chaud, sucre et produits de base.', 1, '2026-03-08 23:51:27', 'uploads/Moul-hanoute-epiciers.jpg', 4.0, 'COMPLETE', NULL, NULL),
+(2, 5, 'Epicerie de ali', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 09:55:52', 'uploads/Moul-hanoute-epiciers.jpg', 5.0, 'COMPLETE', NULL, NULL),
+(3, 6, 'Épicerie Fleurie', '12 Rue de la Liberté, Casablanca', '0522345678', 'Produits frais et locaux, arrivages quotidiens.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 4.5, 'COMPLETE', NULL, NULL),
+(4, 7, 'Le Petit Marché', '45 Avenue FAR, Rabat', '0537112233', 'Spécialités régionales et épices fines.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(5, 8, 'Hanut Marrakech', '7 bis Rue Ibn Batouta, Marrakech', '0524112233', 'Tout pour la maison, livraison rapide dans le quartier.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(6, 9, 'Épicerie Ahmed', 'Rue de la Liberté, Tunis', '0555112233', 'Produits frais du terroir et épices fines.', 1, '2026-03-09 14:34:37', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(7, 10, 'Hanut Sami', 'Avenue Habib Bourguiba, Sfax', '0555445566', 'Votre Hanut de quartier ouvert tard le soir.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(8, 11, 'Chez Leila', 'Route de la Plage, Hammamet', '0555778899', 'Fruits de mer et alimentation générale.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(9, 12, 'Karim Market', 'Boulevard de l\'Environnement, Sousse', '0555001122', 'Le meilleur couscous et produits locaux.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 3.0, 'COMPLETE', NULL, NULL),
+(10, 13, 'Mondher Express', 'Cité des Jeunes, Bizerte', '0555334455', 'Rapide, efficace et toujours avec le sourire.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 19:54:35', 'uploads/Moul-hanoute-epiciers.jpg', 2.5, 'COMPLETE', NULL, NULL);
 
 -- --------------------------------------------------------
 
