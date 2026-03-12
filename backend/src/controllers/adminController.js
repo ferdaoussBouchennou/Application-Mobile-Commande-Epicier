@@ -522,7 +522,7 @@ exports.getOrderStats = async (req, res) => {
     });
 
     const disputeCount = await Reclamation.count({
-      where: { statut: { [Op.in]: ['non resolut', 'en attente'] } }
+      where: { statut: { [Op.in]: ['Litige ouvert', 'En médiation'] } }
     });
 
     res.json({
@@ -572,16 +572,27 @@ exports.getDisputes = async (req, res) => {
 exports.resolveDispute = async (req, res) => {
   try {
     const { id } = req.params;
-    const { statut } = req.body; // Expecting 'resolut', 'en attente', 'rembourser', 'non resolut'
+    const { statut } = req.body; // Expecting 'Résolu', 'En médiation', 'Remboursé', 'Litige ouvert'
+
+    console.log(`Tentative de mise à jour du litige ${id} vers le statut: ${statut}`);
 
     const dispute = await Reclamation.findByPk(id);
     if (!dispute) return res.status(404).json({ error: 'Réclamation non trouvée' });
 
-    dispute.statut = statut || 'resolut';
+    // Validation basique
+    const validStatuses = ['Résolu', 'En médiation', 'Remboursé', 'Litige ouvert'];
+    if (statut && !validStatuses.includes(statut)) {
+      console.warn(`Statut invalide reçu: ${statut}`);
+    }
+
+    dispute.statut = statut || 'Résolu';
     await dispute.save();
+
+    console.log(`Litige ${id} mis à jour avec succès: ${dispute.statut}`);
 
     res.json({ message: 'Réclamation mise à jour', dispute });
   } catch (error) {
+    console.error(`Erreur resolveDispute: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
