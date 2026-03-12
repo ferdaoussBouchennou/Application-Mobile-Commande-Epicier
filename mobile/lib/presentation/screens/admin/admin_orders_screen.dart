@@ -338,23 +338,37 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         String statusLabel = 'Inconnu';
         Color statusColor = Colors.grey;
         
-        switch (d['statut']) {
+        // Normalisation du statut pour la comparaison
+        final normalizedStatus = d['statut']?.toString().toLowerCase().trim() ?? '';
+        
+        switch (normalizedStatus) {
+          case 'litige ouvert':
           case 'non resolut':
+          case 'nonresolue':
             statusLabel = 'Litige ouvert';
             statusColor = const Color(0xFFF26444);
             break;
+          case 'en médiation':
+          case 'en mediation':
           case 'en attente':
             statusLabel = 'En médiation';
             statusColor = const Color(0xFFF2A93B);
             break;
+          case 'remboursé':
+          case 'rembourse':
           case 'rembourser':
             statusLabel = 'Remboursé';
             statusColor = Colors.pink;
             break;
+          case 'résolu':
+          case 'résolue':
+          case 'resolu':
           case 'resolut':
             statusLabel = 'Résolu';
             statusColor = const Color(0xFF2D5016);
             break;
+          default:
+            statusLabel = 'Inconnu ($normalizedStatus)';
         }
 
         return Padding(
@@ -369,7 +383,14 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             time: timeStr,
             status: statusLabel,
             statusColor: statusColor,
-            showActions: d['statut'] != 'resolut' && d['statut'] != 'rembourser',
+            showActions: normalizedStatus != 'resolut' && 
+                         normalizedStatus != 'résolue' && 
+                         normalizedStatus != 'résolu' && 
+                         normalizedStatus != 'résolu' && 
+                         normalizedStatus != 'resolu' && 
+                         normalizedStatus != 'rembourser' && 
+                         normalizedStatus != 'remboursé' && 
+                         normalizedStatus != 'rembourse',
           ),
         );
       }).toList(),
@@ -462,11 +483,11 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
-                _buildActionBtn('Résoudre', const Color(0xFF2D5016), Icons.check, onTap: () => _updateDisputeStatus(idNum, 'resolut')),
+                _buildActionBtn('Résoudre', const Color(0xFF2D5016), Icons.check, onTap: () => _updateDisputeStatus(idNum, 'Résolu')),
                 const SizedBox(width: 8),
-                _buildActionBtn('Médiation', const Color(0xFFF5EDDA), Icons.chat_bubble_outline, textColor: const Color(0xFF2D5016), onTap: () => _updateDisputeStatus(idNum, 'en attente')),
+                _buildActionBtn('Médiation', const Color(0xFFF5EDDA), Icons.chat_bubble_outline, textColor: const Color(0xFF2D5016), onTap: () => _updateDisputeStatus(idNum, 'En médiation')),
                 const SizedBox(width: 8),
-                _buildActionBtn('Rembourser', const Color(0xFFFFEBEE), Icons.history, textColor: Colors.red, onTap: () => _updateDisputeStatus(idNum, 'rembourser')),
+                _buildActionBtn('Rembourser', const Color(0xFFFFEBEE), Icons.history, textColor: Colors.red, onTap: () => _updateDisputeStatus(idNum, 'Remboursé')),
               ],
             ),
           ],

@@ -17,28 +17,28 @@ const seedOrders = async () => {
     await Reclamation.bulkCreate([
       { 
         description: 'Commande non reçue alors que marquée livrée', 
-        statut: 'non resolut', 
+        statut: 'Litige ouvert', 
         client_id: 2, 
         commande_id: orders[0].id, 
         date_creation: new Date(Date.now() - 7200000) 
       },
       { 
         description: 'Produit manquant (Lait)', 
-        statut: 'en attente', 
+        statut: 'En médiation', 
         client_id: 2, 
         commande_id: orders[1].id, 
         date_creation: new Date(Date.now() - 3600000) 
       },
       { 
         description: 'Retard important sur la livraison', 
-        statut: 'rembourser', 
+        statut: 'Remboursé', 
         client_id: 2, 
         commande_id: orders[3].id, 
         date_creation: new Date(Date.now() - 172800000) // 2 days ago
       },
       { 
         description: 'Problème de qualité sur les légumes', 
-        statut: 'resolut', 
+        statut: 'Résolu', 
         client_id: 2, 
         commande_id: orders[4].id, 
         date_creation: new Date(Date.now() - 259200000) // 3 days ago

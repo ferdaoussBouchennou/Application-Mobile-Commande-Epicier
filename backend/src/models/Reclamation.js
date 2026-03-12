@@ -14,9 +14,9 @@ const Reclamation = sequelize.define('Reclamation', {
     allowNull: false,
   },
   statut: {
-    type: DataTypes.ENUM('resolut', 'en attente', 'rembourser', 'non resolut'),
+    type: DataTypes.ENUM('Résolu', 'En médiation', 'Remboursé', 'Litige ouvert'),
     allowNull: false,
-    defaultValue: 'non resolut',
+    defaultValue: 'Litige ouvert',
   },
   client_id: {
     type: DataTypes.INTEGER,
