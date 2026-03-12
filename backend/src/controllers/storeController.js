@@ -1,6 +1,9 @@
+const sequelize = require('../config/db');
+const { QueryTypes } = require('sequelize');
 const Store = require('../models/Store');
 const Availability = require('../models/Availability');
 const User = require('../models/User');
+const Avis = require('../models/Avis');
 
 const storeController = {
   // Liste de tous les épiciers
@@ -31,7 +34,7 @@ const storeController = {
     }
   },
 
-  // Détails d'un épicier spécifique avec ses disponibilités
+  // Détails d'un épicier spécifique avec ses disponibilités + note moyenne (avis)
   getStoreById: async (req, res) => {
     try {
       const { id } = req.params;
@@ -53,7 +56,18 @@ const storeController = {
         return res.status(404).json({ message: 'Épicier introuvable' });
       }
 
-      res.status(200).json(store);
+      let rating = 0;
+      try {
+        const rows = await sequelize.query(
+          'SELECT COALESCE(AVG(note), 0) AS note_moyenne FROM avis WHERE epicier_id = :id',
+          { replacements: { id }, type: QueryTypes.SELECT }
+        );
+        rating = Number(Number((rows && rows[0] && rows[0].note_moyenne) || 0).toFixed(1));
+      } catch (_) {}
+      const storeJson = store.toJSON();
+      storeJson.rating = rating;
+
+      res.status(200).json(storeJson);
     } catch (error) {
       console.error('Erreur getStoreById:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération des détails de l\'épicier', error: error.message });
@@ -112,7 +126,39 @@ const storeController = {
       console.error('Erreur getCreneaux:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération des créneaux', error: error.message });
     }
-  }
+  },
+
+  // Liste des avis d'un épicier (note moyenne + commentaires avec nom du client)
+  getAvisByStore: async (req, res) => {
+    try {
+      const { id: storeId } = req.params;
+      const store = await Store.findByPk(storeId);
+      if (!store) {
+        return res.status(404).json({ message: 'Épicier introuvable' });
+      }
+      const rows = await sequelize.query(
+        'SELECT COALESCE(AVG(note), 0) AS note_moyenne FROM avis WHERE epicier_id = :storeId',
+        { replacements: { storeId }, type: QueryTypes.SELECT }
+      );
+      const note_moyenne = Number(Number((rows && rows[0] && rows[0].note_moyenne) || 0).toFixed(1));
+      const avisList = await Avis.findAll({
+        where: { epicier_id: storeId },
+        include: [{ model: User, as: 'client', attributes: ['nom', 'prenom'] }],
+        order: [['date_avis', 'DESC']],
+      });
+      const avis = avisList.map((a) => ({
+        id: a.id,
+        note: a.note,
+        commentaire: a.commentaire || '',
+        client_nom: a.client ? `${a.client.prenom || ''} ${a.client.nom || ''}`.trim() : 'Client',
+        date_avis: a.date_avis,
+      }));
+      res.status(200).json({ note_moyenne, avis });
+    } catch (error) {
+      console.error('Erreur getAvisByStore:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération des avis', error: error.message });
+    }
+  },
 };
 
 module.exports = storeController;

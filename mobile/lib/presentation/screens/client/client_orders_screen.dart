@@ -5,6 +5,7 @@ import '../../../data/models/client_order_detail.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cart_provider.dart';
+import '../../widgets/rate_order_sheet.dart';
 
 /// Liste des commandes du client (onglet Commandes).
 class ClientOrdersScreen extends StatefulWidget {
@@ -322,6 +323,19 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     }
   }
 
+  void _showRateOrder(ClientOrder order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => RateOrderSheet(
+        orderId: order.id,
+        nomBoutique: order.nomBoutique.isNotEmpty ? order.nomBoutique : 'Épicerie',
+        onSubmitted: () {},
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final token = context.watch<AuthProvider>().token;
@@ -547,7 +561,21 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                                         ),
                                       ),
                                     )
-                                  else
+                                  else ...[
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _showRateOrder(o),
+                                        icon: const Icon(Icons.star_outline_rounded, size: 18),
+                                        label: const Text('Noter'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: _primary,
+                                          side: const BorderSide(color: _primary),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
                                     Expanded(
                                       child: FilledButton.icon(
                                         onPressed: () => _orderAgain(o),
@@ -560,6 +588,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                                         ),
                                       ),
                                     ),
+                                  ],
                                 ],
                               ),
                             ],
