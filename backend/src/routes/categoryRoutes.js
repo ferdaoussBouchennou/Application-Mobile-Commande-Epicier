@@ -56,17 +56,17 @@ router.get('/store/:storeId', async (req, res) => {
         'nom',
         [
           Sequelize.literal(`(
-            SELECT COUNT(*) FROM produits AS p
-            WHERE p.categorie_id = Category.id AND p.epicier_id = ${storeIdInt}
-            AND (p.is_active = 1 OR p.is_active IS NULL)
+            SELECT COUNT(*) FROM epicier_produits AS ep
+            INNER JOIN produits AS p ON p.id = ep.produit_id AND p.categorie_id = Category.id
+            WHERE ep.epicier_id = ${storeIdInt} AND ep.is_active = 1
           )`),
           'productCount'
         ],
         [
           Sequelize.literal(`(
-            SELECT COUNT(*) FROM produits AS p
-            WHERE p.categorie_id = Category.id AND p.epicier_id = ${storeIdInt}
-            AND p.is_active = 0
+            SELECT COUNT(*) FROM epicier_produits AS ep
+            INNER JOIN produits AS p ON p.id = ep.produit_id AND p.categorie_id = Category.id
+            WHERE ep.epicier_id = ${storeIdInt} AND ep.is_active = 0
           )`),
           'retiredCount'
         ]
