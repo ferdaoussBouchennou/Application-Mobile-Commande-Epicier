@@ -35,8 +35,10 @@ class CartProvider with ChangeNotifier {
       _total = double.tryParse((res['total']?.toString()) ?? '0') ?? 0.0;
     } catch (e) {
       _error = e.toString();
-      _items = [];
-      _total = 0;
+      // Keep previous items on error so we don't show empty after a failed refetch
+      if (_items.isEmpty) {
+        _total = 0;
+      }
     } finally {
       _loading = false;
       notifyListeners();
