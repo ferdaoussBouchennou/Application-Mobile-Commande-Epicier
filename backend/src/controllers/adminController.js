@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const Store = require('../models/Store');
+const Category = require('../models/Category');
+const Product = require('../models/Product');
 const { Op } = require('sequelize');
 
 exports.getStats = async (req, res) => {
@@ -115,6 +117,86 @@ exports.registerEpicier = async (req, res) => {
       user: { id: newUser.id, nom: newUser.nom, email: newUser.email },
       store: newStore
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// --- Gestion des catégories (plateforme) ---
+
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Category.findAll({
+      order: [['nom', 'ASC']],
+      attributes: ['id', 'nom']
+    });
+    const list = await Promise.all(
+      categories.map(async (c) => {
+        const count = await Product.count({ where: { categorie_id: c.id } });
+        return { id: c.id, nom: c.nom, productCount: count };
+      })
+    );
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createCategory = async (req, res) => {
+  try {
+    const { nom } = req.body;
+    if (!nom || typeof nom !== 'string' || !nom.trim()) {
+      return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
+    }
+    const existing = await Category.findOne({ where: { nom: nom.trim() } });
+    if (existing) {
+      return res.status(400).json({ message: 'Une catégorie avec ce nom existe déjà.' });
+    }
+    const category = await Category.create({ nom: nom.trim() });
+    res.status(201).json({ id: category.id, nom: category.nom });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom } = req.body;
+    if (!nom || typeof nom !== 'string' || !nom.trim()) {
+      return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
+    }
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const existing = await Category.findOne({ where: { nom: nom.trim(), id: { [Op.ne]: id } } });
+    if (existing) {
+      return res.status(400).json({ message: 'Une autre catégorie avec ce nom existe déjà.' });
+    }
+    category.nom = nom.trim();
+    await category.save();
+    res.json({ id: category.id, nom: category.nom });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const productCount = await Product.count({ where: { categorie_id: id } });
+    if (productCount > 0) {
+      return res.status(400).json({
+        message: `Impossible de supprimer : ${productCount} produit(s) utilisent cette catégorie. Supprimez ou déplacez les produits d'abord.`
+      });
+    }
+    await category.destroy();
+    res.json({ message: 'Catégorie supprimée.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
