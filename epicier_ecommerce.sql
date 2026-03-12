@@ -578,31 +578,31 @@ CREATE TABLE `utilisateurs` (
   `email` varchar(150) NOT NULL,
   `mdp` varchar(255) NOT NULL,
   `id_google` varchar(100) DEFAULT NULL,
+  `id_facebook` varchar(100) DEFAULT NULL,
+  `id_instagram` varchar(100) DEFAULT NULL,
   `role` enum('CLIENT','ADMIN','EPICIER') NOT NULL DEFAULT 'CLIENT',
   `doc_verf` varchar(255) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
-  `date_creation` datetime NOT NULL,
-  `telephone` varchar(20) DEFAULT NULL,
-  `adresse` varchar(255) NOT NULL
+  `date_creation` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `utilisateurs`
 --
 
-INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `role`, `doc_verf`, `is_active`, `date_creation`, `telephone`, `adresse`) VALUES
-(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$SX7HzPJSA6gTvDolFM3W4ezT8lfv.G4RqG9qfBWATqozqw542axly', NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57', NULL, ''),
-(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$lcOHuH/Iod72sCrkYNsvCuN.CH8s8TtWfQbh8hsV9FQvGIl4.cWFm', NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26', NULL, ''),
-(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$IxNmQ/xwZL6jEz6WPENrHOtuURWO8GpySH5SjIknEdWWVfeCQHWSu', NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51', NULL, ''),
-(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$4I3EhhJzviZuTmgM9ULkIuEu/mAx0QwqgA5IvwXGexWvmjDAcyJNe', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42', NULL, ''),
-(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$/fy/dLCHTU6mac8EPqisIOeX9.ndCJWLvLZPnzAkSPDvSSS0EYNnq', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, ''),
-(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$fdnAaoWwrStvfhOASa1Nku/xzNOXhrdoEntECaPzyNApAM8IdFa9m', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, ''),
-(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$sRi.VJF.h/aRHiUTh0jS7.Oj6GUESJVYOT6lxpmVGGm833/garYrO', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, ''),
-(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$loWEptD0Xd0bzfQTEGcMeeP2W.Imm1/tOrpsn2o7jz/uqFhbq/Awm', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, ''),
-(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$88dNhQUYG6Q.TJks7r5eR.W2iiZ7s/pVQxG8Oj6euRRyJFvlPDCwa', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, ''),
-(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$uYx.vgvEfKO9IdUSmUFaxunjD7882TCNlQCTxqyXUAgwU61sTXjuO', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, ''),
-(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$5xJDNZk3i33nyOol0qfa2Oll2B/O95vyvxQeeRkwBzf4RWaBw3dEq', NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, ''),
-(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$ArEJo8NTVH3VdKbQi.wqF.aymvErOHy3vpq7wgu2qQGGNJkYkYfU6', NULL, 'EPICIER', 'IMG-20260308-WA0037.', 1, '2026-03-09 19:54:34', NULL, '');
+INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `id_facebook`, `id_instagram`, `role`, `doc_verf`, `is_active`, `date_creation`) VALUES
+(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$SX7HzPJSA6gTvDolFM3W4ezT8lfv.G4RqG9qfBWATqozqw542axly', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57'),
+(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$lcOHuH/Iod72sCrkYNsvCuN.CH8s8TtWfQbh8hsV9FQvGIl4.cWFm', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26'),
+(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$IxNmQ/xwZL6jEz6WPENrHOtuURWO8GpySH5SjIknEdWWVfeCQHWSu', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51'),
+(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$4I3EhhJzviZuTmgM9ULkIuEu/mAx0QwqgA5IvwXGexWvmjDAcyJNe', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42'),
+(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$/fy/dLCHTU6mac8EPqisIOeX9.ndCJWLvLZPnzAkSPDvSSS0EYNnq', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43'),
+(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$fdnAaoWwrStvfhOASa1Nku/xzNOXhrdoEntECaPzyNApAM8IdFa9m', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43'),
+(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$sRi.VJF.h/aRHiUTh0jS7.Oj6GUESJVYOT6lxpmVGGm833/garYrO', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37'),
+(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$loWEptD0Xd0bzfQTEGcMeeP2W.Imm1/tOrpsn2o7jz/uqFhbq/Awm', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37'),
+(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$88dNhQUYG6Q.TJks7r5eR.W2iiZ7s/pVQxG8Oj6euRRyJFvlPDCwa', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38'),
+(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$uYx.vgvEfKO9IdUSmUFaxunjD7882TCNlQCTxqyXUAgwU61sTXjuO', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38'),
+(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$5xJDNZk3i33nyOol0qfa2Oll2B/O95vyvxQeeRkwBzf4RWaBw3dEq', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38'),
+(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$ArEJo8NTVH3VdKbQi.wqF.aymvErOHy3vpq7wgu2qQGGNJkYkYfU6', NULL, NULL, NULL, 'EPICIER', 'IMG-20260308-WA0037.', 1, '2026-03-09 19:54:34');
 
 --
 -- Index pour les tables déchargées

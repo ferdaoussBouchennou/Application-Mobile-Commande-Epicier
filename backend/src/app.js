@@ -9,6 +9,7 @@ const sequelize = require('./config/db');
 const routes = require('./routes/index');
 const authRoutes = require('./routes/authRoutes');
 const storeRoutes = require('./routes/storeRoutes');
+const grocerRoutes = require('./routes/grocerRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const productRoutes = require('./routes/productRoutes');
 
@@ -36,6 +37,7 @@ app.get('/', (req, res) => {
 app.use('/api', routes);
 app.use('/api/auth', authRoutes);
 app.use('/api/stores', storeRoutes);
+app.use('/api/epicier', grocerRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
 
@@ -52,7 +54,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-sequelize.sync().then(() => {
+sequelize.sync({ alter: { drop: false } }).then(() => {
   console.log('Base de données synchronisée.');
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT} (Listening on all interfaces)`);

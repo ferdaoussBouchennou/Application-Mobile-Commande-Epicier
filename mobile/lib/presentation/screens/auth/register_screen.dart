@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import '../client/map_screen/map_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -126,9 +128,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        if (e.toString().contains('EMAIL_EXISTS')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Cet email est déjà utilisé. Veuillez vous connecter.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -429,20 +448,94 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       Expanded(
                         child: _buildSocialButton(
-                          iconPath: 'assets/images/google_logo.png', // placeholder
-                          iconData: Icons.g_mobiledata,
-                          iconColor: Colors.red,
+                          iconData: FontAwesomeIcons.google,
+                          iconColor: const Color(0xFFDB4437),
                           label: 'Google',
+                          onPressed: () async {
+                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                            
+                            Map<String, dynamic>? epicierData;
+                            if (_isEpicier) {
+                              if (_docFileName == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Veuillez joindre un document de vérification avant de continuer avec Google')),
+                                );
+                                return;
+                              }
+                              
+                              epicierData = {
+                                'role': 'EPICIER',
+                                'doc_verf': _docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName,
+                                'telephone': _phoneController.text.trim(),
+                              };
+                            }
+
+                            try {
+                              final success = await authProvider.loginWithGoogle(epicierData: epicierData);
+                              if (success && mounted) {
+                                // Redirection conditionnelle basée sur le state du rôle
+                                if (_isEpicier) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.green),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  );
+                                } else {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const MapScreen()),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                if (e.toString().contains('en attente de validation') && _isEpicier) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.green),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  );
+                                } else if (e.toString().contains('EMAIL_EXISTS')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Cet email est déjà associé à un compte Client. Veuillez vous connecter.'),
+                                      backgroundColor: Colors.orange,
+                                      duration: Duration(seconds: 4),
+                                    ),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSocialButton(
+                          iconData: FontAwesomeIcons.facebook,
+                          iconColor: const Color(0xFF1877F2),
+                          label: 'Facebook',
                           onPressed: () {},
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildSocialButton(
-                          iconPath: 'assets/images/facebook_logo.png', // placeholder
-                          iconData: Icons.facebook,
-                          iconColor: const Color(0xFF1877F2),
-                          label: 'Facebook',
+                          iconData: FontAwesomeIcons.instagram,
+                          iconColor: const Color(0xFFE4405F),
+                          label: 'Instagram',
                           onPressed: () {},
                         ),
                       ),
@@ -524,28 +617,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildSocialButton({
-    required String iconPath,
-    required IconData iconData,
-    required Color iconColor,
+    String? iconPath,
+    IconData? iconData,
+    Color? iconColor,
     required String label,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
+    return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 14), // Hauteur légèrement augmentée pour meilleur look
+        padding: const EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12), // Coins plus arrondis
-          side: BorderSide(color: Colors.grey.shade300), // Bordure un peu plus visible
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: Colors.grey.shade200),
         ),
       ),
-      icon: Icon(iconData, color: iconColor, size: 24), // Taille de l'icône proportionnée
-      label: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (iconPath != null)
+            Image.asset(iconPath, height: 24, width: 24)
+          else if (iconData != null)
+            FaIcon(iconData, color: iconColor, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
