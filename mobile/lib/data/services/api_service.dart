@@ -6,11 +6,11 @@ import '../../core/utils/logger.dart';
 class ApiService {
   final String _baseUrl = ApiConstants.baseUrl;
 
-  Map<String, String> _headers({String? token}) {
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+  Map<String, String> _headers({String? token, bool omitContentType = false}) {
+    final map = <String, String>{};
+    if (token != null) map['Authorization'] = 'Bearer $token';
+    if (!omitContentType) map['Content-Type'] = 'application/json';
+    return map;
   }
 
   Future<dynamic> get(String endpoint, {String? token}) async {
@@ -77,6 +77,44 @@ class ApiService {
       return _handleResponse(response);
     } catch (e) {
       Logger.error('DELETE $endpoint → $e');
+      rethrow;
+    }
+  }
+
+  /// Upload d'une image produit (bytes + nom de fichier). [productName] optionnel : nom du produit pour le fichier.
+  Future<String> uploadProductImage({
+    required String token,
+    required int categorieId,
+    required List<int> bytes,
+    required String filename,
+    String? productName,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/epicier/products/upload-image');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['categorie_id'] = categorieId.toString();
+      if (productName != null && productName.trim().isNotEmpty) {
+        request.fields['nom'] = productName.trim();
+      }
+      request.files.add(http.MultipartFile.fromBytes('image', bytes, filename: filename));
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final body = response.body;
+        String msg = 'Erreur ${response.statusCode}';
+        try {
+          final j = jsonDecode(body) as Map<String, dynamic>;
+          if (j['message'] != null) msg = j['message'] as String;
+        } catch (_) {}
+        throw Exception(msg);
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final path = data['image_principale'] as String?;
+      if (path == null || path.isEmpty) throw Exception('Réponse invalide');
+      return path;
+    } catch (e) {
+      Logger.error('uploadProductImage → $e');
       rethrow;
     }
   }
