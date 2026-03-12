@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
 import 'catalogue/grocer_catalogue_placeholder_screen.dart';
 import 'orders/grocer_orders_screen.dart';
+import 'catalogue/grocer_catalogue_screen.dart';
+import 'orders/grocer_orders_placeholder_screen.dart';
 import 'stats/grocer_stats_placeholder_screen.dart';
 
 /// Écran principal de l'espace Épicier — même design que MapScreen (parcourir sans compte).
@@ -15,13 +20,30 @@ class GrocerMainScreen extends StatefulWidget {
 
 class _GrocerMainScreenState extends State<GrocerMainScreen> {
   int _currentIndex = 0;
+  VoidCallback? _catalogueRefresh;
+  final GlobalKey<NavigatorState> _catalogueNavKey = GlobalKey<NavigatorState>();
 
-  final List<Widget> _screens = const [
-    GrocerDashboardScreen(),
-    GrocerCataloguePlaceholderScreen(),
-    GrocerOrdersScreen(),
-    GrocerStatsPlaceholderScreen(),
-  ];
+  late List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const GrocerDashboardScreen(),
+      Builder(
+        builder: (context) => Navigator(
+          key: _catalogueNavKey,
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (_) => GrocerCatalogueScreen(
+              onRegisterRefresh: (fn) => _catalogueRefresh = fn,
+            ),
+          ),
+        ),
+      ),
+      const GrocerOrdersPlaceholderScreen(),
+      const GrocerStatsPlaceholderScreen(),
+    ];
+  }
 
   static const List<_NavItem> _navItems = [
     _NavItem(Icons.home_outlined, Icons.home, 'Accueil', 0),
@@ -42,6 +64,20 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
           'MyHanut',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () {
+              context.read<AuthProvider>().logout();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+            tooltip: 'Déconnexion',
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -65,7 +101,13 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       ),
       child: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 1) {
+            _catalogueNavKey.currentState?.popUntil((route) => route.isFirst);
+            _catalogueRefresh?.call();
+          }
+        },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
         selectedItemColor: GrocerTheme.primary,

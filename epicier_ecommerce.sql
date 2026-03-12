@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mer. 11 mars 2026 à 16:50
+-- Généré le : jeu. 12 mars 2026 à 17:34
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -37,164 +37,985 @@ CREATE TABLE `avis` (
   `date_avis` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : utilisateurs  (clients + admins via role)
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE utilisateurs (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    nom           VARCHAR(100) NOT NULL,
-    prenom        VARCHAR(100) NOT NULL,
-    email         VARCHAR(150) NOT NULL UNIQUE,
-    mdp           VARCHAR(255) NOT NULL,
-    id_google     VARCHAR(100),
-    role          ENUM('CLIENT', 'ADMIN', 'EPICIER') NOT NULL DEFAULT 'CLIENT',
-    doc_verf      VARCHAR(20),
-    is_active     BOOLEAN DEFAULT TRUE,
-    date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+--
+-- Déchargement des données de la table `avis`
+--
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : categories
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE categories (
-    id  INT AUTO_INCREMENT PRIMARY KEY,
-    nom VARCHAR(100) NOT NULL
-);
+INSERT INTO `avis` (`id`, `note`, `commentaire`, `client_id`, `epicier_id`, `commande_id`, `date_avis`) VALUES
+(1, 5, 'Très bon accueil et produits frais.', 2, 1, 2, '2026-03-08 17:00:00'),
+(2, 4, 'RAS, livraison correcte.', 2, 1, 3, '2026-03-07 12:00:00'),
+(3, 4, 'Epicerie de confiance.', 2, 1, 5, '2026-03-05 15:00:00');
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : epiciers  ← AJOUTÉE (manquait dans le fichier original)
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE epiciers (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    utilisateur_id INT NOT NULL UNIQUE,
-    nom_boutique   VARCHAR(200) NOT NULL,
-    adresse        VARCHAR(255) NOT NULL,
-    telephone      VARCHAR(20),
-    description    TEXT,
-    is_active      BOOLEAN DEFAULT TRUE,
-    date_creation  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE
-);
+-- --------------------------------------------------------
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : produits
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE produits (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    nom              VARCHAR(200) NOT NULL,
-    prix             DECIMAL(10,2) NOT NULL,
-    description      TEXT,
-    epicier_id       INT NOT NULL,
-    categorie_id     INT NOT NULL,
-    image_principale VARCHAR(500),
-    date_ajout       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date_modif       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (epicier_id)   REFERENCES epiciers(id),
-    FOREIGN KEY (categorie_id) REFERENCES categories(id)
-);
+--
+-- Structure de la table `categories`
+--
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : disponibilites
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE disponibilites (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    epicier_id  INT NOT NULL,
-    jour        ENUM('lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche') NOT NULL,
-    heure_debut TIME NOT NULL,
-    heure_fin   TIME NOT NULL,
-    FOREIGN KEY (epicier_id) REFERENCES epiciers(id)
-);
+CREATE TABLE `categories` (
+  `id` int(11) NOT NULL,
+  `nom` varchar(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : paniers
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE paniers (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    client_id     INT NOT NULL UNIQUE,
-    date_creation DATE NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES utilisateurs(id)
-);
+--
+-- Déchargement des données de la table `categories`
+--
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : panier_produits
--- CORRECTION : REFERENCES articles(id) → REFERENCES produits(id)
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE panier_produits (
-    panier_id  INT NOT NULL,
-    produit_id INT NOT NULL,
-    quantite   INT NOT NULL DEFAULT 1,
-    PRIMARY KEY (panier_id, produit_id),
-    FOREIGN KEY (panier_id)  REFERENCES paniers(id),
-    FOREIGN KEY (produit_id) REFERENCES produits(id)
-);
+INSERT INTO `categories` (`id`, `nom`) VALUES
+(1, 'Huiles'),
+(2, 'Confiserie'),
+(3, 'Farines'),
+(4, 'Conserves'),
+(5, 'Laitiers'),
+(6, 'Hygiène'),
+(7, 'Boissons'),
+(8, 'Épices'),
+(9, 'Boulangerie'),
+(11, 'Pâtes et riz'),
+(13, 'Sanae Cat');
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : commandes
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE commandes (
-    id                INT AUTO_INCREMENT PRIMARY KEY,
-    client_id         INT NOT NULL,
-    epicier_id        INT NOT NULL,
-    date_commande     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    date_recuperation DATETIME,
-    statut            ENUM('reçue','prête','livrée') NOT NULL DEFAULT 'reçue',
-    montant_total     DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-    FOREIGN KEY (client_id)  REFERENCES utilisateurs(id) ON DELETE RESTRICT,
-    FOREIGN KEY (epicier_id) REFERENCES epiciers(id)     ON DELETE RESTRICT
-);
+-- --------------------------------------------------------
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : detailsCommande
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE detailsCommande (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    commande_id   INT NOT NULL,
-    produit_id    INT NOT NULL,
-    quantite      INT NOT NULL DEFAULT 1,
-    prix_unitaire DECIMAL(10,2) NOT NULL,
-    total_ligne   DECIMAL(10,2) NOT NULL,
-    FOREIGN KEY (commande_id) REFERENCES commandes(id),
-    FOREIGN KEY (produit_id)  REFERENCES produits(id) ON DELETE RESTRICT
-);
+--
+-- Structure de la table `commandes`
+--
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : avis
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE avis (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    note        TINYINT NOT NULL CHECK (note BETWEEN 1 AND 5),
-    commentaire TEXT,
-    client_id   INT NOT NULL,
-    epicier_id  INT NOT NULL,
-    commande_id INT,
-    date_avis   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (client_id)   REFERENCES utilisateurs(id),
-    FOREIGN KEY (epicier_id)  REFERENCES epiciers(id),
-    FOREIGN KEY (commande_id) REFERENCES commandes(id) ON DELETE SET NULL
-);
+CREATE TABLE `commandes` (
+  `id` int(11) NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `epicier_id` int(11) NOT NULL,
+  `date_commande` datetime NOT NULL DEFAULT current_timestamp(),
+  `date_recuperation` datetime DEFAULT NULL,
+  `statut` enum('reçue','prête','livrée') NOT NULL DEFAULT 'reçue',
+  `montant_total` decimal(10,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : reclamations
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE reclamations (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    description   TEXT NOT NULL,
-    statut        ENUM('nonResolue','resolue') NOT NULL DEFAULT 'nonResolue',
-    client_id     INT NOT NULL,
-    commande_id   INT,
-    date_creation DATE NOT NULL,
-    FOREIGN KEY (client_id)   REFERENCES utilisateurs(id),
-    FOREIGN KEY (commande_id) REFERENCES commandes(id) ON DELETE SET NULL
-);
+--
+-- Déchargement des données de la table `commandes`
+--
 
--- ══════════════════════════════════════════════════════════════
--- TABLE : notifications
--- ══════════════════════════════════════════════════════════════
-CREATE TABLE notifications (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    message    VARCHAR(500) NOT NULL,
-    date_envoi DATE NOT NULL,
-    client_id  INT NOT NULL,
-    lue        BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (client_id) REFERENCES utilisateurs(id)
-);
+INSERT INTO `commandes` (`id`, `client_id`, `epicier_id`, `date_commande`, `date_recuperation`, `statut`, `montant_total`) VALUES
+(1, 2, 1, '2026-03-09 10:00:00', NULL, 'reçue', 45.50),
+(2, 2, 1, '2026-03-08 14:30:00', '2026-03-08 16:00:00', 'livrée', 186.50),
+(3, 2, 1, '2026-03-07 09:15:00', '2026-03-07 11:00:00', 'livrée', 87.00),
+(4, 2, 1, '2026-03-06 18:00:00', NULL, 'prête', 98.50),
+(5, 2, 1, '2026-03-05 12:00:00', '2026-03-05 14:00:00', 'livrée', 32.00);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `detailscommande`
+--
+
+CREATE TABLE `detailscommande` (
+  `id` int(11) NOT NULL,
+  `commande_id` int(11) NOT NULL,
+  `produit_id` int(11) NOT NULL,
+  `quantite` int(11) NOT NULL DEFAULT 1,
+  `prix_unitaire` decimal(10,2) NOT NULL,
+  `total_ligne` decimal(10,2) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `detailscommande`
+--
+
+INSERT INTO `detailscommande` (`id`, `commande_id`, `produit_id`, `quantite`, `prix_unitaire`, `total_ligne`) VALUES
+(1, 1, 4, 2, 7.00, 14.00),
+(2, 1, 5, 3, 2.50, 7.50),
+(3, 1, 18, 4, 1.50, 6.00),
+(4, 1, 19, 18, 1.00, 18.00),
+(5, 2, 1, 1, 19.50, 19.50),
+(6, 2, 8, 1, 35.00, 35.00),
+(7, 2, 3, 1, 120.00, 120.00),
+(8, 2, 14, 2, 6.00, 12.00),
+(9, 3, 9, 2, 13.00, 26.00),
+(10, 3, 10, 1, 15.00, 15.00),
+(11, 3, 12, 2, 11.00, 22.00),
+(12, 3, 14, 4, 6.00, 24.00),
+(13, 4, 7, 2, 18.00, 36.00),
+(14, 4, 6, 4, 2.50, 10.00),
+(15, 4, 15, 2, 8.50, 17.00),
+(16, 4, 21, 3, 4.50, 13.50),
+(17, 4, 22, 1, 22.00, 22.00),
+(18, 5, 4, 2, 7.00, 14.00),
+(19, 5, 16, 3, 6.00, 18.00);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `disponibilites`
+--
+
+CREATE TABLE `disponibilites` (
+  `id` int(11) NOT NULL,
+  `epicier_id` int(11) NOT NULL,
+  `jour` enum('lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche') NOT NULL,
+  `heure_debut` time NOT NULL,
+  `heure_fin` time NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `disponibilites`
+--
+
+INSERT INTO `disponibilites` (`id`, `epicier_id`, `jour`, `heure_debut`, `heure_fin`) VALUES
+(1, 1, 'lundi', '08:00:00', '22:00:00'),
+(2, 1, 'mardi', '08:00:00', '22:00:00'),
+(3, 1, 'mercredi', '08:00:00', '22:00:00'),
+(4, 1, 'jeudi', '08:00:00', '22:00:00'),
+(5, 1, 'vendredi', '08:00:00', '22:00:00'),
+(6, 1, 'samedi', '08:00:00', '22:00:00'),
+(7, 1, 'dimanche', '09:00:00', '14:00:00'),
+(8, 2, 'lundi', '08:00:00', '22:00:00'),
+(9, 2, 'mardi', '08:00:00', '22:00:00'),
+(10, 2, 'mercredi', '08:00:00', '22:00:00'),
+(11, 2, 'jeudi', '08:00:00', '22:00:00'),
+(12, 2, 'vendredi', '08:00:00', '22:00:00'),
+(13, 2, 'samedi', '08:00:00', '22:00:00'),
+(14, 2, 'dimanche', '09:00:00', '14:00:00'),
+(15, 3, 'lundi', '08:00:00', '22:00:00'),
+(16, 3, 'mardi', '08:00:00', '22:00:00'),
+(17, 3, 'mercredi', '08:00:00', '22:00:00'),
+(18, 3, 'jeudi', '08:00:00', '22:00:00'),
+(19, 3, 'vendredi', '08:00:00', '22:00:00'),
+(20, 3, 'samedi', '08:00:00', '22:00:00'),
+(21, 3, 'dimanche', '09:00:00', '14:00:00'),
+(22, 4, 'lundi', '08:00:00', '22:00:00'),
+(23, 4, 'mardi', '08:00:00', '22:00:00'),
+(24, 4, 'mercredi', '08:00:00', '22:00:00'),
+(25, 4, 'jeudi', '08:00:00', '22:00:00'),
+(26, 4, 'vendredi', '08:00:00', '22:00:00'),
+(27, 4, 'samedi', '08:00:00', '22:00:00'),
+(28, 4, 'dimanche', '09:00:00', '14:00:00'),
+(29, 5, 'lundi', '08:00:00', '22:00:00'),
+(30, 5, 'mardi', '08:00:00', '22:00:00'),
+(31, 5, 'mercredi', '08:00:00', '22:00:00'),
+(32, 5, 'jeudi', '08:00:00', '22:00:00'),
+(33, 5, 'vendredi', '08:00:00', '22:00:00'),
+(34, 5, 'samedi', '08:00:00', '22:00:00'),
+(35, 5, 'dimanche', '09:00:00', '14:00:00'),
+(36, 6, 'lundi', '08:00:00', '22:00:00'),
+(37, 6, 'mardi', '08:00:00', '22:00:00'),
+(38, 6, 'mercredi', '08:00:00', '22:00:00'),
+(39, 6, 'jeudi', '08:00:00', '22:00:00'),
+(40, 6, 'vendredi', '08:00:00', '22:00:00'),
+(41, 6, 'samedi', '08:00:00', '22:00:00'),
+(42, 6, 'dimanche', '09:00:00', '14:00:00'),
+(43, 7, 'lundi', '08:00:00', '22:00:00'),
+(44, 7, 'mardi', '08:00:00', '22:00:00'),
+(45, 7, 'mercredi', '08:00:00', '22:00:00'),
+(46, 7, 'jeudi', '08:00:00', '22:00:00'),
+(47, 7, 'vendredi', '08:00:00', '22:00:00'),
+(48, 7, 'samedi', '08:00:00', '22:00:00'),
+(49, 7, 'dimanche', '09:00:00', '14:00:00'),
+(50, 8, 'lundi', '08:00:00', '22:00:00'),
+(51, 8, 'mardi', '08:00:00', '22:00:00'),
+(52, 8, 'mercredi', '08:00:00', '22:00:00'),
+(53, 8, 'jeudi', '08:00:00', '22:00:00'),
+(54, 8, 'vendredi', '08:00:00', '22:00:00'),
+(55, 8, 'samedi', '08:00:00', '22:00:00'),
+(56, 8, 'dimanche', '09:00:00', '14:00:00'),
+(57, 9, 'lundi', '08:00:00', '22:00:00'),
+(58, 9, 'mardi', '08:00:00', '22:00:00'),
+(59, 9, 'mercredi', '08:00:00', '22:00:00'),
+(60, 9, 'jeudi', '08:00:00', '22:00:00'),
+(61, 9, 'vendredi', '08:00:00', '22:00:00'),
+(62, 9, 'samedi', '08:00:00', '22:00:00'),
+(63, 9, 'dimanche', '09:00:00', '14:00:00'),
+(64, 10, 'lundi', '08:00:00', '22:00:00'),
+(65, 10, 'mardi', '08:00:00', '22:00:00'),
+(66, 10, 'mercredi', '08:00:00', '22:00:00'),
+(67, 10, 'jeudi', '08:00:00', '22:00:00'),
+(68, 10, 'vendredi', '08:00:00', '22:00:00'),
+(69, 10, 'samedi', '08:00:00', '22:00:00'),
+(70, 10, 'dimanche', '09:00:00', '14:00:00'),
+(71, 11, 'lundi', '08:00:00', '22:00:00'),
+(72, 11, 'mardi', '08:00:00', '22:00:00'),
+(73, 11, 'mercredi', '08:00:00', '22:00:00'),
+(74, 11, 'jeudi', '08:00:00', '22:00:00'),
+(75, 11, 'vendredi', '08:00:00', '22:00:00'),
+(76, 11, 'samedi', '08:00:00', '22:00:00'),
+(77, 11, 'dimanche', '09:00:00', '14:00:00');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `epiciers`
+--
+
+CREATE TABLE `epiciers` (
+  `id` int(11) NOT NULL,
+  `utilisateur_id` int(11) NOT NULL,
+  `nom_boutique` varchar(200) NOT NULL,
+  `adresse` varchar(255) NOT NULL,
+  `telephone` varchar(20) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `date_creation` datetime NOT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
+  `rating` decimal(2,1) DEFAULT 0.0,
+  `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE','COMPLETE') NOT NULL DEFAULT 'EN_ATTENTE',
+  `latitude` decimal(10,7) DEFAULT NULL,
+  `longitude` decimal(10,7) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `epiciers`
+--
+
+INSERT INTO `epiciers` (`id`, `utilisateur_id`, `nom_boutique`, `adresse`, `telephone`, `description`, `is_active`, `date_creation`, `image_url`, `rating`, `statut_inscription`, `latitude`, `longitude`) VALUES
+(1, 3, 'Epicerie de sara', 'Adresse à configurer', '677777777', 'Votre Hanut de confiance : lait frais, pain chaud, sucre et produits de base.', 1, '2026-03-08 23:51:27', 'uploads/Moul-hanoute-epiciers.jpg', 4.0, 'COMPLETE', NULL, NULL),
+(2, 5, 'Epicerie de ali', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 09:55:52', 'uploads/Moul-hanoute-epiciers.jpg', 5.0, 'COMPLETE', NULL, NULL),
+(3, 6, 'Épicerie Fleurie', '12 Rue de la Liberté, Casablanca', '0522345678', 'Produits frais et locaux, arrivages quotidiens.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 4.5, 'COMPLETE', NULL, NULL),
+(4, 7, 'Le Petit Marché', '45 Avenue FAR, Rabat', '0537112233', 'Spécialités régionales et épices fines.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(5, 8, 'Hanut Marrakech', '7 bis Rue Ibn Batouta, Marrakech', '0524112233', 'Tout pour la maison, livraison rapide dans le quartier.', 1, '2026-03-09 14:23:43', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(6, 9, 'Épicerie Ahmed', 'Rue de la Liberté, Tunis', '0555112233', 'Produits frais du terroir et épices fines.', 1, '2026-03-09 14:34:37', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(7, 10, 'Hanut Sami', 'Avenue Habib Bourguiba, Sfax', '0555445566', 'Votre Hanut de quartier ouvert tard le soir.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(8, 11, 'Chez Leila', 'Route de la Plage, Hammamet', '0555778899', 'Fruits de mer et alimentation générale.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(9, 12, 'Karim Market', 'Boulevard de l\'Environnement, Sousse', '0555001122', 'Le meilleur couscous et produits locaux.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 3.0, 'COMPLETE', NULL, NULL),
+(10, 13, 'Mondher Express', 'Cité des Jeunes, Bizerte', '0555334455', 'Rapide, efficace et toujours avec le sourire.', 1, '2026-03-09 14:34:38', 'uploads/Moul-hanoute-epiciers.jpg', 0.0, 'COMPLETE', NULL, NULL),
+(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 19:54:35', 'uploads/Moul-hanoute-epiciers.jpg', 2.5, 'COMPLETE', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(11) NOT NULL,
+  `message` varchar(500) NOT NULL,
+  `date_envoi` date NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `lue` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `message`, `date_envoi`, `client_id`, `lue`) VALUES
+(1, 'Votre commande #2 a été livrée. Merci de votre confiance !', '2026-03-08', 2, 1),
+(2, 'Votre commande #1 est en préparation.', '2026-03-09', 2, 0),
+(3, 'Votre commande #4 est prête à être récupérée.', '2026-03-06', 2, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `produits` (catalogue global : infos produit uniquement)
+--
+
+CREATE TABLE `produits` (
+  `id` int(11) NOT NULL,
+  `nom` varchar(200) NOT NULL,
+  `description` text DEFAULT NULL,
+  `categorie_id` int(11) NOT NULL,
+  `image_principale` varchar(500) DEFAULT NULL,
+  `date_ajout` timestamp NOT NULL DEFAULT current_timestamp(),
+  `date_modif` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Structure de la table `epicier_produits` (table associative épicier / produit : prix, rupture_stock, is_active)
+--
+
+CREATE TABLE `epicier_produits` (
+  `epicier_id` int(11) NOT NULL,
+  `produit_id` int(11) NOT NULL,
+  `prix` decimal(10,2) NOT NULL,
+  `rupture_stock` tinyint(1) NOT NULL DEFAULT 0,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `date_ajout` timestamp NOT NULL DEFAULT current_timestamp(),
+  `date_modif` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `produits` (catalogue global : sans epicier_id, prix, is_active, rupture_stock)
+--
+
+INSERT INTO `produits` (`id`, `nom`, `description`, `categorie_id`, `image_principale`, `date_ajout`, `date_modif`) VALUES
+
+(1, 'Huile Lesieur 1L', 'Huile de table raffinée Lesieur.', 1, 'uploads/huiles/lesieur.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(2, 'Huile d\'Olive Oued Souss 1L', 'Huile d\'olive extra vierge du Maroc.', 1, 'uploads/huiles/oued_souss.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(3, 'Huile Argan Alimentaire 250ml', 'Huile d\'argan pure et certifiée.', 1, 'uploads/huiles/argan.jpg', '2026-03-10 21:47:44', '2026-03-12 15:25:18'),
+(4, 'Lait Centrale 1L', 'Lait frais pasteurisé Centrale Danone.', 5, 'uploads/laitiers/centrale.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
+(5, 'Yaourt Jaouda Fraise', 'Yaourt crémeux aux morceaux de fruits.', 5, 'uploads/laitiers/jaouda_fraise.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
+(6, 'Raibi Jamila', 'Boisson lactée fermentée iconique.', 5, 'uploads/laitiers/raibi.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
+(7, 'Fromage La Vache Qui Rit (16p)', 'Portions de fromage fondu.', 5, 'uploads/laitiers/vache_qui_rit.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
+(8, 'Farine Mouna 5kg', 'Farine de blé tendre de luxe.', 3, 'uploads/farines/mouna.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(9, 'Semoule Fine Al Ittihad 1kg', 'Semoule de blé dur pour couscous.', 3, 'uploads/farines/semoule.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(10, 'Couscous Dari 1kg', 'Couscous marocain précuit.', 3, 'uploads/farines/dari.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(11, 'Thon Mario à l\'huile', 'Morceaux de thon de qualité.', 4, 'uploads/conserves/mario.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(12, 'Tomate Aïcha 400g', 'Double concentré de tomate Aïcha.', 4, 'uploads/conserves/aicha.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(13, 'Confiture Aïcha Fraise', 'Confiture de fraises extra.', 4, 'uploads/conserves/confiture.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(14, 'Eau Sidi Ali 1.5L', 'Eau minérale naturelle Sidi Ali.', 7, 'uploads/boissons/sidi_ali.jpg', '2026-03-10 21:47:44', '2026-03-12 03:42:56'),
+(15, 'Eau Gazeuse Oulmès 1L', 'Eau minérale gazeuse naturelle.', 7, 'uploads/boissons/oulmes.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(16, 'Poms', 'Boisson rafraîchissante à la pomme.', 7, 'uploads/boissons/poms.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(17, 'Thé Sultan (Grain Vert)', 'Thé vert de qualité supérieure.', 7, 'uploads/boissons/the_sultan.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(18, 'Pain Batbout (Unité)', 'Petit pain traditionnel marocain.', 9, 'uploads/boulangerie/batbout.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
+(19, 'Biscuits Henry\'s', 'Biscuits secs traditionnels.', 2, 'uploads/confiserie/henrys.jpg', '2026-03-10 21:47:44', '2026-03-12 03:31:06'),
+(20, 'Merendina Classic', 'Génoise enrobée de chocolat.', 2, 'uploads/confiserie/merendina.jpg', '2026-03-10 21:47:44', '2026-03-12 02:13:25'),
+(21, 'Savon El Kef', 'Savon de marseille traditionnel.', 6, 'uploads/hygiene/elkef.jpg', '2026-03-10 21:47:44', '2026-03-12 01:49:45'),
+(22, 'Détergent Magix 1kg', 'Lessive poudre pour machine.', 6, 'uploads/hygiene/magix.jpg', '2026-03-10 21:47:44', '2026-03-12 05:13:01'),
+(23, 'Ras el Hanout 50g', 'Mélange d\'épices marocain.', 8, 'uploads/epices/ras_hanout.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:58'),
+(24, 'Kamoun (Cumin) 50g', 'Cumin moulu pur.', 8, 'uploads/epices/cumin.jpg', '2026-03-10 21:47:44', '2026-03-12 14:53:38'),
+(25, 'Msemen nature', 'Crêpe feuilletée marocaine.', 9, 'uploads/boulangerie/Msemen_nature.jpg', '2026-03-10 21:47:45', '2026-03-12 01:20:23'),
+(26, 'Baghrir (Unité)', 'Crêpe mille trous.', 9, 'uploads/boulangerie/Baghrir_Unite.jpg', '2026-03-10 21:47:45', '2026-03-12 03:28:08'),
+(27, 'Ain Saiss 15L - Eau minérale', 'Eau minérale naturelle Ain Saiss 15L.', 7, 'uploads/Boissons/Ain_Saiss_15L_-_Eau_minerale-1.webp', '2026-03-12 01:14:39', '2026-03-12 15:27:01'),
+(28, 'Penne 500g AL-ITKANE', 'Pâtes penne 500g.', 11, 'uploads/Pates_et_riz/Penne_500g_AL-ITKANE.webp', '2026-03-12 01:14:39', '2026-03-12 01:49:25'),
+(29, 'Arroz cigala long', 'Riz long grain.', 11, 'uploads/Pates_et_riz/Arroz_cigala_long.png', '2026-03-12 01:14:39', '2026-03-12 15:20:51'),
+(30, 'Pâtes courtes 500g Dalia', 'Pâtes courtes 500g.', 11, 'uploads/Pates_et_riz/Pates_courtes_500g-Dalia.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25'),
+(31, 'Farfalle 500g Kenz', 'Pâtes farfalle 500g.', 11, 'uploads/Pates_et_riz/farfalle_500g_kenz.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25'),
+(32, 'Eau Minérale Ain Soltane 5L', NULL, 7, 'uploads/Boissons/Eau_Minerale_Ain_Soltane_5L.jpg', '2026-03-12 01:53:39', '2026-03-12 01:53:39'),
+(33, 'Produit2', NULL, 13, 'uploads/Sanae_Cat/Produit.jpg', '2026-03-12 02:49:04', '2026-03-12 05:18:33'),
+(34, 'Produit1', NULL, 13, 'uploads/Sanae_Cat/Produit.png', '2026-03-12 02:49:09', '2026-03-12 05:18:21'),
+(35, 'L\'eau', NULL, 11, 'uploads/Pates_et_riz/temp_1773286916421_mhqze1x9.png', '2026-03-12 03:42:16', '2026-03-12 03:42:36');
+
+--
+-- Déchargement des données de la table `epicier_produits` (lien épicier / produit : prix, rupture_stock, is_active)
+--
+
+INSERT INTO `epicier_produits` (`epicier_id`, `produit_id`, `prix`, `rupture_stock`, `is_active`) VALUES
+(1, 1, 19.50, 0, 1),
+(1, 2, 85.00, 0, 1),
+(1, 3, 120.00, 0, 1),
+(1, 4, 7.00, 0, 1),
+(1, 5, 2.50, 0, 1),
+(1, 6, 2.50, 0, 1),
+(1, 7, 18.00, 0, 1),
+(1, 8, 35.00, 0, 1),
+(1, 9, 13.00, 0, 1),
+(1, 10, 15.00, 0, 1),
+(1, 11, 15.00, 0, 1),
+(1, 12, 11.00, 0, 1),
+(1, 13, 16.00, 0, 1),
+(1, 14, 6.00, 0, 1),
+(1, 15, 8.50, 0, 1),
+(1, 16, 6.00, 0, 1),
+(1, 17, 14.00, 0, 1),
+(1, 18, 1.50, 0, 1),
+(1, 19, 1.00, 0, 1),
+(1, 20, 2.00, 0, 1),
+(1, 21, 4.50, 0, 0),
+(1, 22, 22.00, 0, 1),
+(1, 23, 15.00, 0, 0),
+(1, 24, 10.00, 0, 1),
+(1, 25, 2.00, 0, 1),
+(1, 26, 1.50, 0, 1),
+(1, 27, 12.00, 0, 1),
+(1, 28, 15.00, 0, 1),
+(1, 29, 22.00, 0, 1),
+(1, 30, 8.00, 0, 1),
+(1, 31, 9.00, 0, 1),
+(1, 32, 14.00, 0, 1),
+(2, 1, 19.50, 0, 1),
+(2, 2, 85.00, 0, 1),
+(2, 3, 120.00, 0, 1),
+(2, 4, 7.00, 0, 1),
+(2, 5, 2.50, 0, 1),
+(2, 6, 2.50, 0, 1),
+(2, 7, 18.00, 0, 1),
+(2, 8, 35.00, 0, 1),
+(2, 9, 13.00, 0, 1),
+(2, 10, 15.00, 0, 1),
+(2, 11, 15.00, 0, 1),
+(2, 12, 11.00, 0, 1),
+(2, 13, 16.00, 0, 1),
+(2, 14, 6.00, 0, 1),
+(2, 15, 8.50, 0, 1),
+(2, 16, 6.00, 0, 1),
+(2, 17, 14.00, 0, 1),
+(2, 18, 1.50, 0, 1),
+(2, 19, 1.00, 0, 1),
+(2, 20, 2.00, 0, 1),
+(2, 21, 4.50, 0, 1),
+(2, 22, 22.00, 0, 1),
+(2, 23, 15.00, 0, 1),
+(2, 24, 10.00, 0, 1),
+(2, 25, 2.00, 0, 1),
+(2, 26, 1.50, 0, 1),
+(2, 33, 22.01, 0, 1),
+(2, 34, 22.00, 0, 0),
+(3, 1, 19.50, 0, 1),
+(3, 2, 85.00, 0, 1),
+(3, 3, 120.00, 0, 1),
+(3, 4, 7.00, 0, 1),
+(3, 5, 2.50, 0, 1),
+(3, 6, 2.50, 0, 1),
+(3, 7, 18.00, 0, 1),
+(3, 8, 35.00, 0, 1),
+(3, 9, 13.00, 0, 1),
+(3, 10, 15.00, 0, 1),
+(3, 11, 15.00, 0, 1),
+(3, 12, 11.00, 0, 1),
+(3, 13, 16.00, 0, 1),
+(3, 14, 6.00, 0, 1),
+(3, 15, 8.50, 0, 1),
+(3, 16, 6.00, 0, 1),
+(3, 17, 14.00, 0, 1),
+(3, 18, 1.50, 0, 1),
+(3, 19, 1.00, 0, 1),
+(3, 20, 2.00, 0, 1),
+(3, 21, 4.50, 0, 1),
+(3, 22, 22.00, 0, 1),
+(3, 23, 15.00, 0, 1),
+(3, 24, 10.00, 0, 1),
+(3, 25, 2.00, 0, 1),
+(3, 26, 1.50, 0, 1),
+(4, 1, 19.50, 0, 1),
+(4, 2, 85.00, 0, 1),
+(4, 3, 120.00, 0, 1),
+(4, 4, 7.00, 0, 1),
+(4, 5, 2.50, 0, 1),
+(4, 6, 2.50, 0, 1),
+(4, 7, 18.00, 0, 1),
+(4, 8, 35.00, 0, 1),
+(4, 9, 13.00, 0, 1),
+(4, 10, 15.00, 0, 1),
+(4, 11, 15.00, 0, 1),
+(4, 12, 11.00, 0, 1),
+(4, 13, 16.00, 0, 1),
+(4, 14, 6.00, 0, 1),
+(4, 15, 8.50, 0, 1),
+(4, 16, 6.00, 0, 1),
+(4, 17, 14.00, 0, 1),
+(4, 18, 1.50, 0, 1),
+(4, 19, 1.00, 0, 1),
+(4, 20, 2.00, 0, 1),
+(4, 21, 4.50, 0, 1),
+(4, 22, 22.00, 0, 1),
+(4, 23, 15.00, 0, 1),
+(4, 24, 10.00, 0, 1),
+(4, 25, 2.00, 0, 1),
+(4, 26, 1.50, 0, 1),
+(5, 1, 19.50, 0, 1),
+(5, 2, 85.00, 0, 1),
+(5, 3, 120.00, 0, 1),
+(5, 4, 7.00, 0, 1),
+(5, 5, 2.50, 0, 1),
+(5, 6, 2.50, 0, 1),
+(5, 7, 18.00, 0, 1),
+(5, 8, 35.00, 0, 1),
+(5, 9, 13.00, 0, 1),
+(5, 10, 15.00, 0, 1),
+(5, 11, 15.00, 0, 1),
+(5, 12, 11.00, 0, 1),
+(5, 13, 16.00, 0, 1),
+(5, 14, 6.00, 0, 1),
+(5, 15, 8.50, 0, 1),
+(5, 16, 6.00, 0, 1),
+(5, 17, 14.00, 0, 1),
+(5, 18, 1.50, 0, 1),
+(5, 19, 1.00, 0, 1),
+(5, 20, 2.00, 0, 1),
+(5, 21, 4.50, 0, 1),
+(5, 22, 22.00, 0, 1),
+(5, 23, 15.00, 0, 1),
+(5, 24, 10.00, 0, 1),
+(5, 25, 2.00, 0, 1),
+(5, 26, 1.50, 0, 1),
+(6, 1, 19.50, 0, 1),
+(6, 2, 85.00, 0, 1),
+(6, 3, 120.00, 0, 1),
+(6, 4, 7.00, 0, 1),
+(6, 5, 2.50, 0, 1),
+(6, 6, 2.50, 0, 1),
+(6, 7, 18.00, 0, 1),
+(6, 8, 35.00, 0, 1),
+(6, 9, 13.00, 0, 1),
+(6, 10, 15.00, 0, 1),
+(6, 11, 15.00, 0, 1),
+(6, 12, 11.00, 0, 1),
+(6, 13, 16.00, 0, 1),
+(6, 14, 6.00, 0, 1),
+(6, 15, 8.50, 0, 0),
+(6, 16, 6.00, 0, 1),
+(6, 17, 14.00, 0, 1),
+(6, 18, 1.50, 0, 1),
+(6, 19, 1.00, 0, 1),
+(6, 20, 2.00, 0, 1),
+(6, 21, 4.50, 0, 1),
+(6, 22, 22.00, 0, 1),
+(6, 23, 15.00, 0, 1),
+(6, 24, 10.00, 0, 1),
+(6, 25, 2.00, 0, 1),
+(6, 26, 1.50, 0, 1),
+(6, 33, 22.01, 0, 1),
+(6, 35, 2.00, 0, 0),
+(7, 1, 19.50, 0, 1),
+(7, 2, 85.00, 0, 1),
+(7, 3, 120.00, 0, 1),
+(7, 4, 7.00, 0, 1),
+(7, 5, 2.50, 0, 1),
+(7, 6, 2.50, 0, 1),
+(7, 7, 18.00, 0, 1),
+(7, 8, 35.00, 0, 1),
+(7, 9, 13.00, 0, 1),
+(7, 10, 15.00, 0, 1),
+(7, 11, 15.00, 0, 1),
+(7, 12, 11.00, 0, 1),
+(7, 13, 16.00, 0, 1),
+(7, 14, 6.00, 0, 1),
+(7, 15, 8.50, 0, 0),
+(7, 16, 6.00, 0, 0),
+(7, 17, 14.00, 0, 1),
+(7, 18, 1.50, 0, 1),
+(7, 19, 1.00, 0, 1),
+(7, 20, 2.00, 0, 1),
+(7, 21, 4.50, 0, 1),
+(7, 22, 22.00, 0, 1),
+(7, 23, 15.00, 0, 1),
+(7, 24, 10.00, 0, 1),
+(7, 25, 2.00, 0, 1),
+(7, 26, 1.50, 0, 1),
+(8, 1, 19.50, 0, 1),
+(8, 2, 85.00, 0, 1),
+(8, 3, 120.00, 0, 1),
+(8, 4, 7.00, 0, 1),
+(8, 5, 2.50, 0, 1),
+(8, 6, 2.50, 0, 1),
+(8, 7, 18.00, 0, 1),
+(8, 8, 35.00, 0, 1),
+(8, 9, 13.00, 0, 1),
+(8, 10, 15.00, 0, 1),
+(8, 11, 15.00, 0, 1),
+(8, 12, 11.00, 0, 1),
+(8, 13, 16.00, 0, 1),
+(8, 14, 6.00, 0, 1),
+(8, 15, 8.50, 0, 1),
+(8, 16, 6.00, 0, 1),
+(8, 17, 14.00, 0, 1),
+(8, 18, 1.50, 0, 1),
+(8, 19, 1.00, 0, 1),
+(8, 20, 2.00, 0, 1),
+(8, 21, 4.50, 0, 1),
+(8, 22, 22.00, 0, 1),
+(8, 23, 15.00, 0, 1),
+(8, 24, 10.00, 0, 1),
+(8, 25, 2.00, 0, 1),
+(8, 26, 1.50, 0, 1),
+(8, 33, 22.01, 0, 1),
+(9, 1, 19.50, 0, 1),
+(9, 2, 85.00, 0, 1),
+(9, 3, 120.00, 0, 1),
+(9, 4, 7.00, 0, 1),
+(9, 5, 2.50, 0, 1),
+(9, 6, 2.50, 0, 1),
+(9, 7, 18.00, 0, 1),
+(9, 8, 35.00, 0, 1),
+(9, 9, 13.00, 0, 1),
+(9, 10, 15.00, 0, 1),
+(9, 11, 15.00, 0, 1),
+(9, 12, 11.00, 0, 1),
+(9, 13, 16.00, 0, 1),
+(9, 14, 6.00, 0, 1),
+(9, 15, 8.50, 0, 1),
+(9, 16, 6.00, 0, 1),
+(9, 17, 14.00, 0, 1),
+(9, 18, 1.50, 0, 1),
+(9, 19, 1.00, 0, 1),
+(9, 20, 2.00, 0, 1),
+(9, 21, 4.50, 0, 1),
+(9, 22, 22.00, 0, 1),
+(9, 23, 15.00, 0, 1),
+(9, 24, 10.00, 0, 1),
+(9, 25, 2.00, 0, 1),
+(9, 26, 1.50, 0, 1),
+(10, 1, 19.50, 0, 1),
+(10, 2, 85.00, 0, 1),
+(10, 3, 120.00, 0, 1),
+(10, 4, 7.00, 0, 1),
+(10, 5, 2.50, 0, 1),
+(10, 6, 2.50, 0, 1),
+(10, 7, 18.00, 0, 1),
+(10, 8, 35.00, 0, 1),
+(10, 9, 13.00, 0, 1),
+(10, 10, 15.00, 0, 1),
+(10, 11, 15.00, 0, 1),
+(10, 12, 11.00, 0, 1),
+(10, 13, 16.00, 0, 1),
+(10, 14, 6.00, 0, 1),
+(10, 15, 8.50, 0, 1),
+(10, 16, 6.00, 0, 1),
+(10, 17, 14.00, 0, 1),
+(10, 18, 1.50, 0, 1),
+(10, 19, 1.00, 0, 1),
+(10, 20, 2.00, 0, 1),
+(10, 21, 4.50, 0, 1),
+(10, 22, 22.00, 0, 1),
+(10, 23, 15.00, 0, 1),
+(10, 24, 10.00, 0, 1),
+(10, 25, 2.00, 0, 1),
+(10, 26, 1.50, 0, 1),
+(11, 1, 19.50, 0, 1),
+(11, 2, 85.00, 0, 1),
+(11, 3, 120.00, 0, 1),
+(11, 4, 7.00, 0, 1),
+(11, 5, 2.50, 0, 1),
+(11, 6, 2.50, 0, 1),
+(11, 7, 18.00, 0, 1),
+(11, 8, 35.00, 0, 1),
+(11, 9, 13.00, 0, 1),
+(11, 10, 15.00, 0, 1),
+(11, 11, 15.00, 0, 1),
+(11, 12, 11.00, 0, 1),
+(11, 13, 16.00, 0, 1),
+(11, 14, 6.00, 0, 1),
+(11, 15, 8.50, 0, 1),
+(11, 16, 6.00, 0, 1),
+(11, 17, 14.00, 0, 1),
+(11, 18, 1.50, 0, 1),
+(11, 19, 1.00, 0, 1),
+(11, 20, 2.00, 0, 1),
+(11, 21, 4.50, 0, 1),
+(11, 22, 22.00, 0, 1),
+(11, 23, 15.00, 0, 1),
+(11, 24, 10.00, 0, 1),
+(11, 25, 2.00, 0, 1),
+(11, 26, 1.50, 0, 1),
+(11, 33, 22.01, 0, 1),
+(11, 34, 22.00, 0, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `reclamations`
+--
+
+CREATE TABLE `reclamations` (
+  `id` int(11) NOT NULL,
+  `description` text NOT NULL,
+  `statut` enum('nonResolue','resolue') NOT NULL DEFAULT 'nonResolue',
+  `client_id` int(11) NOT NULL,
+  `commande_id` int(11) DEFAULT NULL,
+  `date_creation` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `reclamations`
+--
+
+INSERT INTO `reclamations` (`id`, `description`, `statut`, `client_id`, `commande_id`, `date_creation`) VALUES
+(1, 'Un produit de la commande #3 était légèrement abîmé. Demande d\'échange.', 'resolue', 2, 3, '2026-03-07'),
+(2, 'Retard de livraison sur la commande #2.', 'nonResolue', 2, 2, '2026-03-08');
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `utilisateurs`
+--
+
+CREATE TABLE `utilisateurs` (
+  `id` int(11) NOT NULL,
+  `nom` varchar(100) NOT NULL,
+  `prenom` varchar(100) NOT NULL,
+  `email` varchar(150) NOT NULL,
+  `mdp` varchar(255) NOT NULL,
+  `id_google` varchar(100) DEFAULT NULL,
+  `id_facebook` varchar(100) DEFAULT NULL,
+  `id_instagram` varchar(100) DEFAULT NULL,
+  `role` enum('CLIENT','ADMIN','EPICIER') NOT NULL DEFAULT 'CLIENT',
+  `doc_verf` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `date_creation` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `utilisateurs`
+--
+
+INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `id_facebook`, `id_instagram`, `role`, `doc_verf`, `is_active`, `date_creation`) VALUES
+(1, 'Admin', 'Application', 'admin@hanut.com', '$2b$10$wll4z6Kmk3d7MASYdI6uX.All3XmUjEea0EWgNZK.IAwiNxeZq/m.', NULL, NULL, NULL, 'ADMIN', NULL, 1, '2026-03-12 01:34:10'),
+(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57'),
+(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26'),
+(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51'),
+(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42'),
+(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43'),
+(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43'),
+(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37'),
+(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37'),
+(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38'),
+(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38'),
+(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38'),
+(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'IMG-20260308-WA0037.', 1, '2026-03-09 19:54:34');
+
+--
+-- Index pour les tables déchargées
+--
+
+--
+-- Index pour la table `avis`
+--
+ALTER TABLE `avis`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `client_id` (`client_id`),
+  ADD KEY `epicier_id` (`epicier_id`),
+  ADD KEY `commande_id` (`commande_id`);
+
+--
+-- Index pour la table `categories`
+--
+ALTER TABLE `categories`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Index pour la table `commandes`
+--
+ALTER TABLE `commandes`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `client_id` (`client_id`),
+  ADD KEY `epicier_id` (`epicier_id`);
+
+--
+-- Index pour la table `detailscommande`
+--
+ALTER TABLE `detailscommande`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `commande_id` (`commande_id`),
+  ADD KEY `produit_id` (`produit_id`);
+
+--
+-- Index pour la table `disponibilites`
+--
+ALTER TABLE `disponibilites`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `epicier_id` (`epicier_id`);
+
+--
+-- Index pour la table `epiciers`
+--
+ALTER TABLE `epiciers`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `utilisateur_id` (`utilisateur_id`);
+
+--
+-- Index pour la table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `client_id` (`client_id`);
+
+--
+-- Index pour la table `produits`
+--
+ALTER TABLE `produits`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `categorie_id` (`categorie_id`);
+
+--
+-- Index pour la table `epicier_produits`
+--
+ALTER TABLE `epicier_produits`
+  ADD PRIMARY KEY (`epicier_id`,`produit_id`),
+  ADD KEY `produit_id` (`produit_id`);
+
+--
+-- Index pour la table `reclamations`
+--
+ALTER TABLE `reclamations`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `client_id` (`client_id`),
+  ADD KEY `commande_id` (`commande_id`);
+
+--
+-- Index pour la table `utilisateurs`
+--
+ALTER TABLE `utilisateurs`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD UNIQUE KEY `email_2` (`email`),
+  ADD UNIQUE KEY `email_3` (`email`),
+  ADD UNIQUE KEY `email_4` (`email`),
+  ADD UNIQUE KEY `email_5` (`email`),
+  ADD UNIQUE KEY `email_6` (`email`),
+  ADD UNIQUE KEY `email_7` (`email`),
+  ADD UNIQUE KEY `email_8` (`email`),
+  ADD UNIQUE KEY `email_9` (`email`),
+  ADD UNIQUE KEY `email_10` (`email`),
+  ADD UNIQUE KEY `email_11` (`email`),
+  ADD UNIQUE KEY `email_12` (`email`),
+  ADD UNIQUE KEY `email_13` (`email`),
+  ADD UNIQUE KEY `email_14` (`email`),
+  ADD UNIQUE KEY `email_15` (`email`),
+  ADD UNIQUE KEY `email_16` (`email`),
+  ADD UNIQUE KEY `email_17` (`email`),
+  ADD UNIQUE KEY `email_18` (`email`),
+  ADD UNIQUE KEY `email_19` (`email`),
+  ADD UNIQUE KEY `email_20` (`email`),
+  ADD UNIQUE KEY `email_21` (`email`),
+  ADD UNIQUE KEY `email_22` (`email`),
+  ADD UNIQUE KEY `email_23` (`email`),
+  ADD UNIQUE KEY `email_24` (`email`),
+  ADD UNIQUE KEY `email_25` (`email`),
+  ADD UNIQUE KEY `email_26` (`email`),
+  ADD UNIQUE KEY `email_27` (`email`),
+  ADD UNIQUE KEY `email_28` (`email`),
+  ADD UNIQUE KEY `email_29` (`email`),
+  ADD UNIQUE KEY `email_30` (`email`),
+  ADD UNIQUE KEY `email_31` (`email`),
+  ADD UNIQUE KEY `email_32` (`email`),
+  ADD UNIQUE KEY `email_33` (`email`),
+  ADD UNIQUE KEY `email_34` (`email`),
+  ADD UNIQUE KEY `email_35` (`email`),
+  ADD UNIQUE KEY `email_36` (`email`),
+  ADD UNIQUE KEY `email_37` (`email`),
+  ADD UNIQUE KEY `email_38` (`email`),
+  ADD UNIQUE KEY `email_39` (`email`),
+  ADD UNIQUE KEY `email_40` (`email`),
+  ADD UNIQUE KEY `email_41` (`email`),
+  ADD UNIQUE KEY `email_42` (`email`),
+  ADD UNIQUE KEY `email_43` (`email`),
+  ADD UNIQUE KEY `email_44` (`email`),
+  ADD UNIQUE KEY `email_45` (`email`),
+  ADD UNIQUE KEY `email_46` (`email`),
+  ADD UNIQUE KEY `email_47` (`email`),
+  ADD UNIQUE KEY `email_48` (`email`),
+  ADD UNIQUE KEY `email_49` (`email`),
+  ADD UNIQUE KEY `email_50` (`email`),
+  ADD UNIQUE KEY `email_51` (`email`),
+  ADD UNIQUE KEY `email_52` (`email`),
+  ADD UNIQUE KEY `email_53` (`email`),
+  ADD UNIQUE KEY `email_54` (`email`),
+  ADD UNIQUE KEY `email_55` (`email`),
+  ADD UNIQUE KEY `email_56` (`email`),
+  ADD UNIQUE KEY `email_57` (`email`),
+  ADD UNIQUE KEY `email_58` (`email`),
+  ADD UNIQUE KEY `email_59` (`email`),
+  ADD UNIQUE KEY `email_60` (`email`),
+  ADD UNIQUE KEY `email_61` (`email`),
+  ADD UNIQUE KEY `email_62` (`email`),
+  ADD UNIQUE KEY `email_63` (`email`);
+
+--
+-- AUTO_INCREMENT pour les tables déchargées
+--
+
+--
+-- AUTO_INCREMENT pour la table `avis`
+--
+ALTER TABLE `avis`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT pour la table `categories`
+--
+ALTER TABLE `categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT pour la table `commandes`
+--
+ALTER TABLE `commandes`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT pour la table `detailscommande`
+--
+ALTER TABLE `detailscommande`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT pour la table `disponibilites`
+--
+ALTER TABLE `disponibilites`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
+
+--
+-- AUTO_INCREMENT pour la table `epiciers`
+--
+ALTER TABLE `epiciers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT pour la table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT pour la table `produits`
+--
+ALTER TABLE `produits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+
+--
+-- AUTO_INCREMENT pour la table `reclamations`
+--
+ALTER TABLE `reclamations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT pour la table `utilisateurs`
+--
+ALTER TABLE `utilisateurs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+
+--
+-- Contraintes pour les tables déchargées
+--
+
+--
+-- Contraintes pour la table `avis`
+--
+ALTER TABLE `avis`
+  ADD CONSTRAINT `avis_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `utilisateurs` (`id`),
+  ADD CONSTRAINT `avis_ibfk_2` FOREIGN KEY (`epicier_id`) REFERENCES `epiciers` (`id`),
+  ADD CONSTRAINT `avis_ibfk_3` FOREIGN KEY (`commande_id`) REFERENCES `commandes` (`id`) ON DELETE SET NULL;
+
+--
+-- Contraintes pour la table `commandes`
+--
+ALTER TABLE `commandes`
+  ADD CONSTRAINT `commandes_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `utilisateurs` (`id`),
+  ADD CONSTRAINT `commandes_ibfk_2` FOREIGN KEY (`epicier_id`) REFERENCES `epiciers` (`id`);
+
+--
+-- Contraintes pour la table `detailscommande`
+--
+ALTER TABLE `detailscommande`
+  ADD CONSTRAINT `detailscommande_ibfk_1` FOREIGN KEY (`commande_id`) REFERENCES `commandes` (`id`),
+  ADD CONSTRAINT `detailscommande_ibfk_2` FOREIGN KEY (`produit_id`) REFERENCES `produits` (`id`);
+
+--
+-- Contraintes pour la table `disponibilites`
+--
+ALTER TABLE `disponibilites`
+  ADD CONSTRAINT `disponibilites_ibfk_1` FOREIGN KEY (`epicier_id`) REFERENCES `epiciers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Contraintes pour la table `epiciers`
+--
+ALTER TABLE `epiciers`
+  ADD CONSTRAINT `epiciers_ibfk_1` FOREIGN KEY (`utilisateur_id`) REFERENCES `utilisateurs` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Contraintes pour la table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `utilisateurs` (`id`);
+
+--
+-- Contraintes pour la table `produits`
+--
+ALTER TABLE `produits`
+  ADD CONSTRAINT `produits_ibfk_2` FOREIGN KEY (`categorie_id`) REFERENCES `categories` (`id`);
+
+--
+-- Contraintes pour la table `epicier_produits`
+--
+ALTER TABLE `epicier_produits`
+  ADD CONSTRAINT `epicier_produits_ibfk_1` FOREIGN KEY (`epicier_id`) REFERENCES `epiciers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `epicier_produits_ibfk_2` FOREIGN KEY (`produit_id`) REFERENCES `produits` (`id`) ON DELETE CASCADE;
+
+--
+-- Contraintes pour la table `reclamations`
+--
+ALTER TABLE `reclamations`
+  ADD CONSTRAINT `reclamations_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `utilisateurs` (`id`),
+  ADD CONSTRAINT `reclamations_ibfk_2` FOREIGN KEY (`commande_id`) REFERENCES `commandes` (`id`) ON DELETE SET NULL;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

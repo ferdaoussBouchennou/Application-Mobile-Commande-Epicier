@@ -47,6 +47,13 @@ dependencies:
   provider: ^6.1.5+1
   file_picker: ^10.3.10
   url_launcher: ^6.2.5
+  geolocator: ^14.0.2
+  geocoding: ^3.0.0
+  image_picker: ^1.2.1
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  font_awesome_flutter: ^10.7.0
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -105,7 +112,7 @@ flutter:
 # Configuration du Splash Screen
 # ================================
 flutter_native_splash:
-  color: "#FDF6F0"               # Fond beige chaud 
+  color: "#FDF6F0"               # Fond beige chaud
   image: assets/images/logo.png
   android: true
   ios: true

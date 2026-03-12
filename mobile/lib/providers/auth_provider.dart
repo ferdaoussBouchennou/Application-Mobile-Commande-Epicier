@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../data/services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -17,6 +19,9 @@ class AuthProvider with ChangeNotifier {
   Map<String, dynamic>? get store => _store;
   bool get isLoading => _isLoading;
 
+  String? get storeStatut => _store?['statut_inscription'];
+  bool get needsSetup => _user?['role'] == 'EPICIER' && storeStatut == 'ACCEPTE';
+
   AuthProvider() {
     _loadUserFromPrefs();
   }
@@ -24,9 +29,6 @@ class AuthProvider with ChangeNotifier {
   Future<void> _loadUserFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
-    
-    // Simplification : si on a un token, on considère être connecté. 
-    // Dans une vraie application, on ferait un appel /api/auth/me avec ce token.
     if (_token != null) {
       _isLoggedIn = true;
       notifyListeners();
@@ -57,12 +59,61 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> loginWithGoogle({Map<String, dynamic>? epicierData}) async {
+    _setLoading(true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        scopes: ['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        _setLoading(false);
+        return false; // Annulé par l'utilisateur
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        throw Exception("Erreur lors de la récupération du token Google");
+      }
+
+      // Prepare payload
+      Map<String, dynamic> payload = {
+        'idToken': idToken,
+      };
+
+      if (epicierData != null) {
+        payload.addAll(epicierData);
+      }
+
+      // Envoi du token au backend pour vérification et connexion/inscription
+      final response = await _apiService.post('/auth/google', payload);
+
+      _token = response['token'];
+      _user = response['user'];
+      _store = response['store'];
+      _isLoggedIn = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', _token!);
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
   Future<bool> registerClient(Map<String, dynamic> data) async {
     _setLoading(true);
     try {
       await _apiService.post('/auth/register/client', data);
       _setLoading(false);
-      return true; // Succès de l'inscription
+      return true;
     } catch (e) {
       _setLoading(false);
       rethrow;
@@ -74,10 +125,17 @@ class AuthProvider with ChangeNotifier {
     try {
       await _apiService.post('/auth/register/epicier', data);
       _setLoading(false);
-      return true; // Succès de l'inscription
+      return true;
     } catch (e) {
       _setLoading(false);
       rethrow;
+    }
+  }
+
+  void markSetupComplete() {
+    if (_store != null) {
+      _store!['statut_inscription'] = 'COMPLETE';
+      notifyListeners();
     }
   }
 

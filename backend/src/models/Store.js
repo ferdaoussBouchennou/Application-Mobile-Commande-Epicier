@@ -41,8 +41,16 @@ const Store = sequelize.define('Store', {
     type: DataTypes.DECIMAL(2, 1),
     defaultValue: 0.0,
   },
+  latitude: {
+    type: DataTypes.DECIMAL(10, 8),
+    allowNull: true,
+  },
+  longitude: {
+    type: DataTypes.DECIMAL(11, 8),
+    allowNull: true,
+  },
   statut_inscription: {
-    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
+    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE', 'COMPLETE'),
     allowNull: false,
     defaultValue: 'EN_ATTENTE',
   },
