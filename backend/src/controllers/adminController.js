@@ -5,6 +5,8 @@ const Store = require('../models/Store');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
+const Order = require('../models/Order');
+const Reclamation = require('../models/Reclamation');
 const { Op } = require('sequelize');
 
 function sanitizeName(str) {
@@ -497,5 +499,89 @@ exports.uploadProductImage = async (req, res) => {
   } catch (error) {
     console.error('Erreur uploadProductImage admin:', error);
     res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
+  }
+};
+
+// --- Gestion des commandes et litiges ---
+
+exports.getOrderStats = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const totalToday = await Order.count({
+      where: {
+        date_commande: { [Op.gte]: today }
+      }
+    });
+
+    const ongoingCount = await Order.count({
+      where: {
+        statut: { [Op.in]: ['reçue', 'prête'] }
+      }
+    });
+
+    const disputeCount = await Reclamation.count({
+      where: { statut: { [Op.in]: ['non resolut', 'en attente'] } }
+    });
+
+    res.json({
+      totalToday,
+      ongoing: ongoingCount,
+      disputes: disputeCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getRecentOrders = async (req, res) => {
+  try {
+    const orders = await Order.findAll({
+      limit: 10,
+      order: [['date_commande', 'DESC']],
+      include: [
+        { model: User, as: 'client', attributes: ['nom', 'prenom'] }
+      ]
+    });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getDisputes = async (req, res) => {
+  try {
+    const disputes = await Reclamation.findAll({
+      order: [['date_creation', 'DESC']],
+      include: [
+        { model: User, as: 'client', attributes: ['nom', 'prenom'] },
+        { 
+          model: Order, 
+          as: 'commande',
+          include: [{ model: Store, as: 'epicier', attributes: ['nom_boutique'] }]
+        }
+      ]
+    });
+    res.json(disputes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.resolveDispute = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { statut } = req.body; // Expecting 'resolut', 'en attente', 'rembourser', 'non resolut'
+
+    const dispute = await Reclamation.findByPk(id);
+    if (!dispute) return res.status(404).json({ error: 'Réclamation non trouvée' });
+
+    dispute.statut = statut || 'resolut';
+    await dispute.save();
+
+    res.json({ message: 'Réclamation mise à jour', dispute });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
