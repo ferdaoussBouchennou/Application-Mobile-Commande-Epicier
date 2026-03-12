@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import '../client/map_screen/map_screen.dart';
+import '../admin/admin_validation_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../grocer/grocer_main_screen.dart';
@@ -39,16 +40,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final auth = context.read<AuthProvider>();
       final success = await auth.login(email, mdp);
       if (success && mounted) {
-        final role = auth.user?['role'] as String?;
-        final isEpicier = role == 'EPICIER';
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => isEpicier
-                ? const GrocerMainScreen()
-                : const MapScreen(),
-          ),
-        );
+        final user = context.read<AuthProvider>().user;
+        final role = user?['role'];
+
+        if (role == 'ADMIN') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MapScreen()),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

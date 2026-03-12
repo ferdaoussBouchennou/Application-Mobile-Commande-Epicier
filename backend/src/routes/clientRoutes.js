@@ -1,0 +1,35 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+const Store = require('../models/Store');
+const Category = require('../models/Category');
+const Product = require('../models/Product');
+const { Op } = require('sequelize');
+
+// Route pour récupérer les catégories d'un épicier spécifique
+router.get('/stores/:storeId/categories', async (req, res) => {
+  try {
+    const { storeId } = req.params;
+    
+    // On cherche les catégories qui ont des produits liés à cet épicier
+    const products = await Product.findAll({
+      where: { epicier_id: storeId },
+      attributes: ['categorie_id'],
+      group: ['categorie_id']
+    });
+
+    const categoryIds = products.map(p => p.categorie_id);
+    
+    const categories = await Category.findAll({
+      where: {
+        id: { [Op.in]: categoryIds }
+      }
+    });
+
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+module.exports = router;
