@@ -279,9 +279,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Erreur Google: $e')),
-                                );
+                                if (e.toString().contains('en attente de validation')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Votre compte Epicier est en attente de validation par l\'administrateur.'), backgroundColor: Colors.orange), // Orange contextually better for pending
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Erreur Google: $e'), backgroundColor: Colors.red),
+                                  );
+                                }
                               }
                             }
                           },

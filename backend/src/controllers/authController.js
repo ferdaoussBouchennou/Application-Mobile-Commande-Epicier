@@ -15,7 +15,7 @@ const authController = {
       // Vérifier si l'email existe
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+        return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
       // Créer le client
@@ -47,7 +47,7 @@ const authController = {
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+        return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
       // Créer l'utilisateur avec le rôle EPICIER
