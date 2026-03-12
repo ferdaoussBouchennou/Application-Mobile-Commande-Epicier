@@ -530,7 +530,7 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
                             : const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.check, size: 22),
+                                
                                   SizedBox(width: 8),
                                   Text('Confirmer la commande', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                                 ],
