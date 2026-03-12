@@ -1,6 +1,22 @@
+const path = require('path');
+const fs = require('fs');
 const User = require('../models/User');
 const Store = require('../models/Store');
+const Category = require('../models/Category');
+const Product = require('../models/Product');
 const { Op } = require('sequelize');
+
+function sanitizeName(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[\s]+/g, '_')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 80) || 'image';
+}
 
 exports.getStats = async (req, res) => {
   try {
@@ -117,5 +133,303 @@ exports.registerEpicier = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// --- Gestion des catégories (plateforme) ---
+
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Category.findAll({
+      order: [['nom', 'ASC']],
+      attributes: ['id', 'nom']
+    });
+    const list = await Promise.all(
+      categories.map(async (c) => {
+        const count = await Product.count({ where: { categorie_id: c.id } });
+        const activeCount = await Product.count({
+          where: { categorie_id: c.id, is_active: true }
+        });
+        return {
+          id: c.id,
+          nom: c.nom,
+          productCount: count,
+          activeProductCount: activeCount
+        };
+      })
+    );
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createCategory = async (req, res) => {
+  try {
+    const { nom } = req.body;
+    if (!nom || typeof nom !== 'string' || !nom.trim()) {
+      return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
+    }
+    const existing = await Category.findOne({ where: { nom: nom.trim() } });
+    if (existing) {
+      return res.status(400).json({ message: 'Une catégorie avec ce nom existe déjà.' });
+    }
+    const category = await Category.create({ nom: nom.trim() });
+    res.status(201).json({ id: category.id, nom: category.nom });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom } = req.body;
+    if (!nom || typeof nom !== 'string' || !nom.trim()) {
+      return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
+    }
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const existing = await Category.findOne({ where: { nom: nom.trim(), id: { [Op.ne]: id } } });
+    if (existing) {
+      return res.status(400).json({ message: 'Une autre catégorie avec ce nom existe déjà.' });
+    }
+    category.nom = nom.trim();
+    await category.save();
+    res.json({ id: category.id, nom: category.nom });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deleteCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const productCount = await Product.count({ where: { categorie_id: id } });
+    if (productCount > 0) {
+      // Désactiver la catégorie = désactiver tous les produits de cette catégorie pour tous les épiciers
+      await Product.update(
+        { is_active: false },
+        { where: { categorie_id: id } }
+      );
+      return res.json({
+        message: `Catégorie désactivée : ${productCount} produit(s) ont été retirés du catalogue pour tous les épiciers.`,
+        deactivated: true,
+        productCount
+      });
+    }
+    await category.destroy();
+    res.json({ message: 'Catégorie supprimée.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.activateCategory = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findByPk(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const [updatedCount] = await Product.update(
+      { is_active: true },
+      { where: { categorie_id: id } }
+    );
+    res.json({
+      message: `Catégorie réactivée : ${updatedCount} produit(s) remis au catalogue.`,
+      productCount: updatedCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// --- Gestion des produits par catégorie (admin) ---
+
+exports.getStores = async (req, res) => {
+  try {
+    const stores = await Store.findAll({
+      where: { statut_inscription: 'ACCEPTE', is_active: true },
+      attributes: ['id', 'nom_boutique'],
+      order: [['nom_boutique', 'ASC']]
+    });
+    res.json(stores.map(s => ({ id: s.id, nom_boutique: s.nom_boutique })));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getCategoryProducts = async (req, res) => {
+  try {
+    const categoryId = parseInt(req.params.categoryId, 10);
+    if (Number.isNaN(categoryId)) {
+      return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
+    }
+    const category = await Category.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const products = await Product.findAll({
+      where: { categorie_id: categoryId },
+      include: [{ model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] }],
+      order: [['nom', 'ASC']]
+    });
+    const list = products.map(p => ({
+      id: p.id,
+      nom: p.nom,
+      prix: parseFloat(p.prix),
+      description: p.description,
+      epicier_id: p.epicier_id,
+      categorie_id: p.categorie_id,
+      image_principale: p.image_principale,
+      is_active: !!p.is_active,
+      store_name: p.epicier?.nom_boutique ?? null
+    }));
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createProduct = async (req, res) => {
+  try {
+    const { epicier_id, categorie_id, nom, prix, description, image_principale } = req.body;
+    if (!nom || !nom.trim() || prix == null || !categorie_id || !epicier_id) {
+      return res.status(400).json({ message: 'Nom, prix, catégorie et épicier sont requis.' });
+    }
+    const category = await Category.findByPk(categorie_id);
+    if (!category) {
+      return res.status(404).json({ message: 'Catégorie non trouvée.' });
+    }
+    const store = await Store.findByPk(epicier_id);
+    if (!store) {
+      return res.status(404).json({ message: 'Épicier (boutique) non trouvé.' });
+    }
+    const product = await Product.create({
+      nom: nom.trim(),
+      prix: parseFloat(prix),
+      description: description?.trim() || null,
+      epicier_id: parseInt(epicier_id, 10),
+      categorie_id: parseInt(categorie_id, 10),
+      image_principale: image_principale?.trim() || null,
+      is_active: true
+    });
+    res.status(201).json({
+      id: product.id,
+      nom: product.nom,
+      prix: parseFloat(product.prix),
+      description: product.description,
+      epicier_id: product.epicier_id,
+      categorie_id: product.categorie_id,
+      image_principale: product.image_principale,
+      is_active: true,
+      store_name: store.nom_boutique
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom, prix, description, image_principale } = req.body;
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Produit non trouvé.' });
+    }
+    if (nom != null && typeof nom === 'string') product.nom = nom.trim();
+    if (prix != null) product.prix = parseFloat(prix);
+    if (description !== undefined) product.description = description?.trim() || null;
+    if (image_principale !== undefined) product.image_principale = image_principale?.trim() || null;
+    await product.save();
+    const store = await Store.findByPk(product.epicier_id, { attributes: ['nom_boutique'] });
+    res.json({
+      id: product.id,
+      nom: product.nom,
+      prix: parseFloat(product.prix),
+      description: product.description,
+      epicier_id: product.epicier_id,
+      categorie_id: product.categorie_id,
+      image_principale: product.image_principale,
+      is_active: !!product.is_active,
+      store_name: store?.nom_boutique ?? null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.deactivateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Produit non trouvé.' });
+    }
+    product.is_active = false;
+    await product.save();
+    res.json({ message: 'Produit retiré du catalogue (désactivé).' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.activateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Produit non trouvé.' });
+    }
+    product.is_active = true;
+    await product.save();
+    res.json({ message: 'Produit réactivé dans le catalogue.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.uploadProductImage = async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+    }
+    const categorieId = req.body.categorie_id;
+    if (!categorieId) {
+      return res.status(400).json({ message: 'categorie_id est requis.' });
+    }
+    const category = await Category.findByPk(categorieId);
+    if (!category) {
+      return res.status(400).json({ message: 'Catégorie introuvable.' });
+    }
+    const folderName = sanitizeName(category.nom) || 'categorie';
+    const dir = path.join(__dirname, '..', '..', 'uploads', folderName);
+    fs.mkdirSync(dir, { recursive: true });
+    const ext = path.extname(req.file.originalname) || '.jpg';
+    const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext.toLowerCase()) ? ext : '.jpg';
+    const productName = req.body.nom ? String(req.body.nom).trim() : '';
+    const baseName = sanitizeName(productName) || `temp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    let filename = `${baseName}${safeExt}`;
+    let filePath = path.join(dir, filename);
+    let suffix = 0;
+    while (fs.existsSync(filePath)) {
+      suffix += 1;
+      filename = `${baseName}-${suffix}${safeExt}`;
+      filePath = path.join(dir, filename);
+    }
+    fs.writeFileSync(filePath, req.file.buffer);
+    const relativePath = path.join('uploads', folderName, filename).replace(/\\/g, '/');
+    res.status(200).json({ image_principale: relativePath });
+  } catch (error) {
+    console.error('Erreur uploadProductImage admin:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
   }
 };

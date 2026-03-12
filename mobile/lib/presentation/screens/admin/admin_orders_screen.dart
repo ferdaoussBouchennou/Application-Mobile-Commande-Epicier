@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin_categories_screen.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
   const AdminOrdersScreen({super.key});
@@ -515,12 +516,18 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       onTap: (index) {
         if (index == 1) {
           Navigator.pop(context);
+        } else if (index == 3) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
+          );
         }
       },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
         BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
         BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
+        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Réglages'),
       ],
     );
