@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../widgets/custom_bottom_nav_bar.dart';
 import '../store_list_screen.dart';
 import '../cart_screen.dart';
+import '../../../../providers/auth_provider.dart';
+import '../../../../providers/cart_provider.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -65,12 +68,17 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
       body: _pages[_currentIndex],
-      bottomNavigationBar: CustomBottomNavBar(
+        bottomNavigationBar: CustomBottomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
           });
+          // Refetch cart when user opens Panier tab so it's always up to date
+          if (index == 2) {
+            final token = context.read<AuthProvider>().token;
+            context.read<CartProvider>().fetchCart(token);
+          }
         },
       ),
     );
