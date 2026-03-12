@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../grocer/grocer_main_screen.dart';
 import '../grocer/setup/grocer_setup_screen.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (role == 'ADMIN') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
+            MaterialPageRoute(builder: (_) => AdminValidationScreen()),
           );
         } else if (role == 'EPICIER') {
           final auth2 = context.read<AuthProvider>();
@@ -62,10 +63,14 @@ class _LoginScreenState extends State<LoginScreen> {
               MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
             );
           }
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => GrocerMainScreen()),
+          );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const MapScreen()),
+            MaterialPageRoute(builder: (_) => MapScreen()),
           );
         }
       }
@@ -132,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
               child: Column(
@@ -154,18 +159,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.grey,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 36),
-                  
+
                   // Champ Email
                   _buildTextField(
                     hintText: 'Email',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Champ Mot de passe
                   _buildTextField(
                     hintText: 'Mot de passe',
@@ -183,9 +188,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Bouton Se connecter
                   Consumer<AuthProvider>(
                     builder: (context, auth, _) {
@@ -207,7 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text(
                                   'Se connecter',
                                   style: TextStyle(
-                                    fontSize: 18, 
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -215,9 +220,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     }
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Mot de passe oublié
                   TextButton(
                     onPressed: () {},
@@ -229,9 +234,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   // Lien Inscription
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -244,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            MaterialPageRoute(builder: (_) => RegisterScreen()),
                           );
                         },
                         child: const Text(
@@ -260,7 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   const SizedBox(height: 40),
-                  
+
                   // Séparateur
                   Row(
                     children: [
@@ -275,34 +280,70 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Boutons Réseaux Sociaux
                   Row(
                     children: [
                       Expanded(
                         child: _buildSocialButton(
-                          iconPath: 'assets/images/google_logo.png', // placeholder si non existant
-                          iconData: Icons.g_mobiledata,
-                          iconColor: Colors.red,
+                          iconData: FontAwesomeIcons.google,
+                          iconColor: const Color(0xFFDB4437),
                           label: 'Google',
-                          onPressed: () {},
+                          onPressed: () async {
+                            try {
+                              final auth = context.read<AuthProvider>();
+                              final success = await auth.loginWithGoogle();
+                              if (success && mounted) {
+                                final role = auth.user?['role'] as String?;
+                                final isEpicier = role == 'EPICIER';
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => isEpicier
+                                        ? GrocerMainScreen()
+                                        : MapScreen(),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                if (e.toString().contains('en attente de validation')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Votre compte Epicier est en attente de validation par l\'administrateur.'), backgroundColor: Colors.orange), // Orange contextually better for pending
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Erreur Google: $e'), backgroundColor: Colors.red),
+                                  );
+                                }
+                              }
+                            }
+                          },
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildSocialButton(
-                          iconPath: 'assets/images/facebook_logo.png', // placeholder si non existant
-                          iconData: Icons.facebook,
+                          iconData: FontAwesomeIcons.facebook,
                           iconColor: const Color(0xFF1877F2),
                           label: 'Facebook',
                           onPressed: () {},
                         ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSocialButton(
+                          iconData: FontAwesomeIcons.instagram,
+                          iconColor: const Color(0xFFE4405F),
+                          label: 'Instagram',
+                          onPressed: () {},
+                        ),
+                      ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 20),
                 ],
               ),
@@ -349,13 +390,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildSocialButton({
-    required String iconPath,
-    required IconData iconData,
-    required Color iconColor,
+    String? iconPath,
+    IconData? iconData,
+    Color? iconColor,
     required String label,
     required VoidCallback onPressed,
   }) {
-    return ElevatedButton.icon(
+    return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
@@ -367,10 +408,20 @@ class _LoginScreenState extends State<LoginScreen> {
           side: BorderSide(color: Colors.grey.shade200),
         ),
       ),
-      icon: Icon(iconData, color: iconColor, size: 28),
-      label: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (iconPath != null)
+            Image.asset(iconPath, height: 24, width: 24)
+          else if (iconData != null)
+            FaIcon(iconData, color: iconColor, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

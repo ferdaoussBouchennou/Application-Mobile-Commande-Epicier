@@ -261,9 +261,7 @@ CREATE TABLE `epiciers` (
   `date_creation` datetime NOT NULL,
   `image_url` varchar(500) DEFAULT NULL,
   `rating` decimal(2,1) DEFAULT 0.0,
-  `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE','COMPLETE') NOT NULL DEFAULT 'EN_ATTENTE',
-  `latitude` decimal(10,7) DEFAULT NULL,
-  `longitude` decimal(10,7) DEFAULT NULL
+  `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE') NOT NULL DEFAULT 'EN_ATTENTE'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

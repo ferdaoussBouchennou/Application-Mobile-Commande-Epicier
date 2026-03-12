@@ -32,7 +32,7 @@ class GrocerCatalogProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      final response = await _api.get('/categories/store/$storeId') as Map<String, dynamic>;
+      final response = await _api.get('/categories/store/$storeId?includeRetired=true') as Map<String, dynamic>;
       final list = response['categories'] as List<dynamic>? ?? [];
       final categories = list.map((e) => Category.fromJson(e as Map<String, dynamic>)).toList();
       _myCategories = categories.where((c) => (c.productCount ?? 0) > 0).toList();
