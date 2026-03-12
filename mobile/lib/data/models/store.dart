@@ -89,6 +89,14 @@ class Store {
     return false;
   }
 
+  static bool _parseBool(dynamic value, bool defaultValue) {
+    if (value == null) return defaultValue;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    return defaultValue;
+  }
+
   factory Store.fromJson(Map<String, dynamic> json) {
     var rawDispos = json['disponibilites'] as List?;
     List<Availability>? dispos = rawDispos != null 
@@ -112,7 +120,7 @@ class Store {
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,
       statutInscription: json['statut_inscription'] ?? 'EN_ATTENTE',
-      isActive: json['is_active'] ?? true,
+      isActive: _parseBool(json['is_active'], true),
       disponibilites: dispos,
       ownerName: owner,
       tags: json['tags'] != null ? List<String>.from(json['tags']) : ['Épices', 'Légumes', 'Fruits'],
