@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
 
@@ -14,7 +15,7 @@ const authController = {
       // Vérifier si l'email existe
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+        return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
       // Créer le client
@@ -46,7 +47,7 @@ const authController = {
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+        return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
       // Créer l'utilisateur avec le rôle EPICIER
@@ -194,6 +195,140 @@ const authController = {
     } catch (error) {
       console.error('Erreur validateEpicier:', error);
       res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
+    }
+  },
+
+  // Connexion via Google
+  googleLogin: async (req, res) => {
+    try {
+      const { idToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
+      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+      // Vérification du token auprès de Google
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      const { email, name, given_name, family_name, sub: googleId } = payload;
+
+      // Chercher ou créer l'utilisateur
+      let user = await User.findOne({ 
+        where: { 
+          [require('sequelize').Op.or]: [
+            { email },
+            { id_google: googleId }
+          ]
+        } 
+      });
+
+      let isNewUser = false;
+      let newStore = null;
+
+      if (!user) {
+        if (role === 'EPICIER') {
+          if (!doc_verf) {
+            return res.status(400).json({ message: "Le document de vérification est obligatoire pour s'inscrire en tant qu'épicier." });
+          }
+          user = await User.create({
+            nom: family_name || name || 'Inconnu',
+            prenom: given_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_google: googleId,
+            role: 'EPICIER',
+            doc_verf,
+            is_active: true
+          });
+          
+          newStore = await Store.create({
+            utilisateur_id: user.id,
+            nom_boutique: nom_boutique || `Epicerie de ${given_name || name}`,
+            adresse: adresse || 'À configurer',
+            telephone: telephone || null,
+            description: description_boutique,
+            statut_inscription: 'EN_ATTENTE',
+            is_active: true
+          });
+
+          const Availability = require('../models/Availability');
+          const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+          for (const jour of jours) {
+            await Availability.create({
+              epicier_id: newStore.id,
+              jour: jour,
+              heure_debut: '08:00:00',
+              heure_fin: '22:00:00'
+            });
+          }
+        } else {
+          // Créer un nouvel utilisateur (rôle CLIENT par défaut)
+          user = await User.create({
+            nom: family_name || name || 'Inconnu',
+            prenom: given_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_google: googleId,
+            adresse: 'Google Auth',
+            role: 'CLIENT',
+            is_active: true
+          });
+        }
+        isNewUser = true;
+      } else if (!user.id_google) {
+        // Si l'utilisateur existait déjà par email mais n'avait pas d'ID Google lié
+        user.id_google = googleId;
+        await user.save();
+      }
+
+      // Si l'utilisateur existe déjà en tant que CLIENT mais souhaite s'inscrire comme EPICIER via Google
+      if (user && user.role === 'CLIENT' && role === 'EPICIER') {
+        return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client. Vous ne pouvez pas vous connecter en tant qu'Epicier." });
+      }
+
+      if (!user.is_active) {
+        return res.status(403).json({ message: 'Ce compte est inactif.' });
+      }
+
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const store = newStore || await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (!store) {
+          return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        }
+        if (store.statut_inscription !== 'ACCEPTE') {
+          const message = store.statut_inscription === 'EN_ATTENTE'
+            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
+            : 'Votre demande d\'inscription a été refusée par un administrateur.';
+          return res.status(403).json({ message });
+        }
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
+      }
+
+      // Générer le JWT MyHanut
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.status(200).json({
+        message: 'Connexion Google réussie',
+        token,
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+        },
+        store: storeInfo
+      });
+
+    } catch (error) {
+      console.error('Erreur googleLogin:', error);
+      res.status(401).json({ message: 'Échec de l\'authentification Google', error: error.message });
     }
   }
 };

@@ -251,11 +251,11 @@ CREATE TABLE `epiciers` (
   `telephone` varchar(20) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
-  `date_creation` datetime NOT NULL,
-  `image_url` varchar(500) DEFAULT NULL,
-  `rating` decimal(2,1) DEFAULT 0.0,
-  `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE') NOT NULL DEFAULT 'EN_ATTENTE'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+   `date_creation` datetime NOT NULL,
+   `image_url` varchar(500) DEFAULT NULL,
+   `rating` decimal(2,1) DEFAULT 0.0,
+   `statut_inscription` enum('EN_ATTENTE','ACCEPTE','REFUSE') NOT NULL DEFAULT 'EN_ATTENTE'
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `epiciers`
