@@ -299,7 +299,7 @@ const authController = {
             : 'Votre demande d\'inscription a été refusée par un administrateur.';
           return res.status(403).json({ message });
         }
-        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription, };
       }
 
       // Générer le JWT MyHanut
