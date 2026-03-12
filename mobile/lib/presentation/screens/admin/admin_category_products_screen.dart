@@ -6,6 +6,8 @@ import '../../../core/constants/api_constants.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
+import 'admin_categories_screen.dart';
+import 'admin_orders_screen.dart';
 
 class AdminCategoryProductsScreen extends StatefulWidget {
   final int categoryId;
@@ -242,6 +244,38 @@ class _AdminCategoryProductsScreenState
         icon: const Icon(Icons.add),
         label: const Text('Produit'),
       ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      currentIndex: 3,
+      selectedItemColor: _primary,
+      unselectedItemColor: Colors.grey,
+      onTap: (index) {
+        if (index == 1) {
+          Navigator.popUntil(context, (route) => route.isFirst);
+        } else if (index == 2) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
+          );
+        } else if (index == 3) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
+          );
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
+        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
+        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Réglages'),
+      ],
     );
   }
 
@@ -797,6 +831,34 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
         title: Text(title),
         backgroundColor: _primary,
         foregroundColor: Colors.white,
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: 3,
+        selectedItemColor: _primary,
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          if (index == 1) {
+            Navigator.popUntil(context, (route) => route.isFirst);
+          } else if (index == 2) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
+            );
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
+          BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Réglages'),
+        ],
       ),
       body: Form(
         key: _formKey,
