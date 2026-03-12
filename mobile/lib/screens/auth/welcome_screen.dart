@@ -63,7 +63,7 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () => _goTo(context, const LoginScreen()),
+                    onPressed: () => _goTo(context, LoginScreen()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2D5016),
                       foregroundColor: Colors.white,
@@ -86,7 +86,7 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: OutlinedButton(
-                    onPressed: () => _goTo(context, const RegisterScreen()),
+                    onPressed: () => _goTo(context, RegisterScreen()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF2D1A0E),
                       side: const BorderSide(
@@ -108,7 +108,7 @@ class WelcomeScreen extends StatelessWidget {
   
                 // Lien "Parcourir sans compte"
                 GestureDetector(
-                  onTap: () => _goTo(context, const MapScreen()),
+                  onTap: () => _goTo(context, MapScreen()),
                   child: const Text(
                     'Parcourir sans compte',
                     style: TextStyle(

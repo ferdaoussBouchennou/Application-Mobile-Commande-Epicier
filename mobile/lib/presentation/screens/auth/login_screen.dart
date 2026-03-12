@@ -47,17 +47,17 @@ class _LoginScreenState extends State<LoginScreen> {
         if (role == 'ADMIN') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
+            MaterialPageRoute(builder: (_) => AdminValidationScreen()),
           );
         } else if (role == 'EPICIER') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+            MaterialPageRoute(builder: (_) => GrocerMainScreen()),
           );
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const MapScreen()),
+            MaterialPageRoute(builder: (_) => MapScreen()),
           );
         }
       }
@@ -236,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            MaterialPageRoute(builder: (_) => RegisterScreen()),
                           );
                         },
                         child: const Text(
@@ -280,11 +280,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: 'Google',
                           onPressed: () async {
                             try {
-                              final success = await context.read<AuthProvider>().loginWithGoogle();
+                              final auth = context.read<AuthProvider>();
+                              final success = await auth.loginWithGoogle();
                               if (success && mounted) {
+                                final role = auth.user?['role'] as String?;
+                                final isEpicier = role == 'EPICIER';
                                 Navigator.pushReplacement(
                                   context,
-                                  MaterialPageRoute(builder: (_) => const MapScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => isEpicier
+                                        ? GrocerMainScreen()
+                                        : MapScreen(),
+                                  ),
                                 );
                               }
                             } catch (e) {

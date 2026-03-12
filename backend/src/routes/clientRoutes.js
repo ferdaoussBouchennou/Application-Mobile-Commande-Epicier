@@ -11,9 +11,12 @@ router.get('/stores/:storeId/categories', async (req, res) => {
   try {
     const { storeId } = req.params;
     
-    // On cherche les catégories qui ont des produits liés à cet épicier
+    // On cherche les catégories qui ont des produits ACTIFS liés à cet épicier
     const products = await Product.findAll({
-      where: { epicier_id: storeId },
+      where: { 
+        epicier_id: storeId,
+        is_active: true 
+      },
       attributes: ['categorie_id'],
       group: ['categorie_id']
     });

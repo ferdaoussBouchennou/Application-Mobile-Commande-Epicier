@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../client/map_screen/map_screen.dart';
+import '../grocer/grocer_main_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -123,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          MaterialPageRoute(builder: (_) => LoginScreen()),
         );
       }
     } catch (e) {
@@ -138,7 +139,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           );
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            MaterialPageRoute(builder: (_) => LoginScreen()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -473,19 +474,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             try {
                               final success = await authProvider.loginWithGoogle(epicierData: epicierData);
                               if (success && mounted) {
-                                // Redirection conditionnelle basée sur le state du rôle
-                                if (_isEpicier) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.green),
-                                  );
+                                // Redirection dynamique basée sur le rôle retourné par le backend
+                                final role = authProvider.user?['role'] as String?;
+                                final isAcceptedEpicier = role == 'EPICIER';
+                                
+                                if (isAcceptedEpicier) {
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                    MaterialPageRoute(builder: (_) => GrocerMainScreen()),
                                   );
                                 } else {
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const MapScreen()),
+                                    MaterialPageRoute(builder: (_) => MapScreen()),
                                   );
                                 }
                               }
@@ -497,7 +498,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   );
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                    MaterialPageRoute(builder: (_) => LoginScreen()),
                                   );
                                 } else if (e.toString().contains('EMAIL_EXISTS')) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -509,7 +510,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   );
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                    MaterialPageRoute(builder: (_) => LoginScreen()),
                                   );
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -556,7 +557,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onTap: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            MaterialPageRoute(builder: (_) => LoginScreen()),
                           );
                         },
                         child: const Text(
