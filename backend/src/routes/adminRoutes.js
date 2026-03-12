@@ -23,6 +23,7 @@ router.post('/products', authMiddleware, requireAdmin, adminController.createPro
 router.put('/products/:id', authMiddleware, requireAdmin, adminController.updateProduct);
 router.patch('/products/:id/deactivate', authMiddleware, requireAdmin, adminController.deactivateProduct);
 router.patch('/products/:id/activate', authMiddleware, requireAdmin, adminController.activateProduct);
+router.patch('/products/:id/rupture-stock', authMiddleware, requireAdmin, adminController.toggleRuptureStock);
 router.post('/products/upload-image', (req, res, next) => {
   uploadProductImage.single('image')(req, res, (err) => {
     if (err) {
