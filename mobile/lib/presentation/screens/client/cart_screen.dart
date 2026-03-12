@@ -6,7 +6,9 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
 
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  final VoidCallback? onOrderConfirmed;
+
+  const CartScreen({super.key, this.onOrderConfirmed});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -45,6 +47,7 @@ class _CartScreenState extends State<CartScreen> {
           Navigator.of(ctx).pop();
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Commande confirmée.')));
           cart.fetchCart(token);
+          widget.onOrderConfirmed?.call();
         },
         onError: (msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg))),
       ),
