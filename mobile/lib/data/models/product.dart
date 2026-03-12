@@ -24,13 +24,18 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    int asInt(dynamic value, {int fallback = 0}) {
+      if (value is int) return value;
+      return int.tryParse(value?.toString() ?? '') ?? fallback;
+    }
+
     return Product(
-      id: json['id'],
+      id: asInt(json['id']),
       nom: json['nom'],
       prix: double.tryParse(json['prix'].toString()) ?? 0.0,
       description: json['description'],
-      epicierId: json['epicier_id'],
-      categoryId: json['categorie_id'],
+      epicierId: asInt(json['epicier_id']),
+      categoryId: asInt(json['categorie_id']),
       imagePrincipale: json['image_principale'],
       categoryName: json['categorie_nom'],
       isRetiredMine: json['is_retired_mine'] == true,

@@ -73,18 +73,6 @@ const authController = {
         is_active: true
       });
 
-      // Ajouter des disponibilités par défaut
-      const Availability = require('../models/Availability');
-      const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-      for (const jour of jours) {
-        await Availability.create({
-          epicier_id: newStore.id,
-          jour: jour,
-          heure_debut: '08:00:00',
-          heure_fin: '22:00:00'
-        });
-      }
-
       res.status(201).json({
         message: 'Epicier créé avec succès',
         user: { id: newUser.id, nom: newUser.nom, email: newUser.email, role: newUser.role },
@@ -247,17 +235,6 @@ const authController = {
             statut_inscription: 'EN_ATTENTE',
             is_active: true
           });
-
-          const Availability = require('../models/Availability');
-          const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-          for (const jour of jours) {
-            await Availability.create({
-              epicier_id: newStore.id,
-              jour: jour,
-              heure_debut: '08:00:00',
-              heure_fin: '22:00:00'
-            });
-          }
         } else {
           // Créer un nouvel utilisateur (rôle CLIENT par défaut)
           user = await User.create({

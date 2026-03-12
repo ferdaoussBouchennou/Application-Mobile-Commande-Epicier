@@ -1,8 +1,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Store = require('./Store');
 const Category = require('./Category');
+const EpicierProduct = require('./EpicierProduct');
+const Store = require('./Store');
 
+/** Table produit : uniquement les infos du produit (catalogue global). */
 const Product = sequelize.define('Product', {
   id: {
     type: DataTypes.INTEGER,
@@ -13,21 +15,9 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING(200),
     allowNull: false,
   },
-  prix: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-  },
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
-  },
-  epicier_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: 'epiciers',
-      key: 'id',
-    },
   },
   categorie_id: {
     type: DataTypes.INTEGER,
@@ -41,16 +31,6 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING(500),
     allowNull: true,
   },
-  is_active: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: true,
-  },
-  rupture_stock: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  },
 }, {
   tableName: 'produits',
   timestamps: true,
@@ -58,11 +38,12 @@ const Product = sequelize.define('Product', {
   updatedAt: 'date_modif',
 });
 
-// Associations
-Store.hasMany(Product, { foreignKey: 'epicier_id', as: 'produits' });
-Product.belongsTo(Store, { foreignKey: 'epicier_id', as: 'epicier' });
-
 Category.hasMany(Product, { foreignKey: 'categorie_id', as: 'produits' });
 Product.belongsTo(Category, { foreignKey: 'categorie_id', as: 'categorie' });
+
+Product.belongsToMany(Store, { through: EpicierProduct, foreignKey: 'produit_id', otherKey: 'epicier_id', as: 'epiciers' });
+Store.belongsToMany(Product, { through: EpicierProduct, foreignKey: 'epicier_id', otherKey: 'produit_id', as: 'produits' });
+Product.hasMany(EpicierProduct, { foreignKey: 'produit_id', as: 'epicierProduits' });
+EpicierProduct.belongsTo(Product, { foreignKey: 'produit_id', as: 'produit' });
 
 module.exports = Product;
