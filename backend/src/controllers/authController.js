@@ -201,7 +201,7 @@ const authController = {
   // Connexion via Google
   googleLogin: async (req, res) => {
     try {
-      const { idToken } = req.body;
+      const { idToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
       const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
       // Vérification du token auprès de Google
@@ -223,18 +223,59 @@ const authController = {
         } 
       });
 
+      let isNewUser = false;
+      let newStore = null;
+
       if (!user) {
-        // Créer un nouvel utilisateur (rôle CLIENT par défaut)
-        user = await User.create({
-          nom: family_name || name,
-          prenom: given_name || '',
-          email,
-          mdp: await bcrypt.hash(Math.random().toString(36), 10),
-          id_google: googleId,
-          adresse: 'Google Auth',
-          role: 'CLIENT',
-          is_active: true
-        });
+        if (role === 'EPICIER') {
+          if (!doc_verf) {
+            return res.status(400).json({ message: "Le document de vérification est obligatoire pour s'inscrire en tant qu'épicier." });
+          }
+          user = await User.create({
+            nom: family_name || name || 'Inconnu',
+            prenom: given_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_google: googleId,
+            role: 'EPICIER',
+            doc_verf,
+            is_active: true
+          });
+          
+          newStore = await Store.create({
+            utilisateur_id: user.id,
+            nom_boutique: nom_boutique || `Epicerie de ${given_name || name}`,
+            adresse: adresse || 'À configurer',
+            telephone: telephone || null,
+            description: description_boutique,
+            statut_inscription: 'EN_ATTENTE',
+            is_active: true
+          });
+
+          const Availability = require('../models/Availability');
+          const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+          for (const jour of jours) {
+            await Availability.create({
+              epicier_id: newStore.id,
+              jour: jour,
+              heure_debut: '08:00:00',
+              heure_fin: '22:00:00'
+            });
+          }
+        } else {
+          // Créer un nouvel utilisateur (rôle CLIENT par défaut)
+          user = await User.create({
+            nom: family_name || name || 'Inconnu',
+            prenom: given_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_google: googleId,
+            adresse: 'Google Auth',
+            role: 'CLIENT',
+            is_active: true
+          });
+        }
+        isNewUser = true;
       } else if (!user.id_google) {
         // Si l'utilisateur existait déjà par email mais n'avait pas d'ID Google lié
         user.id_google = googleId;
@@ -245,9 +286,24 @@ const authController = {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
 
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const store = newStore || await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (!store) {
+          return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        }
+        if (store.statut_inscription !== 'ACCEPTE') {
+          const message = store.statut_inscription === 'EN_ATTENTE'
+            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
+            : 'Votre demande d\'inscription a été refusée par un administrateur.';
+          return res.status(403).json({ message });
+        }
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique };
+      }
+
       // Générer le JWT MyHanut
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
         JWT_SECRET,
         { expiresIn: '30d' }
       );
@@ -261,7 +317,8 @@ const authController = {
           prenom: user.prenom,
           email: user.email,
           role: user.role,
-        }
+        },
+        store: storeInfo
       });
 
     } catch (error) {
