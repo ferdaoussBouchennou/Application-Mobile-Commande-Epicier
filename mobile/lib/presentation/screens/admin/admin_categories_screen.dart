@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
+import '../auth/login_screen.dart';
 import 'admin_category_products_screen.dart';
 import 'admin_orders_screen.dart';
 
@@ -235,6 +236,19 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                onPressed: () {
+                  context.read<AuthProvider>().logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                tooltip: 'Déconnexion',
               ),
             ],
           ),

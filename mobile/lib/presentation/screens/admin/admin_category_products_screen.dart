@@ -6,6 +6,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
+import '../auth/login_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_orders_screen.dart';
 
@@ -117,10 +118,12 @@ class _AdminCategoryProductsScreenState
     if (token == null) return;
     try {
       for (final p in items) {
+        final epicierId = p['epicier_id'];
+        if (epicierId == null) continue;
         final endpoint = active
             ? '/admin/products/${p['id']}/activate'
             : '/admin/products/${p['id']}/deactivate';
-        await _api.patch(endpoint, {}, token: token);
+        await _api.patch(endpoint, {'epicier_id': epicierId}, token: token);
       }
       if (mounted) {
         _snack(active ? 'Produit activé pour tous les épiciers' : 'Produit désactivé pour tous les épiciers');
@@ -136,14 +139,19 @@ class _AdminCategoryProductsScreenState
       _snack('Activez d\'abord le produit globalement (toggle principal).');
       return;
     }
+    final epicierId = p['epicier_id'];
+    if (epicierId == null) {
+      _snack('Données incomplètes (epicier_id manquant)');
+      return;
+    }
     final token = _token;
     if (token == null) return;
     try {
       final endpoint = active
           ? '/admin/products/${p['id']}/activate'
           : '/admin/products/${p['id']}/deactivate';
-      await _api.patch(endpoint, {}, token: token);
-      if (mounted) { _snack(active ? 'Réactivé' : 'Désactivé'); _load(); }
+      await _api.patch(endpoint, {'epicier_id': epicierId}, token: token);
+      if (mounted) { _snack(active ? 'Réactivé pour cet épicier' : 'Désactivé pour cet épicier'); _load(); }
     } catch (e) {
       if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
     }
@@ -341,6 +349,18 @@ class _AdminCategoryProductsScreenState
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                onPressed: () {
+                  context.read<AuthProvider>().logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                tooltip: 'Déconnexion',
               ),
             ],
           ),
@@ -892,6 +912,25 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
         title: Text(title),
         backgroundColor: _primary,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () {
+              context.read<AuthProvider>().logout();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => LoginScreen()),
+                (route) => false,
+              );
+            },
+            tooltip: 'Déconnexion',
+          ),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

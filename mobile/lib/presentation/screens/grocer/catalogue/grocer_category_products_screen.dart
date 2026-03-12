@@ -459,6 +459,11 @@ class _GrocerCategoryProductsScreenState extends State<GrocerCategoryProductsScr
         backgroundColor: GrocerTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
+        ),
         title: Text(widget.category.nom),
         actions: [
           if (!_selectionModeProducts)

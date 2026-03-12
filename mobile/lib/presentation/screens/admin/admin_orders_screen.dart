@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 import 'admin_categories_screen.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
@@ -63,6 +66,11 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             children: [
               Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: 'Retour',
+                  ),
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -112,7 +120,18 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Icon(Icons.search, color: Colors.white, size: 28),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                    onPressed: () {
+                      context.read<AuthProvider>().logout();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    tooltip: 'Déconnexion',
+                  ),
                 ],
               ),
             ],

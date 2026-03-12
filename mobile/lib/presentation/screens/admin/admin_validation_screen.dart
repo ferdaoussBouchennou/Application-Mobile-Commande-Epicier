@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 import 'add_epicier_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
@@ -167,8 +170,19 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                     ),
                     child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.search, color: Color(0xFFB5D39D), size: 28),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                    onPressed: () {
+                      context.read<AuthProvider>().logout();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                        (route) => false,
+                      );
+                    },
+                    tooltip: 'Déconnexion',
+                  ),
                 ],
               ),
             ],
