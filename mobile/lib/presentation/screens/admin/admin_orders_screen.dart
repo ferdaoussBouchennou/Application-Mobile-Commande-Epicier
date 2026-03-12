@@ -257,12 +257,12 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   }
 
   Widget _buildFilterChips() {
-    final litigeCount = _disputes.where((d) => ['non resolut', 'en attente'].contains(d['statut'])).length;
     final filters = [
       {'label': 'Tous', 'icon': null},
-      {'label': 'Litiges ($litigeCount)', 'icon': Icons.warning_amber_rounded},
-      {'label': 'En cours', 'icon': null},
-      {'label': 'Livrées', 'icon': null},
+      {'label': 'Litige ouvert', 'icon': Icons.warning_amber_rounded},
+      {'label': 'En médiation', 'icon': Icons.chat_bubble_outline},
+      {'label': 'Remboursé', 'icon': Icons.history},
+      {'label': 'Résolu', 'icon': Icons.check_circle_outline},
     ];
 
     return SingleChildScrollView(
@@ -270,7 +270,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       child: Row(
         children: filters.map((filter) {
           final isSelected = _selectedFilter == filter['label'];
-          final isLitige = filter['label'].toString().contains('Litiges');
           
           return Padding(
             padding: const EdgeInsets.only(right: 10),
@@ -312,10 +311,24 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
   Widget _buildDisputeCardsSection() {
     List<dynamic> filteredDisputes = _disputes;
-    if (_selectedFilter.contains('Litiges')) {
-      filteredDisputes = _disputes.where((d) => ['non resolut', 'en attente'].contains(d['statut'])).toList();
-    } else if (_selectedFilter == 'Livrées') {
-      return const SizedBox.shrink(); // No disputes for this filter usually
+    
+    if (_selectedFilter != 'Tous') {
+      filteredDisputes = _disputes.where((d) {
+        final normalizedStatus = d['statut']?.toString().toLowerCase().trim() ?? '';
+        
+        switch (_selectedFilter) {
+          case 'Litige ouvert':
+            return ['litige ouvert', 'non resolut', 'nonresolue'].contains(normalizedStatus);
+          case 'En médiation':
+            return ['en médiation', 'en mediation', 'en attente'].contains(normalizedStatus);
+          case 'Remboursé':
+            return ['remboursé', 'rembourse', 'rembourser'].contains(normalizedStatus);
+          case 'Résolu':
+            return ['résolu', 'résolue', 'resolu', 'resolut'].contains(normalizedStatus);
+          default:
+            return true;
+        }
+      }).toList();
     }
 
     if (filteredDisputes.isEmpty) {
