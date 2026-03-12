@@ -58,6 +58,13 @@ const User = sequelize.define('User', {
   timestamps: true,
   createdAt: 'date_creation',
   updatedAt: false, 
+  validate: {
+    checkEpicierDoc() {
+      if (this.role === 'EPICIER' && !this.doc_verf) {
+        throw new Error("Un document de vérification est obligatoire pour s'inscrire en tant qu'épicier.");
+      }
+    }
+  },
   hooks: {
     beforeCreate: async (user) => {
       if (user.mdp) {
