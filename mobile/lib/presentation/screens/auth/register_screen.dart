@@ -436,13 +436,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           label: 'Google',
                           onPressed: () async {
                             final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                            try {
-                              final success = await authProvider.loginWithGoogle();
-                              if (success && mounted) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const MapScreen()),
+                            
+                            Map<String, dynamic>? epicierData;
+                            if (_isEpicier) {
+                              if (_docFileName == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Veuillez joindre un document de vérification avant de continuer avec Google')),
                                 );
+                                return;
+                              }
+                              
+                              epicierData = {
+                                'role': 'EPICIER',
+                                'doc_verf': _docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName,
+                                'telephone': _phoneController.text.trim(),
+                              };
+                            }
+
+                            try {
+                              final success = await authProvider.loginWithGoogle(epicierData: epicierData);
+                              if (success && mounted) {
+                                // Redirection conditionnelle basée sur le state du rôle
+                                if (_isEpicier) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.green),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                  );
+                                } else {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const MapScreen()),
+                                  );
+                                }
                               }
                             } catch (e) {
                               if (mounted) {
