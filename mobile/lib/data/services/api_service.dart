@@ -119,6 +119,44 @@ class ApiService {
     }
   }
 
+  /// Upload image produit pour l'admin (même logique, route admin).
+  Future<String> uploadProductImageAdmin({
+    required String token,
+    required int categorieId,
+    required List<int> bytes,
+    required String filename,
+    String? productName,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/admin/products/upload-image');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['categorie_id'] = categorieId.toString();
+      if (productName != null && productName.trim().isNotEmpty) {
+        request.fields['nom'] = productName.trim();
+      }
+      request.files.add(http.MultipartFile.fromBytes('image', bytes, filename: filename));
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final body = response.body;
+        String msg = 'Erreur ${response.statusCode}';
+        try {
+          final j = jsonDecode(body) as Map<String, dynamic>;
+          if (j['message'] != null) msg = j['message'] as String;
+        } catch (_) {}
+        throw Exception(msg);
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final path = data['image_principale'] as String?;
+      if (path == null || path.isEmpty) throw Exception('Réponse invalide');
+      return path;
+    } catch (e) {
+      Logger.error('uploadProductImageAdmin → $e');
+      rethrow;
+    }
+  }
+
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
