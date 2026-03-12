@@ -70,11 +70,16 @@ const storeController = {
     }
   },
 
-  // Détails d'un épicier spécifique avec ses disponibilités
+  // Détails d'un épicier spécifique avec ses disponibilités (uniquement si COMPLETE et actif)
   getStoreById: async (req, res) => {
     try {
       const { id } = req.params;
-      const store = await Store.findByPk(id, {
+      const storeId = parseInt(id, 10);
+      if (isNaN(storeId)) {
+        return res.status(400).json({ message: 'Identifiant invalide' });
+      }
+      const store = await Store.findOne({
+        where: { id: storeId, is_active: true, statut_inscription: 'COMPLETE' },
         include: [
           {
             model: User,
