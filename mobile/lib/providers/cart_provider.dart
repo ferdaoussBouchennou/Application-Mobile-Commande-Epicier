@@ -80,10 +80,12 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addToCart(String? token, int produitId, {int quantite = 1}) async {
+  Future<void> addToCart(String? token, int produitId, {int quantite = 1, int? epicierId}) async {
     if (token == null) return;
     try {
-      await _api.post('/panier/items', {'produit_id': produitId, 'quantite': quantite}, token: token);
+      final body = <String, dynamic>{'produit_id': produitId, 'quantite': quantite};
+      if (epicierId != null) body['epicier_id'] = epicierId;
+      await _api.post('/panier/items', body, token: token);
       await fetchCart(token);
     } catch (e) {
       _error = e.toString();

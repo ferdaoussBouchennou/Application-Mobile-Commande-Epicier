@@ -5,6 +5,7 @@ const DetailCommande = require('../models/DetailCommande');
 const Panier = require('../models/Panier');
 const PanierProduit = require('../models/PanierProduit');
 const Product = require('../models/Product');
+const EpicierProduct = require('../models/EpicierProduct');
 const Store = require('../models/Store');
 
 const getOrCreatePanier = async (clientId) => {
@@ -93,7 +94,7 @@ const commandeController = {
       }
       const details = await DetailCommande.findAll({
         where: { commande_id: commande.id },
-        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom', 'prix'] }],
+        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom', 'image_principale'] }],
       });
       let creneau = '';
       if (commande.date_recuperation) {
@@ -141,19 +142,30 @@ const commandeController = {
       const panier = await getOrCreatePanier(clientId);
       const panierItems = await PanierProduit.findAll({
         where: { panier_id: panier.id },
-        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom', 'prix', 'epicier_id'] }],
+        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
       });
 
-      const itemsForEpicier = panierItems.filter(
-        (row) => row.Product && Number(row.Product.epicier_id) === Number(epicier_id)
-      );
+      const itemsForEpicier = [];
+      for (const row of panierItems) {
+        const eid = row.epicier_id != null ? row.epicier_id : null;
+        const matchEpicier = eid != null ? Number(eid) === Number(epicier_id) : false;
+        if (!matchEpicier && eid !== null) continue;
+        const ep = await EpicierProduct.findOne({
+          where: eid != null
+            ? { produit_id: row.produit_id, epicier_id: eid }
+            : { produit_id: row.produit_id, epicier_id },
+        });
+        if (!ep) continue;
+        if (Number(ep.epicier_id) !== Number(epicier_id)) continue;
+        const prix = parseFloat(ep.prix ?? 0);
+        itemsForEpicier.push({ row, prix });
+      }
       if (itemsForEpicier.length === 0) {
         return res.status(400).json({ message: 'Aucun article de cet épicier dans le panier' });
       }
 
       let montantTotal = 0;
-      const details = itemsForEpicier.map((row) => {
-        const prix = parseFloat(row.Product.prix ?? 0);
+      const details = itemsForEpicier.map(({ row, prix }) => {
         const qty = row.quantite || 0;
         const totalLigne = Math.round(prix * qty * 100) / 100;
         montantTotal += totalLigne;
@@ -184,7 +196,7 @@ const commandeController = {
         }))
       );
 
-      for (const row of itemsForEpicier) {
+      for (const { row } of itemsForEpicier) {
         await PanierProduit.destroy({
           where: { panier_id: panier.id, produit_id: row.produit_id },
         });

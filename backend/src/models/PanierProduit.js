@@ -22,6 +22,14 @@ const PanierProduit = sequelize.define('PanierProduit', {
       key: 'id',
     },
   },
+  epicier_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'epiciers',
+      key: 'id',
+    },
+  },
   quantite: {
     type: DataTypes.INTEGER,
     allowNull: false,
