@@ -103,4 +103,27 @@ class CartProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  /// Fetch available pickup slots for a store. Returns { creneaux: [{ label, value }], nom_boutique }.
+  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId) async {
+    try {
+      final res = await _api.get('/stores/$storeId/creneaux', token: token);
+      return Map<String, dynamic>.from(res as Map);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Create order from cart for the given epicier and pickup datetime. Returns success message or throws.
+  Future<void> confirmOrder(String? token, int epicierId, String dateRecuperation) async {
+    if (token == null) throw Exception('Non connecté');
+    await _api.post(
+      '/commandes',
+      {'epicier_id': epicierId, 'date_recuperation': dateRecuperation},
+      token: token,
+    );
+    await fetchCart(token);
+  }
 }

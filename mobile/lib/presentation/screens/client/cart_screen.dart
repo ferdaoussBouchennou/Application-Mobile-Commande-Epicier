@@ -18,6 +18,39 @@ class _CartScreenState extends State<CartScreen> {
   static const Color _greenBtn = Color(0xFF2D5016);
   static const Color _priceBrown = Color(0xFF5D4E37);
 
+  void _openConfirmOrderSheet(BuildContext context, CartProvider cart, String token) {
+    int? firstEpicierId;
+    for (final i in cart.items) {
+      if (i.epicierId != null) { firstEpicierId = i.epicierId; break; }
+    }
+    if (firstEpicierId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Impossible de déterminer l\'épicerie.')));
+      return;
+    }
+    final epicierId = firstEpicierId;
+    final itemsForStore = cart.items.where((e) => e.epicierId == epicierId).toList();
+    final totalForStore = itemsForStore.fold<double>(0, (s, i) => s + i.lineTotal);
+    final articleCount = itemsForStore.fold<int>(0, (s, i) => s + i.quantite);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ConfirmOrderSheet(
+        epicierId: epicierId,
+        articleCount: articleCount,
+        totalForStore: totalForStore,
+        token: token,
+        onSuccess: () {
+          Navigator.of(ctx).pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Commande confirmée.')));
+          cart.fetchCart(token);
+        },
+        onError: (msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg))),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -107,7 +140,7 @@ class _CartScreenState extends State<CartScreen> {
           SizedBox(
             height: 52,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () => _openConfirmOrderSheet(context, cart, token!),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _greenBtn,
                 foregroundColor: Colors.white,
@@ -285,6 +318,228 @@ class _SummaryCard extends StatelessWidget {
             Text('${_formatPrice(total)} MAD', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C2C2C))),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ——— Confirm order bottom sheet (recap + time slots, no note) ———
+
+class _ConfirmOrderSheet extends StatefulWidget {
+  final int epicierId;
+  final int articleCount;
+  final double totalForStore;
+  final String token;
+  final VoidCallback onSuccess;
+  final void Function(String message) onError;
+
+  const _ConfirmOrderSheet({
+    required this.epicierId,
+    required this.articleCount,
+    required this.totalForStore,
+    required this.token,
+    required this.onSuccess,
+    required this.onError,
+  });
+
+  @override
+  State<_ConfirmOrderSheet> createState() => _ConfirmOrderSheetState();
+}
+
+class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
+  static const Color _bgBeige = Color(0xFFFDF6F0);
+  static const Color _cardGray = Color(0xFFF0EDE8);
+  static const Color _tealSelected = Color(0xFF1A7F6E);
+  static const Color _confirmBtn = Color(0xFFB85C38);
+
+  List<Map<String, String>> _creneaux = [];
+  String _storeName = '';
+  bool _loading = true;
+  int _selectedIndex = 0;
+  bool _confirming = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCreneaux();
+  }
+
+  Future<void> _loadCreneaux() async {
+    final cart = context.read<CartProvider>();
+    final res = await cart.fetchCreneaux(widget.token, widget.epicierId);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (res != null) {
+        _storeName = res['nom_boutique']?.toString() ?? 'Épicerie';
+        final list = res['creneaux'] as List?;
+        _creneaux = list?.map((e) => Map<String, String>.from(Map.from(e as Map))).toList() ?? [];
+        if (_creneaux.isNotEmpty) _selectedIndex = 0;
+      }
+    });
+  }
+
+  Future<void> _confirm() async {
+    if (_creneaux.isEmpty || _selectedIndex < 0 || _selectedIndex >= _creneaux.length) {
+      widget.onError('Veuillez choisir un créneau.');
+      return;
+    }
+    setState(() => _confirming = true);
+    try {
+      await context.read<CartProvider>().confirmOrder(
+            widget.token,
+            widget.epicierId,
+            _creneaux[_selectedIndex]['value']!,
+          );
+      if (mounted) widget.onSuccess();
+    } catch (e) {
+      if (mounted) widget.onError(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _confirming = false);
+    }
+  }
+
+  static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: _bgBeige,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 16, 20, 16 + MediaQuery.of(context).padding.bottom),
+      child: SafeArea(
+        child: _loading
+            ? const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // RÉCAPITULATIF
+                    Card(
+                      color: _cardGray,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.receipt_long, size: 20, color: Colors.grey.shade700),
+                                const SizedBox(width: 8),
+                                Text('RÉCAPITULATIF', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Icon(Icons.store, size: 18, color: Colors.grey.shade700),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(_storeName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF2C2C2C)))),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(20)),
+                                  child: Text('Ouverte', style: TextStyle(fontSize: 12, color: Colors.green.shade800, fontWeight: FontWeight.w500)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${widget.articleCount} article${widget.articleCount > 1 ? 's' : ''}', style: TextStyle(fontSize: 14, color: Colors.grey.shade700)),
+                                Text('${_formatPrice(widget.totalForStore)} MAD', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2C2C2C))),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // CRÉNEAU DE RÉCUPÉRATION
+                    Card(
+                      color: _cardGray,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.schedule, size: 20, color: Colors.grey.shade700),
+                                const SizedBox(width: 8),
+                                Text('CRÉNEAU DE RÉCUPÉRATION', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (_creneaux.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Text('Aucun créneau disponible.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                              )
+                            else
+                              ...List.generate(_creneaux.length, (i) {
+                                final selected = i == _selectedIndex;
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => setState(() => _selectedIndex = i),
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                        decoration: BoxDecoration(
+                                          color: selected ? _tealSelected : Colors.white,
+                                          border: Border.all(color: selected ? _tealSelected : Colors.grey.shade300),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off, size: 22, color: selected ? Colors.white : Colors.grey.shade600),
+                                            const SizedBox(width: 12),
+                                            Text(_creneaux[i]['label'] ?? '', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: selected ? Colors.white : const Color(0xFF2C2C2C))),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _confirming ? null : _confirm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _confirmBtn,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: _confirming
+                            ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check, size: 22),
+                                  SizedBox(width: 8),
+                                  Text('Confirmer la commande', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
       ),
     );
   }
