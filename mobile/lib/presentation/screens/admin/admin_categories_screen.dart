@@ -238,16 +238,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _statChip('$_totalCategories', 'Catégories', Colors.white),
-              const SizedBox(width: 10),
-              _statChip('$_totalActive', 'Actifs', const Color(0xFF4CBB5E)),
-              const SizedBox(width: 10),
-              _statChip('${_totalProducts - _totalActive}', 'Inactifs', const Color(0xFFF2A93B)),
-            ],
-          ),
         ],
       ),
     );
@@ -433,10 +423,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   children: [
                     Text(c['nom'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text(
-                      '$active actif(s) / $total produit(s)',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                    ),
                   ],
                 ),
               ),
