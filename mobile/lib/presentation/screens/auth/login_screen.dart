@@ -5,6 +5,7 @@ import '../admin/admin_validation_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../grocer/grocer_main_screen.dart';
+import '../grocer/setup/grocer_setup_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -50,10 +51,18 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (_) => AdminValidationScreen()),
           );
         } else if (role == 'EPICIER') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => GrocerMainScreen()),
-          );
+          final auth2 = context.read<AuthProvider>();
+          if (auth2.needsSetup) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+            );
+          }
         } else {
           Navigator.pushReplacement(
             context,
@@ -124,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
               child: Column(
@@ -146,18 +155,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.grey,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 36),
-                  
+
                   // Champ Email
                   _buildTextField(
                     hintText: 'Email',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Champ Mot de passe
                   _buildTextField(
                     hintText: 'Mot de passe',
@@ -175,9 +184,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Bouton Se connecter
                   Consumer<AuthProvider>(
                     builder: (context, auth, _) {
@@ -199,7 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               : const Text(
                                   'Se connecter',
                                   style: TextStyle(
-                                    fontSize: 18, 
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -207,9 +216,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       );
                     }
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Mot de passe oublié
                   TextButton(
                     onPressed: () {},
@@ -221,9 +230,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   // Lien Inscription
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -252,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   const SizedBox(height: 40),
-                  
+
                   // Séparateur
                   Row(
                     children: [
@@ -267,9 +276,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(child: Divider(color: Colors.grey.shade300, thickness: 1)),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Boutons Réseaux Sociaux
                   Row(
                     children: [
@@ -284,15 +293,29 @@ class _LoginScreenState extends State<LoginScreen> {
                               final success = await auth.loginWithGoogle();
                               if (success && mounted) {
                                 final role = auth.user?['role'] as String?;
-                                final isEpicier = role == 'EPICIER';
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => isEpicier
-                                        ? GrocerMainScreen()
-                                        : MapScreen(),
-                                  ),
-                                );
+                                if (role == 'ADMIN') {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+                                  );
+                                } else if (role == 'EPICIER') {
+                                  if (auth.needsSetup) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+                                    );
+                                  } else {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+                                    );
+                                  }
+                                } else {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => MapScreen()),
+                                  );
+                                }
                               }
                             } catch (e) {
                               if (mounted) {
@@ -330,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 20),
                 ],
               ),

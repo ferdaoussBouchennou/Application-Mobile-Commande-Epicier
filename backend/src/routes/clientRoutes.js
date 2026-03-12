@@ -6,10 +6,14 @@ const Category = require('../models/Category');
 const Product = require('../models/Product');
 const { Op } = require('sequelize');
 
-// Route pour récupérer les catégories d'un épicier spécifique
+// Route pour récupérer les catégories d'un épicier spécifique (uniquement si statut_inscription = COMPLETE)
 router.get('/stores/:storeId/categories', async (req, res) => {
   try {
     const { storeId } = req.params;
+    const store = await Store.findByPk(storeId);
+    if (!store || !store.is_active || store.statut_inscription !== 'COMPLETE') {
+      return res.status(404).json({ error: 'Épicier introuvable' });
+    }
     
     // On cherche les catégories qui ont des produits ACTIFS liés à cet épicier
     const products = await Product.findAll({

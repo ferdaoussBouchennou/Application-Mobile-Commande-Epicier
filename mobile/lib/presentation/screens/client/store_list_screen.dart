@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../providers/store_provider.dart';
 import '../../widgets/store_card.dart';
 import '../../widgets/custom_header.dart';
@@ -18,9 +19,27 @@ class _StoreListScreenState extends State<StoreListScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => 
-      context.read<StoreProvider>().fetchStores()
-    );
+    Future.microtask(() => _initLocationAndFetch());
+  }
+
+  Future<void> _initLocationAndFetch() async {
+    final storeProvider = context.read<StoreProvider>();
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        var permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+          final position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
+          );
+          storeProvider.setClientLocation(position.latitude, position.longitude);
+        }
+      }
+    } catch (_) {}
+    storeProvider.fetchStores();
   }
 
   void _showRatingFilter() {

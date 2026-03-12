@@ -285,6 +285,29 @@ class _GrocerCategoryProductsScreenState extends State<GrocerCategoryProductsScr
     if (result == true && mounted) _load();
   }
 
+  Future<void> _toggleRuptureStock(Product product) async {
+    final auth = context.read<AuthProvider>();
+    final catalog = context.read<GrocerCatalogProvider>();
+    final ok = await catalog.toggleRuptureStock(auth.token, product.id);
+    if (mounted) {
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              product.ruptureStock
+                  ? '${product.nom} remis en stock'
+                  : '${product.nom} marqué en rupture de stock',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(catalog.error ?? 'Erreur')),
+        );
+      }
+    }
+  }
+
   void _showProductOptions(Product product) {
     showModalBottomSheet(
       context: context,
@@ -296,6 +319,23 @@ class _GrocerCategoryProductsScreenState extends State<GrocerCategoryProductsScr
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: Icon(
+                product.ruptureStock ? Icons.check_circle_outline : Icons.remove_shopping_cart_outlined,
+                color: product.ruptureStock ? GrocerTheme.primary : Colors.orange.shade700,
+              ),
+              title: Text(product.ruptureStock ? 'Remettre en stock' : 'Rupture de stock'),
+              subtitle: Text(
+                product.ruptureStock
+                    ? 'Le produit sera à nouveau disponible à l\'achat'
+                    : 'Le produit restera visible mais ne pourra pas être ajouté au panier',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _toggleRuptureStock(product);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.edit_outlined, color: GrocerTheme.primary),
               title: const Text('Modifier'),
@@ -419,6 +459,11 @@ class _GrocerCategoryProductsScreenState extends State<GrocerCategoryProductsScr
         backgroundColor: GrocerTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
+        ),
         title: Text(widget.category.nom),
         actions: [
           if (!_selectionModeProducts)
@@ -558,13 +603,19 @@ class _ProductCard extends StatelessWidget {
     final imageUrl = product.imagePrincipale != null
         ? ApiConstants.formatImageUrl(product.imagePrincipale)
         : null;
+    final isRupture = product.ruptureStock;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       color: GrocerTheme.cardBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: selectionMode && isSelected ? GrocerTheme.primary : GrocerTheme.border,
+          color: selectionMode && isSelected
+              ? GrocerTheme.primary
+              : isRupture
+                  ? Colors.orange.shade300
+                  : GrocerTheme.border,
           width: selectionMode && isSelected ? 2 : 1,
         ),
       ),
@@ -584,17 +635,33 @@ class _ProductCard extends StatelessWidget {
                     activeColor: GrocerTheme.primary,
                   ),
                 ),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imageUrl != null
-                    ? Image.network(
-                        imageUrl,
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholder(),
-                      )
-                    : _placeholder(),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _placeholder(),
+                          )
+                        : _placeholder(),
+                  ),
+                  if (isRupture)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.45),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.remove_shopping_cart, color: Colors.white, size: 28),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -603,21 +670,40 @@ class _ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       product.nom,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
-                        color: GrocerTheme.textDark,
+                        color: isRupture ? GrocerTheme.textMuted : GrocerTheme.textDark,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${product.prix.toStringAsFixed(2)} DH',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: GrocerTheme.primary,
+                        color: isRupture ? Colors.grey : GrocerTheme.primary,
                         fontSize: 15,
                       ),
                     ),
+                    if (isRupture) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Text(
+                          'Rupture de stock',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -634,7 +720,7 @@ class _ProductCard extends StatelessWidget {
     return Container(
       width: 72,
       height: 72,
-      color: GrocerTheme.border.withValues(alpha: 0.3),
+      color: GrocerTheme.border.withOpacity(0.3),
       child: const Icon(Icons.image_not_supported_outlined, color: GrocerTheme.textMuted),
     );
   }

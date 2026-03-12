@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
 import 'catalogue/grocer_catalogue_screen.dart';
@@ -59,6 +62,20 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
           'MyHanut',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () {
+              context.read<AuthProvider>().logout();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+            tooltip: 'Déconnexion',
+          ),
+        ],
       ),
       body: IndexedStack(
         index: _currentIndex,

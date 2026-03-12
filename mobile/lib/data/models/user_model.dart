@@ -22,6 +22,10 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final epicier = json['epicier'] as Map<String, dynamic>?;
+    final statut = json['role'] == 'EPICIER' && epicier != null
+        ? (epicier['statut_inscription'] as String? ?? 'EN_ATTENTE')
+        : (json['statut_inscription'] as String? ?? 'ACCEPTE');
     return UserModel(
       id: json['id'],
       nom: json['nom'],
@@ -29,9 +33,9 @@ class UserModel {
       email: json['email'],
       role: json['role'],
       docVerf: json['doc_verf'],
-      statutInscription: json['statut_inscription'] ?? 'ACCEPTE',
+      statutInscription: statut,
       isActive: json['is_active'] ?? true,
-      store: json['epicier'],
+      store: epicier,
     );
   }
 

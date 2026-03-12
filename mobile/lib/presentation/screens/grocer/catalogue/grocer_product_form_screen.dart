@@ -151,6 +151,11 @@ class _GrocerProductFormScreenState extends State<GrocerProductFormScreen> {
         backgroundColor: GrocerTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Retour',
+        ),
         title: Text(isEdit ? 'Modifier le produit' : 'Ajouter un produit'),
       ),
       body: Form(
