@@ -282,6 +282,11 @@ const authController = {
         await user.save();
       }
 
+      // Si l'utilisateur existe déjà en tant que CLIENT mais souhaite s'inscrire comme EPICIER via Google
+      if (user && user.role === 'CLIENT' && role === 'EPICIER') {
+        return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client. Vous ne pouvez pas vous connecter en tant qu'Epicier." });
+      }
+
       if (!user.is_active) {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
