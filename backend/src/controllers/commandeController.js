@@ -2,19 +2,10 @@ const sequelize = require('../config/db');
 const { QueryTypes } = require('sequelize');
 const Commande = require('../models/Commande');
 const DetailCommande = require('../models/DetailCommande');
-const Panier = require('../models/Panier');
-const PanierProduit = require('../models/PanierProduit');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
 const Store = require('../models/Store');
-
-const getOrCreatePanier = async (clientId) => {
-  const [panier] = await Panier.findOrCreate({
-    where: { client_id: clientId },
-    defaults: { date_creation: new Date().toISOString().slice(0, 10) },
-  });
-  return panier;
-};
+const cartStore = require('../store/cartStore');
 
 const commandeController = {
   getMyCommandes: async (req, res) => {
@@ -139,11 +130,7 @@ const commandeController = {
         return res.status(400).json({ message: 'epicier_id et date_recuperation requis' });
       }
 
-      const panier = await getOrCreatePanier(clientId);
-      const panierItems = await PanierProduit.findAll({
-        where: { panier_id: panier.id },
-        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
-      });
+      const panierItems = cartStore.getItems(clientId);
 
       const itemsForEpicier = [];
       for (const row of panierItems) {
@@ -196,11 +183,7 @@ const commandeController = {
         }))
       );
 
-      for (const { row } of itemsForEpicier) {
-        await PanierProduit.destroy({
-          where: { panier_id: panier.id, produit_id: row.produit_id },
-        });
-      }
+      cartStore.removeItemsByProduitIds(clientId, itemsForEpicier.map(({ row }) => row.produit_id));
 
       res.status(201).json({
         message: 'Commande créée avec succès',
