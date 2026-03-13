@@ -6,7 +6,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
-import '../auth/login_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_orders_screen.dart';
 
@@ -303,7 +303,7 @@ class _AdminCategoryProductsScreenState
       },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
+        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
         BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
         BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Réglages'),
@@ -356,7 +356,7 @@ class _AdminCategoryProductsScreenState
                   context.read<AuthProvider>().logout();
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                     (route) => false,
                   );
                 },
@@ -924,7 +924,7 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
               context.read<AuthProvider>().logout();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => LoginScreen()),
+                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                 (route) => false,
               );
             },
