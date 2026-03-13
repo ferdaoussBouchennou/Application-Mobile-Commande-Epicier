@@ -138,14 +138,29 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  /// Create order from cart for the given epicier and pickup datetime. Returns success message or throws.
-  Future<void> confirmOrder(String? token, int epicierId, String dateRecuperation) async {
+  /// Reorder: add products from a past order to the cart. Only available products (not out of stock) are added.
+  /// Returns { added_count, skipped_products }. Throws on error.
+  Future<Map<String, dynamic>> reorderFromCommande(String? token, int orderId) async {
     if (token == null) throw Exception('Non connecté');
-    await _api.post(
+    final res = await _api.post(
+      '/commandes/$orderId/reorder',
+      <String, dynamic>{},
+      token: token,
+    ) as Map<String, dynamic>;
+    await fetchCart(token);
+    return res;
+  }
+
+  /// Create order from cart for the given epicier and pickup datetime.
+  /// Returns the response (may contain skipped_products). Throws on error.
+  Future<Map<String, dynamic>> confirmOrder(String? token, int epicierId, String dateRecuperation) async {
+    if (token == null) throw Exception('Non connecté');
+    final res = await _api.post(
       '/commandes',
       {'epicier_id': epicierId, 'date_recuperation': dateRecuperation},
       token: token,
-    );
+    ) as Map<String, dynamic>;
     await fetchCart(token);
+    return res;
   }
 }

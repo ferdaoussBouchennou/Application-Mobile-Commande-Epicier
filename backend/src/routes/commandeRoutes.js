@@ -6,5 +6,6 @@ const { authMiddleware } = require('../middlewares/auth');
 router.get('/', authMiddleware, commandeController.getMyCommandes);
 router.get('/:id', authMiddleware, commandeController.getCommandeById);
 router.post('/', authMiddleware, commandeController.createFromPanier);
+router.post('/:id/reorder', authMiddleware, commandeController.reorder);
 
 module.exports = router;

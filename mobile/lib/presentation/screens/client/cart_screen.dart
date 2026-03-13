@@ -430,12 +430,28 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
     }
     setState(() => _confirming = true);
     try {
-      await context.read<CartProvider>().confirmOrder(
+      final res = await context.read<CartProvider>().confirmOrder(
             widget.token,
             widget.epicierId,
             _creneaux[_selectedIndex]['value']!,
           );
-      if (mounted) widget.onSuccess();
+      if (!mounted) return;
+      widget.onSuccess();
+      final skipped = res['skipped_products'] as List?;
+      if (skipped != null && skipped.isNotEmpty) {
+        final names = skipped
+            .map((e) => (e is Map) ? (e['nom'] ?? 'Produit') : 'Produit')
+            .join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Commande créée. Les produits suivants n\'étaient plus disponibles et n\'ont pas été inclus : $names',
+            ),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) widget.onError(e.toString().replaceFirst('Exception: ', ''));
     } finally {

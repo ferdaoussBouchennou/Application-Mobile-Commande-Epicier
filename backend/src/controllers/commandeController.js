@@ -146,6 +146,7 @@ const commandeController = {
       });
 
       const itemsForEpicier = [];
+      const skipped = []; // { produit_id, nom } — plus disponible ou en rupture
       for (const row of panierItems) {
         const eid = row.epicier_id != null ? row.epicier_id : null;
         const matchEpicier = eid != null ? Number(eid) === Number(epicier_id) : false;
@@ -155,13 +156,27 @@ const commandeController = {
             ? { produit_id: row.produit_id, epicier_id: eid }
             : { produit_id: row.produit_id, epicier_id },
         });
-        if (!ep) continue;
+        if (!ep) {
+          skipped.push({ produit_id: row.produit_id, nom: row.Product?.nom ?? 'Produit' });
+          continue;
+        }
         if (Number(ep.epicier_id) !== Number(epicier_id)) continue;
+        if (!ep.is_active) {
+          skipped.push({ produit_id: row.produit_id, nom: row.Product?.nom ?? 'Produit' });
+          continue;
+        }
+        if (ep.rupture_stock) {
+          skipped.push({ produit_id: row.produit_id, nom: row.Product?.nom ?? 'Produit' });
+          continue;
+        }
         const prix = parseFloat(ep.prix ?? 0);
         itemsForEpicier.push({ row, prix });
       }
       if (itemsForEpicier.length === 0) {
-        return res.status(400).json({ message: 'Aucun article de cet épicier dans le panier' });
+        const msg = skipped.length > 0
+          ? `Aucun article disponible pour cet épicier. Les produits suivants n'existent plus ou sont en rupture : ${skipped.map((s) => s.nom).join(', ')}.`
+          : 'Aucun article de cet épicier dans le panier';
+        return res.status(400).json({ message: msg, skipped_products: skipped });
       }
 
       let montantTotal = 0;
@@ -206,10 +221,61 @@ const commandeController = {
         message: 'Commande créée avec succès',
         commande_id: commande.id,
         montant_total: montantTotal,
+        skipped_products: skipped,
       });
     } catch (error) {
       console.error('Erreur createFromPanier:', error);
       res.status(500).json({ message: 'Erreur lors de la création de la commande', error: error.message });
+    }
+  },
+
+  // Commander à nouveau : ajoute au panier uniquement les produits encore disponibles (is_active, !rupture_stock).
+  reorder: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const commandeId = req.params.id;
+      const commande = await Commande.findOne({
+        where: { id: commandeId, client_id: clientId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      const details = await DetailCommande.findAll({
+        where: { commande_id: commande.id },
+        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
+      });
+      const panier = await getOrCreatePanier(clientId);
+      const epicierId = Number(commande.epicier_id);
+      let addedCount = 0;
+      const skipped = [];
+      for (const d of details) {
+        const ep = await EpicierProduct.findOne({
+          where: { epicier_id: epicierId, produit_id: d.produit_id },
+        });
+        if (!ep || !ep.is_active || ep.rupture_stock) {
+          skipped.push({ produit_id: d.produit_id, nom: d.Product?.nom ?? 'Produit' });
+          continue;
+        }
+        const qty = Math.max(1, d.quantite || 1);
+        const [item, created] = await PanierProduit.findOrCreate({
+          where: { panier_id: panier.id, produit_id: d.produit_id },
+          defaults: { quantite: qty, epicier_id: epicierId },
+        });
+        if (!created) {
+          item.quantite += qty;
+          item.epicier_id = epicierId;
+          await item.save();
+        }
+        addedCount += 1;
+      }
+      res.status(200).json({
+        message: addedCount > 0 ? 'Produits disponibles ajoutés au panier.' : 'Aucun produit disponible à ajouter.',
+        added_count: addedCount,
+        skipped_products: skipped,
+      });
+    } catch (error) {
+      console.error('Erreur reorder:', error);
+      res.status(500).json({ message: 'Erreur lors de la réutilisation de la commande', error: error.message });
     }
   },
 };

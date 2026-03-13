@@ -312,17 +312,40 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
   Future<void> _orderAgain(ClientOrder order) async {
     final token = context.read<AuthProvider>().token;
     if (token == null) return;
-    final detail = await _fetchOrderDetail(order.id);
-    if (!mounted || detail == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Impossible de charger la commande')));
-      return;
-    }
-    final cart = context.read<CartProvider>();
-    for (final l in detail.lignes) {
-      await cart.addToCart(token, l.produitId, quantite: l.quantite, epicierId: order.epicierId);
-    }
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${detail.lignes.length} article(s) ajouté(s) au panier')));
+    try {
+      final cart = context.read<CartProvider>();
+      final res = await cart.reorderFromCommande(token, order.id);
+      if (!mounted) return;
+      final added = res['added_count'] as int? ?? 0;
+      final skipped = res['skipped_products'] as List? ?? [];
+      if (added > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$added article(s) ajouté(s) au panier.')),
+        );
+      }
+      if (skipped.isNotEmpty) {
+        final names = skipped
+            .map((e) => (e is Map) ? (e['nom'] ?? 'Produit') : 'Produit')
+            .join(', ');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Rupture de stock: $names n\'ont pas été ajoutés.',
+            ),
+            duration: const Duration(seconds: 5),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+      }
+      if (added == 0 && skipped.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Aucun article à ajouter.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
     }
   }
 
