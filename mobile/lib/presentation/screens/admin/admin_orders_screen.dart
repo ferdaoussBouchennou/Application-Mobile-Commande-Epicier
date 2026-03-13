@@ -300,15 +300,13 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Table(
               columnWidths: const {
-                0: FlexColumnWidth(1.2),
-                1: FlexColumnWidth(2.5),
-                2: FlexColumnWidth(1.5),
-                3: FlexColumnWidth(1.8),
+                0: FlexColumnWidth(2.5),
+                1: FlexColumnWidth(1.5),
+                2: FlexColumnWidth(1.8),
               },
               children: [
                 const TableRow(
                   children: [
-                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('ID', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
                     Padding(padding: EdgeInsets.only(bottom: 12), child: Text('CLIENT', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
                     Padding(padding: EdgeInsets.only(bottom: 12), child: Text('MONTANT', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
                     Padding(padding: EdgeInsets.only(bottom: 12), child: Text('STATUT', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
@@ -327,7 +325,6 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                   }
 
                   return _buildTableRow(
-                    '#${o['id']}',
                     '${o['client']?['prenom'] ?? ''} ${o['client']?['nom'] ?? ''}'.trim(),
                     '${o['montant_total'] ?? '0'} DH',
                     statusLabel,
@@ -342,11 +339,10 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     );
   }
 
-  TableRow _buildTableRow(String id, String name, String amount, String status, Color color) {
+  TableRow _buildTableRow(String name, String amount, String status, Color color) {
     return TableRow(
       children: [
-        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(id, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(name, style: const TextStyle(fontSize: 13))),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
         Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
