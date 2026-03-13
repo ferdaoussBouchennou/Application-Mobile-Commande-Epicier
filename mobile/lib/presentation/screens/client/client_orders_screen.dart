@@ -681,7 +681,7 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
   @override
   void initState() {
     super.initState();
-    // Charger tout de suite pour afficher le vrai statut (ex. « En préparation ») sans avoir à actualiser
+    // Charger tout de suite pour afficher le vrai statut (ex. « Prête ») sans avoir à actualiser
     _load();
   }
 
@@ -689,7 +689,7 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
   Widget build(BuildContext context) {
     final steps = [
       _StepInfo('reçue', 'Commande reçue', 'Votre commande a bien été enregistrée.', Icons.receipt_long_rounded),
-      _StepInfo('prête', 'En préparation', 'L\'épicier prépare votre commande.', Icons.inventory_2_outlined),
+      _StepInfo('prête', 'Prête', 'L\'épicier prépare votre commande.', Icons.inventory_2_outlined),
       _StepInfo('livrée', 'Récupérée', 'Vous avez récupéré votre commande.', Icons.check_circle_outline_rounded),
     ];
     final currentIndex = steps.indexWhere((s) => s.statut == _statut);
@@ -982,7 +982,7 @@ class _StatutChip extends StatelessWidget {
         fg = const Color(0xFFB85C38);
         break;
       case 'prête':
-        label = 'En préparation';
+        label = 'Prête';
         bg = const Color(0xFFFFE8D4);
         fg = const Color(0xFFC76B39);
         break;
