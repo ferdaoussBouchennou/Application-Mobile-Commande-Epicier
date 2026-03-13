@@ -116,7 +116,8 @@ const storeController = {
     }
   },
 
-  // Créneaux de récupération pour un épicier (basés sur les disponibilités)
+  // Créneaux de récupération pour un épicier (basés sur les disponibilités).
+  // Query: ?date=YYYY-MM-DD (optionnel). Si absent, utilise aujourd'hui.
   getCreneaux: async (req, res) => {
     try {
       const { id: storeId } = req.params;
@@ -129,8 +130,25 @@ const storeController = {
 
       const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
       const creneaux = [];
-      // Un seul jour (aujourd'hui) pour éviter d'afficher deux plages 8h–22h (aujourd'hui + demain)
-      const d = new Date();
+
+      let d;
+      const dateParam = req.query.date;
+      if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+        d = new Date(dateParam + 'T12:00:00');
+        if (isNaN(d.getTime())) {
+          d = new Date();
+        } else {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          d.setHours(0, 0, 0, 0);
+          if (d < today) {
+            return res.status(200).json({ creneaux, nom_boutique: store.nom_boutique });
+          }
+        }
+      } else {
+        d = new Date();
+      }
+
       const jourName = jours[d.getDay()];
       const disp = store.disponibilites?.find((av) => av.jour === jourName);
       if (disp) {
@@ -148,9 +166,9 @@ const storeController = {
         };
         const endMin = toMinutes(heureFin);
         const dateStr = d.toISOString().slice(0, 10);
-        // Ne proposer que les créneaux à partir de l'heure courante (pas les heures passées)
+        const isToday = dateStr === new Date().toISOString().slice(0, 10);
         const nowMinutes = d.getHours() * 60 + d.getMinutes();
-        const firstSlotStartMin = Math.ceil(nowMinutes / 60) * 60; // début du prochain créneau (heure pleine)
+        const firstSlotStartMin = isToday ? Math.ceil(nowMinutes / 60) * 60 : 0;
         let startMin = Math.max(toMinutes(heureDebut), firstSlotStartMin);
 
         while (startMin + 60 <= endMin) {

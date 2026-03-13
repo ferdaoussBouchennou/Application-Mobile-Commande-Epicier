@@ -106,10 +106,18 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetch available pickup slots for a store. Returns { creneaux: [{ label, value }], nom_boutique }.
-  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId) async {
+  /// Fetch available pickup slots for a store. [date] optional (YYYY-MM-DD); if null, backend uses today.
+  /// Returns { creneaux: [{ label, value }], nom_boutique }.
+  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId, {DateTime? date}) async {
     try {
-      final res = await _api.get('/stores/$storeId/creneaux', token: token);
+      String endpoint = '/stores/$storeId/creneaux';
+      if (date != null) {
+        final y = date.year;
+        final m = date.month.toString().padLeft(2, '0');
+        final d = date.day.toString().padLeft(2, '0');
+        endpoint = '$endpoint?date=$y-$m-$d';
+      }
+      final res = await _api.get(endpoint, token: token);
       return Map<String, dynamic>.from(res as Map);
     } catch (e) {
       _error = e.toString();

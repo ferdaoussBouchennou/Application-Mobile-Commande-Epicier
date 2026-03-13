@@ -360,16 +360,20 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
   bool _loading = true;
   int _selectedIndex = 0;
   bool _confirming = false;
+  late DateTime _selectedDate;
 
   @override
   void initState() {
     super.initState();
-    _loadCreneaux();
+    final now = DateTime.now();
+    _selectedDate = DateTime(now.year, now.month, now.day);
+    _loadCreneaux(_selectedDate);
   }
 
-  Future<void> _loadCreneaux() async {
+  Future<void> _loadCreneaux(DateTime date) async {
+    setState(() => _loading = true);
     final cart = context.read<CartProvider>();
-    final res = await cart.fetchCreneaux(widget.token, widget.epicierId);
+    final res = await cart.fetchCreneaux(widget.token, widget.epicierId, date: date);
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -377,14 +381,51 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
         _storeName = res['nom_boutique']?.toString() ?? 'Épicerie';
         final list = res['creneaux'] as List?;
         _creneaux = list?.map((e) => Map<String, String>.from(Map.from(e as Map))).toList() ?? [];
-        if (_creneaux.isNotEmpty) _selectedIndex = 0;
+        _selectedIndex = _creneaux.isNotEmpty ? 0 : -1;
       }
     });
   }
 
+  static const List<String> _jourAbr = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  static const List<String> _mois = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+  String _selectedDateLabel(DateTime d) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dNorm = DateTime(d.year, d.month, d.day);
+    if (dNorm == today) return 'Aujourd\'hui';
+    if (dNorm == today.add(const Duration(days: 1))) return 'Demain';
+    return '${_jourAbr[d.weekday - 1]} ${d.day} ${_mois[d.month - 1]}';
+  }
+
+  Future<void> _openDatePicker() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: now.add(const Duration(days: 60)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: _tealSelected,
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = DateTime(picked.year, picked.month, picked.day));
+      _loadCreneaux(_selectedDate);
+    }
+  }
+
   Future<void> _confirm() async {
     if (_creneaux.isEmpty || _selectedIndex < 0 || _selectedIndex >= _creneaux.length) {
-      widget.onError('Veuillez choisir un créneau.');
+      widget.onError('Veuillez choisir un jour et un créneau.');
       return;
     }
     setState(() => _confirming = true);
@@ -462,7 +503,7 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // CRÉNEAU DE RÉCUPÉRATION
+                    // JOUR ET CRÉNEAU DE RÉCUPÉRATION
                     Card(
                       color: _cardGray,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -473,16 +514,59 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.schedule, size: 20, color: Colors.grey.shade700),
+                                Icon(Icons.calendar_today, size: 20, color: Colors.grey.shade700),
                                 const SizedBox(width: 8),
-                                Text('CRÉNEAU DE RÉCUPÉRATION', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
+                                Text('JOUR ET CRÉNEAU DE RÉCUPÉRATION', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey.shade800)),
                               ],
                             ),
                             const SizedBox(height: 12),
+                            // Bouton : ouvrir l’agenda (calendrier)
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _openDatePicker,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: _tealSelected, width: 1.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.calendar_month, color: _tealSelected, size: 24),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Date de récupération', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                                            const SizedBox(height: 2),
+                                            Text(_selectedDateLabel(_selectedDate), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF2C2C2C))),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade500),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Icon(Icons.schedule, size: 18, color: Colors.grey.shade700),
+                                const SizedBox(width: 6),
+                                Text('Heure', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
                             if (_creneaux.isEmpty)
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 8),
-                                child: Text('Aucun créneau disponible.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+                                child: Text('Aucun créneau disponible ce jour.', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
                               )
                             else
                               ...List.generate(_creneaux.length, (i) {
@@ -533,7 +617,7 @@ class _ConfirmOrderSheetState extends State<_ConfirmOrderSheet> {
                             : const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                
+                                  Icon(Icons.check_circle_outline, size: 20),
                                   SizedBox(width: 8),
                                   Text('Confirmer la commande', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                                 ],
