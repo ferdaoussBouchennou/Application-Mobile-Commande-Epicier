@@ -7,7 +7,10 @@ const uploadProductImage = require('../middlewares/uploadProductImage');
 router.get('/stats', adminController.getStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
-router.post('/register-epicier', adminController.registerEpicier);
+router.post('/register-epicier', uploadProductImage.fields([
+  { name: 'image_boutique', maxCount: 1 },
+  { name: 'document_verification', maxCount: 1 }
+]), adminController.registerEpicier);
 
 // Gestion des catégories de la plateforme (CRUD admin)
 router.get('/categories', authMiddleware, requireAdmin, adminController.getCategories);

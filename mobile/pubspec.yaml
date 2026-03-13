@@ -54,6 +54,7 @@ dependencies:
   latlong2: ^0.9.1
   font_awesome_flutter: ^10.7.0
   google_sign_in: ^6.2.1
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
