@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
-import '../auth/login_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'admin_category_products_screen.dart';
 import 'admin_orders_screen.dart';
+import 'admin_disputes_screen.dart';
+import 'admin_validation_screen.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
@@ -184,21 +186,31 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       selectedItemColor: _primary,
       unselectedItemColor: Colors.grey,
       onTap: (index) {
-        if (index == 1) {
+        if (index == 0) {
           Navigator.popUntil(context, (route) => route.isFirst);
+        } else if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
+          );
         } else if (index == 2) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
           );
+        } else if (index == 4) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminDisputesScreen()),
+          );
         }
       },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
+        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
         BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
         BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Réglages'),
+        BottomNavigationBarItem(icon: Icon(Icons.warning_amber_rounded), label: 'Litiges'),
       ],
     );
   }
@@ -244,7 +256,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   context.read<AuthProvider>().logout();
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                     (route) => false,
                   );
                 },
