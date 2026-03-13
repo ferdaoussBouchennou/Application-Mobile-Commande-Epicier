@@ -16,6 +16,8 @@ router.post('/upload-store-image', authMiddleware, (req, res, next) => {
 }, grocerController.uploadStoreImage);
 
 router.get('/dashboard', authMiddleware, requireEpicier, grocerController.getDashboard);
+router.get('/commandes', authMiddleware, requireEpicier, grocerController.getCommandes);
+router.patch('/commandes/:id/statut', authMiddleware, requireEpicier, grocerController.updateCommandeStatut);
 router.get('/products', authMiddleware, requireEpicier, grocerController.getMyProducts);
 router.get('/products/available-for-category/:categoryId', authMiddleware, requireEpicier, grocerController.getAvailableProductsForCategory);
 router.post('/products/upload-image', (req, res, next) => {

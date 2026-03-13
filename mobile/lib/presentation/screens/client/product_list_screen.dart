@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/store.dart';
 import '../../../data/models/category.dart';
+import '../../../data/models/product.dart';
 import '../../../providers/product_provider.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/cart_provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../widgets/custom_header.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
@@ -235,33 +238,54 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         color: isRupture ? Colors.grey.shade500 : const Color(0xFF2D5016),
                       ),
                     ),
-                    if (isRupture)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange.shade200),
-                        ),
-                        child: Text(
-                          'Indisponible',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange.shade800,
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        height: 32,
-                        width: 32,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2D5016),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.add, color: Colors.white, size: 20),
-                      ),
+                    InkWell(
+                      onTap: isRupture
+                          ? null
+                          : () async {
+                              final token = context.read<AuthProvider>().token;
+                              if (token == null || token.isEmpty) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Connectez-vous pour ajouter au panier.')),
+                                  );
+                                }
+                                return;
+                              }
+                              await context.read<CartProvider>().addToCart(token, product.id, epicierId: widget.store.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('${product.nom} ajouté au panier')),
+                                );
+                              }
+                            },
+                      borderRadius: BorderRadius.circular(16),
+                      child: isRupture
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Text(
+                                'Indisponible',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange.shade800,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              height: 32,
+                              width: 32,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF2D5016),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.add, color: Colors.white, size: 20),
+                            ),
+                    ),
                   ],
                 ),
               ],
