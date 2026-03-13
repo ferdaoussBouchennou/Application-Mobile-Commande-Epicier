@@ -207,7 +207,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Épiciers'),
+        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
         BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
         BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
         BottomNavigationBarItem(icon: Icon(Icons.warning_amber_rounded), label: 'Litiges'),
