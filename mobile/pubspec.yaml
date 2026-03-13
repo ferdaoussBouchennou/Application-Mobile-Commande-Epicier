@@ -45,6 +45,7 @@ dependencies:
   flutter_native_splash: ^2.4.1
   shared_preferences: ^2.5.4
   provider: ^6.1.5+1
+  intl: ^0.18.1
   file_picker: ^10.3.10
   url_launcher: ^6.2.5
   geolocator: ^14.0.2
@@ -54,6 +55,7 @@ dependencies:
   latlong2: ^0.9.1
   font_awesome_flutter: ^10.7.0
   google_sign_in: ^6.2.1
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

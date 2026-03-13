@@ -5,6 +5,8 @@ const Store = require('../models/Store');
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
+const Order = require('../models/Order');
+const Reclamation = require('../models/Reclamation');
 const { Op } = require('sequelize');
 
 function sanitizeName(str) {
@@ -106,12 +108,36 @@ exports.registerEpicier = async (req, res) => {
       return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
     }
 
+    // Gestion des fichiers
+    let imagePath = null;
+    let docPath = null;
+
+    if (req.files) {
+      if (req.files.image_boutique && req.files.image_boutique[0]) {
+        const file = req.files.image_boutique[0];
+        const filename = `shop-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, '../../uploads/shops');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        imagePath = `uploads/shops/${filename}`;
+      }
+      if (req.files.document_verification && req.files.document_verification[0]) {
+        const file = req.files.document_verification[0];
+        const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, '../../uploads/documents');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        docPath = `uploads/documents/${filename}`;
+      }
+    }
+
     const newUser = await User.create({
       nom,
       prenom,
       email,
       mdp,
       role: 'EPICIER',
+      doc_verf: docPath,
       is_active: true
     });
 
@@ -121,6 +147,7 @@ exports.registerEpicier = async (req, res) => {
       adresse,
       telephone,
       description: description_boutique,
+      image_url: imagePath,
       statut_inscription: 'ACCEPTE',
       is_active: true
     });
@@ -131,6 +158,7 @@ exports.registerEpicier = async (req, res) => {
       store: newStore
     });
   } catch (error) {
+    console.error('Error registerEpicier:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -497,5 +525,100 @@ exports.uploadProductImage = async (req, res) => {
   } catch (error) {
     console.error('Erreur uploadProductImage admin:', error);
     res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
+  }
+};
+
+// --- Gestion des commandes et litiges ---
+
+exports.getOrderStats = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const totalToday = await Order.count({
+      where: {
+        date_commande: { [Op.gte]: today }
+      }
+    });
+
+    const ongoingCount = await Order.count({
+      where: {
+        statut: { [Op.in]: ['reçue', 'prête'] }
+      }
+    });
+
+    const disputeCount = await Reclamation.count({
+      where: { statut: { [Op.in]: ['Litige ouvert', 'En médiation'] } }
+    });
+
+    res.json({
+      totalToday,
+      ongoing: ongoingCount,
+      disputes: disputeCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getRecentOrders = async (req, res) => {
+  try {
+    const orders = await Order.findAll({
+      limit: 10,
+      order: [['date_commande', 'DESC']],
+      include: [
+        { model: User, as: 'client', attributes: ['nom', 'prenom'] }
+      ]
+    });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getDisputes = async (req, res) => {
+  try {
+    const disputes = await Reclamation.findAll({
+      order: [['date_creation', 'DESC']],
+      include: [
+        { model: User, as: 'client', attributes: ['nom', 'prenom'] },
+        { 
+          model: Order, 
+          as: 'commande',
+          include: [{ model: Store, as: 'epicier', attributes: ['nom_boutique'] }]
+        }
+      ]
+    });
+    res.json(disputes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.resolveDispute = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { statut } = req.body; // Expecting 'Résolu', 'En médiation', 'Remboursé', 'Litige ouvert'
+
+    console.log(`Tentative de mise à jour du litige ${id} vers le statut: ${statut}`);
+
+    const dispute = await Reclamation.findByPk(id);
+    if (!dispute) return res.status(404).json({ error: 'Réclamation non trouvée' });
+
+    // Validation basique
+    const validStatuses = ['Résolu', 'En médiation', 'Remboursé', 'Litige ouvert'];
+    if (statut && !validStatuses.includes(statut)) {
+      console.warn(`Statut invalide reçu: ${statut}`);
+    }
+
+    dispute.statut = statut || 'Résolu';
+    await dispute.save();
+
+    console.log(`Litige ${id} mis à jour avec succès: ${dispute.statut}`);
+
+    res.json({ message: 'Réclamation mise à jour', dispute });
+  } catch (error) {
+    console.error(`Erreur resolveDispute: ${error.message}`);
+    res.status(500).json({ error: error.message });
   }
 };
