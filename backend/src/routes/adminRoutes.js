@@ -7,7 +7,10 @@ const uploadProductImage = require('../middlewares/uploadProductImage');
 router.get('/stats', adminController.getStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
-router.post('/register-epicier', adminController.registerEpicier);
+router.post('/register-epicier', uploadProductImage.fields([
+  { name: 'image_boutique', maxCount: 1 },
+  { name: 'document_verification', maxCount: 1 }
+]), adminController.registerEpicier);
 
 // Gestion des catégories de la plateforme (CRUD admin)
 router.get('/categories', authMiddleware, requireAdmin, adminController.getCategories);
@@ -33,5 +36,11 @@ router.post('/products/upload-image', (req, res, next) => {
     next();
   });
 }, authMiddleware, requireAdmin, adminController.uploadProductImage);
+
+// Gestion des commandes et litiges
+router.get('/orders/stats', authMiddleware, requireAdmin, adminController.getOrderStats);
+router.get('/orders/recent', authMiddleware, requireAdmin, adminController.getRecentOrders);
+router.get('/disputes', authMiddleware, requireAdmin, adminController.getDisputes);
+router.patch('/disputes/:id/status', authMiddleware, requireAdmin, adminController.resolveDispute);
 
 module.exports = router;

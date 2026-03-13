@@ -8,6 +8,7 @@ import '../auth/login_screen.dart';
 import 'add_epicier_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
+import 'admin_epicier_profile_screen.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -335,7 +336,9 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
       actions = [
         _buildActionBtn('Suspendre', const Color(0xFFFFEBEE), Icons.remove_circle_outline, textColor: Colors.red, onTap: () => _updateStatus(user.id, isActive: false)),
         const SizedBox(width: 8),
-        _buildActionBtn('Voir profil', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () {}),
+        _buildActionBtn('Voir profil', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user)));
+        }),
       ];
     } else {
       statusColor = const Color(0xFFFFEBEE);
@@ -344,7 +347,9 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
       actions = [
         _buildActionBtn('Réactiver', const Color(0xFF2D5016), Icons.lock_open, onTap: () => _updateStatus(user.id, isActive: true)),
         const SizedBox(width: 8),
-        _buildActionBtn('Voir profil', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () {}),
+        _buildActionBtn('Voir profil', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user)));
+        }),
       ];
     }
 
