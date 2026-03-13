@@ -303,7 +303,10 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         textDark: _textDark,
         textMuted: _textMuted,
       ),
-    );
+    ).then((_) {
+      // Rafraîchir la liste à la fermeture du modal pour afficher le bon statut sur la carte
+      if (mounted) _load();
+    });
   }
 
   Future<void> _orderAgain(ClientOrder order) async {
@@ -655,7 +658,11 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
   bool _loading = true;
   String _error = '';
 
-  String get _statut => _detail?.statut ?? widget.initialStatut;
+  /// Statut affiché: toujours celui de l’API une fois chargé, sinon initial (avec normalisation minuscule).
+  String get _statut {
+    final s = _detail?.statut ?? widget.initialStatut;
+    return s.toLowerCase();
+  }
 
   Future<void> _load() async {
     setState(() {
@@ -674,7 +681,8 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    // Charger tout de suite pour afficher le vrai statut (ex. « En préparation ») sans avoir à actualiser
+    _load();
   }
 
   @override
@@ -686,6 +694,7 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
     ];
     final currentIndex = steps.indexWhere((s) => s.statut == _statut);
     final index = currentIndex >= 0 ? currentIndex : 0;
+    final isLoadingStatus = _loading && _detail == null;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
@@ -778,6 +787,16 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
                           'État de la commande',
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: widget.textDark),
                         ),
+                        if (isLoadingStatus) ...[
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: widget.primary),
+                          ),
+                          const SizedBox(width: 6),
+                          Text('Actualisation…', style: TextStyle(fontSize: 12, color: widget.textMuted)),
+                        ],
                       ],
                     ),
                   ),
@@ -788,27 +807,37 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2))],
                     ),
-                    child: Column(
-                      children: List.generate(steps.length, (i) {
-                        final step = steps[i];
-                        final isDone = i < index;
-                        final isCurrent = i == index;
-                        return _TimelineStep(
-                          title: step.title,
-                          subtitle: step.subtitle,
-                          icon: step.icon,
-                          isDone: isDone,
-                          isCurrent: isCurrent,
-                          isLast: i == steps.length - 1,
-                          dateText: i == 0 && (widget.dateCommandeFormatted?.isNotEmpty == true || widget.dateCommande != null)
-                              ? (widget.dateCommandeFormatted ?? widget.formatDateHour(widget.dateCommande))
-                              : null,
-                          primary: widget.primary,
-                          textDark: widget.textDark,
-                          textMuted: widget.textMuted,
-                        );
-                      }),
-                    ),
+                    child: isLoadingStatus
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: Text(
+                                'Chargement du statut en cours…',
+                                style: TextStyle(fontSize: 14, color: widget.textMuted),
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: List.generate(steps.length, (i) {
+                              final step = steps[i];
+                              final isDone = i < index;
+                              final isCurrent = i == index;
+                              return _TimelineStep(
+                                title: step.title,
+                                subtitle: step.subtitle,
+                                icon: step.icon,
+                                isDone: isDone,
+                                isCurrent: isCurrent,
+                                isLast: i == steps.length - 1,
+                                dateText: i == 0 && (widget.dateCommandeFormatted?.isNotEmpty == true || widget.dateCommande != null)
+                                    ? (widget.dateCommandeFormatted ?? widget.formatDateHour(widget.dateCommande))
+                                    : null,
+                                primary: widget.primary,
+                                textDark: widget.textDark,
+                                textMuted: widget.textMuted,
+                              );
+                            }),
+                          ),
                   ),
                   const SizedBox(height: 16),
                   Center(
