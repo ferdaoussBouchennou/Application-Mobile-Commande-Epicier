@@ -214,7 +214,6 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
       {'label': 'Tous', 'icon': null},
       {'label': 'Litige ouvert', 'icon': Icons.warning_amber_rounded},
       {'label': 'En médiation', 'icon': Icons.chat_bubble_outline},
-      {'label': 'Remboursé', 'icon': Icons.history},
       {'label': 'Résolu', 'icon': Icons.check_circle_outline},
     ];
 
@@ -252,8 +251,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
         switch (_selectedFilter) {
           case 'Litige ouvert': return ['litige ouvert', 'non resolut', 'nonresolue'].contains(normalizedStatus);
           case 'En médiation': return ['en médiation', 'en mediation', 'en attente'].contains(normalizedStatus);
-          case 'Remboursé': return ['remboursé', 'rembourse', 'rembourser'].contains(normalizedStatus);
-          case 'Résolu': return ['résolu', 'résolue', 'resolu', 'resolut'].contains(normalizedStatus);
+          case 'Résolu': return ['résolu', 'résolue', 'resolu', 'resolut', 'remboursé', 'rembourse'].contains(normalizedStatus);
           default: return true;
         }
       }).toList();
@@ -289,9 +287,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
         statusLabel = 'Ouvert'; statusColor = const Color(0xFFF26444); break;
       case 'en médiation': case 'en mediation': case 'en attente':
         statusLabel = 'Médiation'; statusColor = const Color(0xFFF2A93B); break;
-      case 'remboursé': case 'rembourse': case 'rembourser':
-        statusLabel = 'Remboursé'; statusColor = Colors.pink; break;
-      case 'résolu': case 'résolue': case 'resolu': case 'resolut':
+      case 'résolu': case 'résolue': case 'resolu': case 'resolut': case 'remboursé': case 'rembourse':
         statusLabel = 'Résolu'; statusColor = const Color(0xFF2D5016); break;
     }
 
@@ -312,7 +308,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('#CMD-${d['commande_id'] ?? '??'}', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
+              const SizedBox.shrink(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
@@ -349,8 +345,6 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
                 _buildActionBtn('Résoudre', const Color(0xFF2D5016), Icons.check, onTap: () => _updateDisputeStatus(idNum, 'Résolu')),
                 const SizedBox(width: 8),
                 _buildActionBtn('Médiation', const Color(0xFFF5EDDA), Icons.chat_bubble_outline, textColor: const Color(0xFF2D5016), onTap: () => _updateDisputeStatus(idNum, 'En médiation')),
-                const SizedBox(width: 8),
-                _buildActionBtn('Refus/Remb.', const Color(0xFFFFEBEE), Icons.history, textColor: Colors.red, onTap: () => _updateDisputeStatus(idNum, 'Remboursé')),
               ],
             ),
           ],
