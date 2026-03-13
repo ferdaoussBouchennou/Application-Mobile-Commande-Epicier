@@ -1,20 +1,11 @@
 const sequelize = require('../config/db');
-const { QueryTypes } = require('sequelize');
+const { QueryTypes, Op } = require('sequelize');
 const Commande = require('../models/Commande');
 const DetailCommande = require('../models/DetailCommande');
-const Panier = require('../models/Panier');
-const PanierProduit = require('../models/PanierProduit');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
 const Store = require('../models/Store');
-
-const getOrCreatePanier = async (clientId) => {
-  const [panier] = await Panier.findOrCreate({
-    where: { client_id: clientId },
-    defaults: { date_creation: new Date().toISOString().slice(0, 10) },
-  });
-  return panier;
-};
+const cartStore = require('../store/cartStore');
 
 const commandeController = {
   getMyCommandes: async (req, res) => {
@@ -139,11 +130,14 @@ const commandeController = {
         return res.status(400).json({ message: 'epicier_id et date_recuperation requis' });
       }
 
-      const panier = await getOrCreatePanier(clientId);
-      const panierItems = await PanierProduit.findAll({
-        where: { panier_id: panier.id },
-        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
+      const panierItems = cartStore.getItems(clientId);
+      const produitIds = [...new Set(panierItems.map((i) => i.produit_id))];
+      const products = await Product.findAll({
+        where: { id: { [Op.in]: produitIds } },
+        attributes: ['id', 'nom'],
       });
+      const productNom = {};
+      products.forEach((p) => { productNom[p.id] = p.nom; });
 
       const itemsForEpicier = [];
       const skipped = []; // { produit_id, nom } — plus disponible ou en rupture
@@ -157,16 +151,16 @@ const commandeController = {
             : { produit_id: row.produit_id, epicier_id },
         });
         if (!ep) {
-          skipped.push({ produit_id: row.produit_id, nom: row.Product?.nom ?? 'Produit' });
+          skipped.push({ produit_id: row.produit_id, nom: productNom[row.produit_id] ?? 'Produit' });
           continue;
         }
         if (Number(ep.epicier_id) !== Number(epicier_id)) continue;
         if (!ep.is_active) {
-          skipped.push({ produit_id: row.produit_id, nom: row.Product?.nom ?? 'Produit' });
+          skipped.push({ produit_id: row.produit_id, nom: productNom[row.produit_id] ?? 'Produit' });
           continue;
         }
         if (ep.rupture_stock) {
-          skipped.push({ produit_id: row.produit_id, nom: row.Product?.nom ?? 'Produit' });
+          skipped.push({ produit_id: row.produit_id, nom: productNom[row.produit_id] ?? 'Produit' });
           continue;
         }
         const prix = parseFloat(ep.prix ?? 0);
@@ -211,11 +205,7 @@ const commandeController = {
         }))
       );
 
-      for (const { row } of itemsForEpicier) {
-        await PanierProduit.destroy({
-          where: { panier_id: panier.id, produit_id: row.produit_id },
-        });
-      }
+      cartStore.removeItemsByProduitIds(clientId, itemsForEpicier.map(({ row }) => row.produit_id));
 
       res.status(201).json({
         message: 'Commande créée avec succès',
@@ -244,7 +234,6 @@ const commandeController = {
         where: { commande_id: commande.id },
         include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
       });
-      const panier = await getOrCreatePanier(clientId);
       const epicierId = Number(commande.epicier_id);
       let addedCount = 0;
       const skipped = [];
@@ -257,15 +246,7 @@ const commandeController = {
           continue;
         }
         const qty = Math.max(1, d.quantite || 1);
-        const [item, created] = await PanierProduit.findOrCreate({
-          where: { panier_id: panier.id, produit_id: d.produit_id },
-          defaults: { quantite: qty, epicier_id: epicierId },
-        });
-        if (!created) {
-          item.quantite += qty;
-          item.epicier_id = epicierId;
-          await item.save();
-        }
+        cartStore.addItem(clientId, d.produit_id, qty, epicierId);
         addedCount += 1;
       }
       res.status(200).json({
