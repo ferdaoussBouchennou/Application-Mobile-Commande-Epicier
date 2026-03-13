@@ -66,7 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
         } else {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => MapScreen()),
+            MaterialPageRoute(
+              settings: const RouteSettings(name: MapScreen.routeName),
+              builder: (_) => MapScreen(),
+            ),
           );
         }
       }
@@ -313,7 +316,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                 } else {
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => MapScreen()),
+                                    MaterialPageRoute(
+                                      settings: const RouteSettings(name: MapScreen.routeName),
+                                      builder: (_) => MapScreen(),
+                                    ),
                                   );
                                 }
                               }

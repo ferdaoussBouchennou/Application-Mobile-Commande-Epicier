@@ -7,6 +7,7 @@ import '../../../providers/product_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cart_provider.dart';
 import '../../../core/constants/api_constants.dart';
+import 'map_screen/map_screen.dart';
 import '../../widgets/custom_header.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 
@@ -114,7 +115,15 @@ class _ProductListScreenState extends State<ProductListScreen> {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 1,
         onTap: (index) {
-          if (index == 0) Navigator.popUntil(context, (route) => route.isFirst);
+          if (index == 0) {
+            Navigator.popUntil(context, (route) => route.settings.name == MapScreen.routeName);
+            return;
+          }
+          if (index == 2 || index == 3) {
+            context.read<CartProvider>().setPendingTabIndex(index);
+            Navigator.popUntil(context, (route) => route.settings.name == MapScreen.routeName);
+            return;
+          }
         },
       ),
     );

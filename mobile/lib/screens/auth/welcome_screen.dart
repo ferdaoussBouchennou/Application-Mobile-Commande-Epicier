@@ -108,7 +108,15 @@ class WelcomeScreen extends StatelessWidget {
   
                 // Lien "Parcourir sans compte"
                 GestureDetector(
-                  onTap: () => _goTo(context, MapScreen()),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: MapScreen.routeName),
+                        builder: (_) => MapScreen(),
+                      ),
+                    );
+                  },
                   child: const Text(
                     'Parcourir sans compte',
                     style: TextStyle(

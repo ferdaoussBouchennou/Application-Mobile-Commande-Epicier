@@ -486,7 +486,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 } else {
                                   Navigator.pushReplacement(
                                     context,
-                                    MaterialPageRoute(builder: (_) => MapScreen()),
+                                    MaterialPageRoute(
+                                      settings: const RouteSettings(name: MapScreen.routeName),
+                                      builder: (_) => MapScreen(),
+                                    ),
                                   );
                                 }
                               }

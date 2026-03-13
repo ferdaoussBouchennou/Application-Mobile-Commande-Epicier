@@ -17,6 +17,18 @@ class CartProvider with ChangeNotifier {
   int get itemCount => _items.fold(0, (sum, i) => sum + i.quantite);
   int get articleCount => _items.length;
 
+  /// When set, MapScreen will switch to this tab index after pop-to-root (e.g. from product list).
+  int? _pendingTabIndex;
+  int? get pendingTabIndex => _pendingTabIndex;
+  void setPendingTabIndex(int? index) {
+    _pendingTabIndex = index;
+    notifyListeners();
+  }
+  void clearPendingTabIndex() {
+    _pendingTabIndex = null;
+    notifyListeners();
+  }
+
   Future<void> fetchCart(String? token) async {
     if (token == null || token.isEmpty) {
       _items = [];

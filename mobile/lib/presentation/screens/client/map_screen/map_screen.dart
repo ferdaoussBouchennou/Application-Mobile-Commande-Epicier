@@ -8,6 +8,9 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
 
 class MapScreen extends StatefulWidget {
+  /// Route name used so nested screens (e.g. product list) can pop back here instead of to WelcomeScreen.
+  static const String routeName = '/client';
+
   const MapScreen({super.key});
 
   @override
@@ -42,6 +45,19 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cartProvider = context.read<CartProvider>();
+    final pending = cartProvider.pendingTabIndex;
+    if (pending != null && pending >= 0 && pending < 4) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        cartProvider.clearPendingTabIndex();
+        setState(() => _currentIndex = pending);
+        if (pending == 2) {
+          final token = context.read<AuthProvider>().token;
+          cartProvider.fetchCart(token);
+        }
+      });
+    }
     final pages = _buildPages();
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
