@@ -108,12 +108,36 @@ exports.registerEpicier = async (req, res) => {
       return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
     }
 
+    // Gestion des fichiers
+    let imagePath = null;
+    let docPath = null;
+
+    if (req.files) {
+      if (req.files.image_boutique && req.files.image_boutique[0]) {
+        const file = req.files.image_boutique[0];
+        const filename = `shop-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, '../../uploads/shops');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        imagePath = `uploads/shops/${filename}`;
+      }
+      if (req.files.document_verification && req.files.document_verification[0]) {
+        const file = req.files.document_verification[0];
+        const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, '../../uploads/documents');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        docPath = `uploads/documents/${filename}`;
+      }
+    }
+
     const newUser = await User.create({
       nom,
       prenom,
       email,
       mdp,
       role: 'EPICIER',
+      doc_verf: docPath,
       is_active: true
     });
 
@@ -123,6 +147,7 @@ exports.registerEpicier = async (req, res) => {
       adresse,
       telephone,
       description: description_boutique,
+      image_url: imagePath,
       statut_inscription: 'ACCEPTE',
       is_active: true
     });
@@ -133,6 +158,7 @@ exports.registerEpicier = async (req, res) => {
       store: newStore
     });
   } catch (error) {
+    console.error('Error registerEpicier:', error);
     res.status(500).json({ error: error.message });
   }
 };
