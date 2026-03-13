@@ -7,6 +7,7 @@ import 'providers/auth_provider.dart';
 import 'providers/store_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/cart_provider.dart';
 import 'providers/grocer_catalog_provider.dart';
 
 Future<void> main() async {
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StoreProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => GrocerCatalogProvider()),
       ],
       child: MaterialApp(

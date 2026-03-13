@@ -4,6 +4,8 @@ import '../../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
+import 'catalogue/grocer_catalogue_placeholder_screen.dart';
+import 'orders/grocer_orders_screen.dart';
 import 'catalogue/grocer_catalogue_screen.dart';
 import 'orders/grocer_orders_placeholder_screen.dart';
 import 'stats/grocer_stats_placeholder_screen.dart';
@@ -21,7 +23,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
   VoidCallback? _catalogueRefresh;
   final GlobalKey<NavigatorState> _catalogueNavKey = GlobalKey<NavigatorState>();
 
-  late final List<Widget> _screens;
+  late List<Widget> _screens;
 
   @override
   void initState() {
