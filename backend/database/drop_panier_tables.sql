@@ -1,5 +1,4 @@
--- Run this once to remove panier tables from the database.
--- The app now uses in-memory cart (backend/src/store/cartStore.js); no DB storage for cart.
+-- Run only if you want to remove panier tables. The app normally uses DB-backed panier (persists after logout/login).
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS panier_produits;

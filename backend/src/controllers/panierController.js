@@ -1,23 +1,29 @@
+const Panier = require('../models/Panier');
+const PanierProduit = require('../models/PanierProduit');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
 const { Op } = require('sequelize');
-const cartStore = require('../store/cartStore');
+
+const getOrCreatePanier = async (clientId) => {
+  const [panier] = await Panier.findOrCreate({
+    where: { client_id: clientId },
+    defaults: { date_creation: new Date().toISOString().slice(0, 10) },
+  });
+  return panier;
+};
 
 const panierController = {
   getPanier: async (req, res) => {
     try {
       const clientId = req.user.id;
-      const items = cartStore.getItems(clientId);
-      if (items.length === 0) {
-        return res.status(200).json({ panier_id: null, articles: [], total: 0 });
-      }
-      const productIds = [...new Set(items.map((i) => i.produit_id))];
-      const products = await Product.findAll({
-        where: { id: { [Op.in]: productIds } },
-        attributes: ['id', 'nom', 'image_principale'],
+      const panier = await getOrCreatePanier(clientId);
+      const items = await PanierProduit.findAll({
+        where: { panier_id: panier.id },
+        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom', 'image_principale'] }],
       });
-      const productMap = {};
-      products.forEach((p) => { productMap[p.id] = p; });
+      if (items.length === 0) {
+        return res.status(200).json({ panier_id: panier.id, articles: [], total: 0 });
+      }
       const keysWithEpicier = items.filter((i) => i.epicier_id != null).map((i) => ({ epicier_id: i.epicier_id, produit_id: i.produit_id }));
       const produitIdsNull = [...new Set(items.filter((i) => i.epicier_id == null).map((i) => i.produit_id))];
       const epMap = {};
@@ -49,20 +55,19 @@ const panierController = {
           prix = parseFloat(ep.prix ?? 0);
           epicierId = ep.epicier_id;
         }
-        const prod = productMap[row.produit_id];
         const ligneTotal = prix * (row.quantite || 0);
         totalProduits += ligneTotal;
         return {
           produit_id: row.produit_id,
           quantite: row.quantite,
-          nom: prod?.nom,
+          nom: row.Product?.nom,
           prix,
-          image_principale: prod?.image_principale,
+          image_principale: row.Product?.image_principale,
           epicier_id: epicierId,
         };
       });
       res.status(200).json({
-        panier_id: null,
+        panier_id: panier.id,
         articles: lignes,
         total: Math.round(totalProduits * 100) / 100,
       });
@@ -79,8 +84,17 @@ const panierController = {
       if (!produit_id) {
         return res.status(400).json({ message: 'produit_id requis' });
       }
-      const quantiteFinale = cartStore.addItem(clientId, produit_id, quantite, epicier_id);
-      res.status(200).json({ message: 'Article ajouté', quantite: quantiteFinale });
+      const panier = await getOrCreatePanier(clientId);
+      const [item, created] = await PanierProduit.findOrCreate({
+        where: { panier_id: panier.id, produit_id },
+        defaults: { quantite: Math.max(1, parseInt(quantite, 10) || 1), epicier_id: epicier_id || null },
+      });
+      if (!created) {
+        item.quantite += Math.max(0, parseInt(quantite, 10) || 1);
+        if (epicier_id != null) item.epicier_id = epicier_id;
+        await item.save();
+      }
+      res.status(200).json({ message: 'Article ajouté', quantite: item.quantite });
     } catch (error) {
       console.error('Erreur addItem:', error);
       res.status(500).json({ message: 'Erreur lors de l\'ajout au panier', error: error.message });
@@ -92,11 +106,24 @@ const panierController = {
       const clientId = req.user.id;
       const { produitId } = req.params;
       const { quantite } = req.body;
-      const qty = cartStore.updateQuantity(clientId, produitId, quantite);
-      if (qty === null) {
+      const qty = parseInt(quantite, 10);
+      if (isNaN(qty) || qty < 0) {
+        return res.status(400).json({ message: 'quantite invalide' });
+      }
+      const panier = await getOrCreatePanier(clientId);
+      const item = await PanierProduit.findOne({
+        where: { panier_id: panier.id, produit_id: produitId },
+      });
+      if (!item) {
         return res.status(404).json({ message: 'Article non trouvé dans le panier' });
       }
-      res.status(200).json({ message: qty === 0 ? 'Article retiré' : 'Quantité mise à jour', quantite: qty });
+      if (qty === 0) {
+        await item.destroy();
+        return res.status(200).json({ message: 'Article retiré', quantite: 0 });
+      }
+      item.quantite = qty;
+      await item.save();
+      res.status(200).json({ message: 'Quantité mise à jour', quantite: item.quantite });
     } catch (error) {
       console.error('Erreur updateQuantity:', error);
       res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
@@ -107,10 +134,11 @@ const panierController = {
     try {
       const clientId = req.user.id;
       const { produitId } = req.params;
-      const itemsBefore = cartStore.getItems(clientId).length;
-      cartStore.removeItem(clientId, produitId);
-      const itemsAfter = cartStore.getItems(clientId).length;
-      if (itemsBefore === itemsAfter) {
+      const panier = await getOrCreatePanier(clientId);
+      const deleted = await PanierProduit.destroy({
+        where: { panier_id: panier.id, produit_id: produitId },
+      });
+      if (!deleted) {
         return res.status(404).json({ message: 'Article non trouvé dans le panier' });
       }
       res.status(200).json({ message: 'Article retiré du panier' });

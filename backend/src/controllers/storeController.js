@@ -165,9 +165,18 @@ const storeController = {
           return 0;
         };
         const endMin = toMinutes(heureFin);
-        const dateStr = d.toISOString().slice(0, 10);
-        const isToday = dateStr === new Date().toISOString().slice(0, 10);
-        const nowMinutes = d.getHours() * 60 + d.getMinutes();
+        const now = new Date();
+        const toLocalDateStr = (date) =>
+          date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        const todayStr = toLocalDateStr(now);
+        const selectedDateStr = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+          ? dateParam
+          : toLocalDateStr(d);
+        const isToday = selectedDateStr === todayStr;
+        const dateStr = selectedDateStr;
+        // Pour aujourd'hui : uniquement les créneaux à partir de l'heure courante (heure pleine suivante).
+        // Pour les jours suivants : tous les créneaux depuis l'ouverture.
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
         const firstSlotStartMin = isToday ? Math.ceil(nowMinutes / 60) * 60 : 0;
         let startMin = Math.max(toMinutes(heureDebut), firstSlotStartMin);
 
