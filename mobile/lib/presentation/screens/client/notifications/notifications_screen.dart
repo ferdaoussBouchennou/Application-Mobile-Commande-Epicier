@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../../data/models/notification_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../providers/auth_provider.dart';
+import '../../../../providers/cart_provider.dart';
+
 
 /// NotificationsScreen — fetches real notifications from the backend
 /// and displays them grouped by date.
@@ -331,12 +333,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                         if (n.isOrderReady) ...[
                           const SizedBox(width: 12),
-                          const Text(
-                            '→ Voir mes commandes',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF2D5016),
-                              fontWeight: FontWeight.w700,
+                          GestureDetector(
+                            onTap: () {
+                              _markRead(n.id);
+                              context.read<CartProvider>().setPendingTabIndex(3);
+                            },
+                            child: const Text(
+                              '→ Voir mes commandes',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF2D5016),
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ],
