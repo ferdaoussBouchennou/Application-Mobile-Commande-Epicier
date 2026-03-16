@@ -44,7 +44,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cartProvider = context.read<CartProvider>();
+    final cartProvider = context.watch<CartProvider>();
     final pending = cartProvider.pendingTabIndex;
     if (pending != null && pending >= 0 && pending < 5) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
