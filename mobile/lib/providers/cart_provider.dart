@@ -9,11 +9,15 @@ class CartProvider with ChangeNotifier {
   double _total = 0.0;
   bool _loading = false;
   String? _error;
+  int? _pendingTabIndex;
+
 
   List<CartItem> get items => List.unmodifiable(_items);
   double get total => _total;
   bool get loading => _loading;
   String? get error => _error;
+  int? get pendingTabIndex => _pendingTabIndex;
+
   int get itemCount => _items.fold(0, (sum, i) => sum + i.quantite);
   int get articleCount => _items.length;
 
@@ -127,5 +131,15 @@ class CartProvider with ChangeNotifier {
       token: token,
     );
     await fetchCart(token);
+  }
+
+  void setPendingTabIndex(int index) {
+    _pendingTabIndex = index;
+    notifyListeners();
+  }
+
+  void clearPendingTabIndex() {
+    _pendingTabIndex = null;
+    notifyListeners();
   }
 }

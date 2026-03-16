@@ -303,6 +303,31 @@ const authController = {
       console.error('Erreur googleLogin:', error);
       res.status(401).json({ message: 'Échec de l\'authentification Google', error: error.message });
     }
+  },
+
+  // Mettre à jour le token FCM de l'utilisateur
+  updateFCMToken: async (req, res) => {
+    try {
+      const { fcm_token } = req.body;
+      const userId = req.user.id;
+
+      if (!fcm_token) {
+        return res.status(400).json({ message: 'fcm_token requis' });
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+
+      user.fcm_token = fcm_token;
+      await user.save();
+
+      res.status(200).json({ message: 'FCM token mis à jour' });
+    } catch (error) {
+      console.error('Erreur updateFCMToken:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour du FCM token', error: error.message });
+    }
   }
 };
 
