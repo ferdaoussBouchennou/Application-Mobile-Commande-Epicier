@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/fcm_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -32,6 +33,9 @@ class AuthProvider with ChangeNotifier {
     if (_token != null) {
       _isLoggedIn = true;
       notifyListeners();
+      
+      // Update FCM token silently
+      FCMService().updateFCMToken(_token!);
     }
   }
 
@@ -50,6 +54,9 @@ class AuthProvider with ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
+
+      // Sync FCM token
+      await FCMService().updateFCMToken(_token!);
 
       _setLoading(false);
       return true;
@@ -70,27 +77,20 @@ class AuthProvider with ChangeNotifier {
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         _setLoading(false);
-        return false; // Annulé par l'utilisateur
+        return false;
       }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null) {
-        throw Exception("Erreur lors de la récupération du token Google");
+        throw Exception("Erreur token Google");
       }
 
-      // Prepare payload
-      Map<String, dynamic> payload = {
+      final response = await _apiService.post('/auth/google', {
         'idToken': idToken,
-      };
-
-      if (epicierData != null) {
-        payload.addAll(epicierData);
-      }
-
-      // Envoi du token au backend pour vérification et connexion/inscription
-      final response = await _apiService.post('/auth/google', payload);
+        if (epicierData != null) ...epicierData,
+      });
 
       _token = response['token'];
       _user = response['user'];
@@ -99,6 +99,9 @@ class AuthProvider with ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
+
+      // Sync FCM token
+      await FCMService().updateFCMToken(_token!);
 
       _setLoading(false);
       return true;
@@ -144,10 +147,8 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _store = null;
     _isLoggedIn = false;
-    
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
-    
     notifyListeners();
   }
 

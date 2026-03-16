@@ -737,6 +737,47 @@ const grocerController = {
       }
       commande.statut = statut;
       await commande.save();
+
+      // --- NOTIFICATION LOGIC ---
+      try {
+        const { QueryTypes } = require('sequelize');
+        const sequelize = require('../config/db');
+        const { sendNotification } = require('../utils/notification');
+
+        // Fetch client and store details
+        const details = await sequelize.query(
+          `SELECT c.fcm_token, u.nom as client_nom, s.nom as store_nom
+           FROM commandes co
+           JOIN utilisateurs u ON co.client_id = u.id
+           JOIN stores s ON co.epicier_id = s.id
+           LEFT JOIN utilisateurs c ON co.client_id = c.id
+           WHERE co.id = :id`,
+          { replacements: { id }, type: QueryTypes.SELECT }
+        );
+
+        if (details.length > 0) {
+          const { fcm_token, store_nom } = details[0];
+          const message = `Votre commande chez ${store_nom || 'votre épicier'} est ${statut}.`;
+
+          // 1. Save to Database
+          await sequelize.query(
+            'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, NOW(), 0)',
+            {
+              replacements: { client_id: commande.client_id, message },
+              type: QueryTypes.INSERT
+            }
+          );
+
+          // 2. Send Push Notification if token exists
+          if (fcm_token) {
+            await sendNotification(fcm_token, 'Mise à jour commande', message);
+          }
+        }
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
+      // --------------------------
+
       res.status(200).json({ message: 'Statut mis à jour', statut: commande.statut });
     } catch (error) {
       console.error('Erreur updateCommandeStatut:', error);
