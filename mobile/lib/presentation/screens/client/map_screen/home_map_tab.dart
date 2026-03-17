@@ -5,6 +5,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../providers/store_provider.dart';
 import '../store_details_screen.dart';
+import '../../../../screens/auth/welcome_screen.dart';
+import '../../../../providers/auth_provider.dart';
 
 class HomeMapTab extends StatefulWidget {
   const HomeMapTab({super.key});
@@ -20,6 +22,7 @@ class _HomeMapTabState extends State<HomeMapTab> {
   final MapController _mapController = MapController();
   final PageController _pageController = PageController(viewportFraction: 0.85);
   int _selectedStoreIndex = -1;
+  bool _isSatellite = false;
 
   @override
   void initState() {
@@ -133,24 +136,59 @@ class _HomeMapTabState extends State<HomeMapTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(20, 16, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+          child: Row(
             children: [
-              Text(
-                'Trouver un épicier',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D5016),
-                ),
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) {
+                  if (auth.isLoggedIn) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+                          (route) => false,
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2D5016).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: Color(0xFF2D5016),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              Text(
-                'Proche de chez vous à Tétouan',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Trouver un épicier',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2D5016),
+                      ),
+                    ),
+                    Text(
+                      'Proche de chez vous à Tétouan',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -188,9 +226,11 @@ class _HomeMapTabState extends State<HomeMapTab> {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                        subdomains: const ['a', 'b', 'c', 'd'],
+                        urlTemplate: (_isSatellite == true) 
+                          ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+                          : 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
                         userAgentPackageName: 'com.myhanut.app',
+                        maxZoom: 20,
                       ),
                       Consumer<StoreProvider>(
                         builder: (context, storeProvider, child) {
@@ -276,7 +316,7 @@ class _HomeMapTabState extends State<HomeMapTab> {
                                           Container(
                                             padding: const EdgeInsets.all(9),
                                             decoration: BoxDecoration(
-                                              color: store.isOpen ? const Color(0xFF2D5016) : Colors.grey,
+                                              color: (store.isOpen == true) ? const Color(0xFF2D5016) : Colors.grey,
                                               borderRadius: BorderRadius.circular(14),
                                               boxShadow: [
                                                 BoxShadow(
@@ -359,6 +399,11 @@ class _HomeMapTabState extends State<HomeMapTab> {
                     bottom: 170,
                     child: Column(
                       children: [
+                        _buildFloatingButton(
+                          icon: (_isSatellite == true) ? Icons.map_rounded : Icons.satellite_alt_rounded,
+                          onPressed: () => setState(() => _isSatellite = !(_isSatellite == true)),
+                        ),
+                        const SizedBox(height: 10),
                         _buildFloatingButton(
                           icon: Icons.explore_outlined,
                           onPressed: () => _mapController.rotate(0),
@@ -458,11 +503,11 @@ class _HomeMapTabState extends State<HomeMapTab> {
                                                   Container(
                                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                                     decoration: BoxDecoration(
-                                                      color: (store.isOpen ? Colors.green : Colors.red).withOpacity(0.1),
+                                                      color: (store.isOpen == true ? Colors.green : Colors.red).withOpacity(0.1),
                                                       borderRadius: BorderRadius.circular(4),
                                                     ),
-                                                    child: Text(store.isOpen ? 'OUVERT' : 'FERMÉ',
-                                                      style: TextStyle(color: store.isOpen ? Colors.green[700] : Colors.red[700], fontSize: 9, fontWeight: FontWeight.bold),
+                                                    child: Text(store.isOpen == true ? 'OUVERT' : 'FERMÉ',
+                                                      style: TextStyle(color: store.isOpen == true ? Colors.green[700] : Colors.red[700], fontSize: 9, fontWeight: FontWeight.bold),
                                                     ),
                                                   ),
                                                 ],
