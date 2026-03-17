@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../data/services/api_service.dart';
-import '../auth/login_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'admin_validation_screen.dart';
 import 'admin_disputes_screen.dart';
 import 'admin_categories_screen.dart';
@@ -166,7 +166,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       context.read<AuthProvider>().logout();
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                         (route) => false,
                       );
                     },

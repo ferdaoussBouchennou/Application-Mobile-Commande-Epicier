@@ -56,6 +56,7 @@ const storeController = {
       } else {
         const result = await Store.findAll({
           where: { is_active: true, statut_inscription: 'COMPLETE' },
+          order: [['date_creation', 'DESC']], // ← ajouter cette ligne
           include: [
             { model: User, as: 'utilisateur', attributes: ['nom', 'prenom'] },
             { model: Availability, as: 'disponibilites' }
@@ -105,7 +106,7 @@ const storeController = {
           { replacements: { id }, type: QueryTypes.SELECT }
         );
         rating = Number(Number((rows && rows[0] && rows[0].note_moyenne) || 0).toFixed(1));
-      } catch (_) {}
+      } catch (_) { }
       const storeJson = store.toJSON();
       storeJson.rating = rating;
 

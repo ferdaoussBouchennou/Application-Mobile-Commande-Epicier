@@ -17,7 +17,7 @@ class CustomBottomNavBar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha(13),
             offset: const Offset(0, -4),
             blurRadius: 10,
           ),
@@ -28,7 +28,7 @@ class CustomBottomNavBar extends StatelessWidget {
         onTap: onTap,
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF2D5016), // Vert sombre (couleur active)
+        selectedItemColor: const Color(0xFF2D5016), // Vert sombre
         unselectedItemColor: Colors.grey.shade400,
         selectedFontSize: 12,
         unselectedFontSize: 12,
@@ -53,6 +53,11 @@ class CustomBottomNavBar extends StatelessWidget {
             icon: Icon(Icons.receipt_long_outlined),
             activeIcon: Icon(Icons.receipt_long),
             label: 'Commandes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications_none_outlined),
+            activeIcon: Icon(Icons.notifications),
+            label: 'Notifs',
           ),
         ],
       ),

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
-import '../auth/login_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'admin_category_products_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_disputes_screen.dart';
@@ -256,7 +256,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   context.read<AuthProvider>().logout();
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                     (route) => false,
                   );
                 },

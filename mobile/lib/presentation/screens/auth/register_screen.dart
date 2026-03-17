@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'verify_email_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -115,16 +116,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       if (success && mounted) {
-        final message = _isEpicier
-            ? 'Demande d\'inscription envoyée ! En attente de validation admin.'
-            : 'Compte créé avec succès ! Connectez-vous.';
-            
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Compte créé ! Vérifiez votre email pour continuer.'),
+            backgroundColor: Color(0xFF2D5016),
+          ),
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => LoginScreen()),
+          MaterialPageRoute(
+            builder: (_) => VerifyEmailScreen(email: _emailController.text.trim()),
+          ),
         );
       }
     } catch (e) {
