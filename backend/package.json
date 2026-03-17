@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "migrate-images": "node scripts/migrate-product-images.js",
+    "rename-product-images": "node scripts/rename-existing-product-images.js"
   },
   "keywords": [],
   "author": "",
@@ -15,10 +17,13 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "google-auth-library": "^10.6.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
+    "multer": "^2.1.1",
     "mysql2": "^3.19.0",
+    "nodemailer": "^8.0.2",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {

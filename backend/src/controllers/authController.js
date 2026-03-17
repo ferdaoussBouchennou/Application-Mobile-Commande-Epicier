@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
+const { generateOTP, sendOTP } = require('../utils/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_314159';
 
@@ -14,8 +16,11 @@ const authController = {
       // Vérifier si l'email existe
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+        return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
+
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
       // Créer le client
       const newUser = await User.create({
@@ -23,15 +28,22 @@ const authController = {
         prenom,
         email,
         mdp,
-        adresse,
-        telephone,
         role: 'CLIENT',
-        is_active: true
+        telephone: telephone || null,
+        adresse: adresse || null,
+        is_active: true,
+        email_verified: false,
+        otp_code: otp,
+        otp_expires_at: otpExpires,
       });
 
+      // Envoyer l'email de vérification
+      await sendOTP(email, otp, 'verify');
+
       res.status(201).json({
-        message: 'Client créé avec succès',
-        user: { id: newUser.id, nom: newUser.nom, prenom: newUser.prenom, email: newUser.email, role: newUser.role }
+        message: 'Client créé avec succès. Vérifiez votre email.',
+        requiresVerification: true,
+        email: newUser.email,
       });
     } catch (error) {
       console.error('Erreur registerClient:', error);
@@ -42,12 +54,15 @@ const authController = {
   // Inscription Epicier
   registerEpicier: async (req, res) => {
     try {
-      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique } = req.body;
+      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique, image_url } = req.body;
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
+        return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
+
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
 
       // Créer l'utilisateur avec le rôle EPICIER
       const newUser = await User.create({
@@ -55,31 +70,163 @@ const authController = {
         prenom,
         email,
         mdp,
-        adresse,
-        telephone,
         role: 'EPICIER',
         doc_verf,
+        is_active: true,
+        email_verified: false,
+        otp_code: otp,
+        otp_expires_at: otpExpires,
+      });
+
+      // Créer l'entrée dans la table epiciers (statut_inscription sur la boutique)
+      await Store.create({
+        utilisateur_id: newUser.id,
+        nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
+        adresse: adresse || 'À configurer',
+        telephone: telephone || null,
+        description: description_boutique,
+        image_url: image_url || null,
         statut_inscription: 'EN_ATTENTE',
         is_active: true
       });
 
-      // Créer l'entrée dans la table epiciers
-      const newStore = await Store.create({
-        utilisateur_id: newUser.id,
-        nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
-        adresse, // Même adresse que l'utilisateur par défaut, sinon on peut la demander séparément
-        telephone,
-        description: description_boutique,
-      });
+      // Envoyer l'email de vérification
+      await sendOTP(email, otp, 'verify');
 
       res.status(201).json({
-        message: 'Epicier créé avec succès',
-        user: { id: newUser.id, nom: newUser.nom, email: newUser.email, role: newUser.role },
-        store: newStore
+        message: 'Epicier créé avec succès. Vérifiez votre email.',
+        requiresVerification: true,
+        email: newUser.email,
       });
     } catch (error) {
       console.error('Erreur registerEpicier:', error);
       res.status(500).json({ message: 'Erreur lors de l\'inscription de l\'épicier', error: error.message });
+    }
+  },
+
+  // Vérification de l'email via OTP
+  verifyEmail: async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+      }
+
+      if (user.email_verified) {
+        return res.status(400).json({ message: 'Email déjà vérifié.' });
+      }
+
+      if (!user.otp_code || user.otp_code !== otp) {
+        return res.status(400).json({ message: 'Code OTP invalide.' });
+      }
+
+      if (!user.otp_expires_at || new Date() > new Date(user.otp_expires_at)) {
+        return res.status(400).json({ message: 'Code OTP expiré. Veuillez en demander un nouveau.' });
+      }
+
+      user.email_verified = true;
+      user.otp_code = null;
+      user.otp_expires_at = null;
+      await user.save();
+
+      res.status(200).json({ message: 'Email vérifié avec succès. Vous pouvez maintenant vous connecter.' });
+    } catch (error) {
+      console.error('Erreur verifyEmail:', error);
+      res.status(500).json({ message: 'Erreur lors de la vérification', error: error.message });
+    }
+  },
+
+  // Renvoyer le code OTP
+  resendOTP: async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+      }
+
+      if (user.email_verified) {
+        return res.status(400).json({ message: 'Email déjà vérifié.' });
+      }
+
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.otp_code = otp;
+      user.otp_expires_at = otpExpires;
+      await user.save();
+
+      await sendOTP(email, otp, 'verify');
+
+      res.status(200).json({ message: 'Code OTP renvoyé avec succès.' });
+    } catch (error) {
+      console.error('Erreur resendOTP:', error);
+      res.status(500).json({ message: 'Erreur lors du renvoi du code', error: error.message });
+    }
+  },
+
+  // Mot de passe oublié – envoi OTP
+  forgotPassword: async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const user = await User.findOne({ where: { email } });
+      // Toujours répondre 200 pour ne pas exposer si l'email existe
+      if (!user) {
+        return res.status(200).json({ message: 'Si cet email existe, un code vous sera envoyé.' });
+      }
+
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.otp_code = otp;
+      user.otp_expires_at = otpExpires;
+      await user.save();
+
+      await sendOTP(email, otp, 'reset');
+
+      res.status(200).json({ message: 'Si cet email existe, un code vous sera envoyé.' });
+    } catch (error) {
+      console.error('Erreur forgotPassword:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'envoi du code', error: error.message });
+    }
+  },
+
+  // Réinitialisation du mot de passe via OTP
+  resetPassword: async (req, res) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+
+      if (!email || !otp || !newPassword) {
+        return res.status(400).json({ message: 'Email, code OTP et nouveau mot de passe requis.' });
+      }
+
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+      }
+
+      if (!user.otp_code || user.otp_code !== otp) {
+        return res.status(400).json({ message: 'Code OTP invalide.' });
+      }
+
+      if (!user.otp_expires_at || new Date() > new Date(user.otp_expires_at)) {
+        return res.status(400).json({ message: 'Code OTP expiré. Veuillez en demander un nouveau.' });
+      }
+
+      // Assigning triggers the beforeUpdate hook to hash the password
+      user.mdp = newPassword;
+      user.otp_code = null;
+      user.otp_expires_at = null;
+      await user.save();
+
+      res.status(200).json({ message: 'Mot de passe réinitialisé avec succès.' });
+    } catch (error) {
+      console.error('Erreur resetPassword:', error);
+      res.status(500).json({ message: 'Erreur lors de la réinitialisation', error: error.message });
     }
   },
 
@@ -102,17 +249,30 @@ const authController = {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
       }
 
-      if (user.role === 'EPICIER' && user.statut_inscription !== 'ACCEPTE') {
-        const message = user.statut_inscription === 'EN_ATTENTE'
-          ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-          : 'Votre demande d\'inscription a été refusée par un administrateur.';
-        return res.status(403).json({ message });
+      // Vérification de l'email
+      if (!user.email_verified) {
+        return res.status(403).json({ message: 'EMAIL_NOT_VERIFIED', email: user.email });
       }
 
       let storeInfo = null;
       if (user.role === 'EPICIER') {
         const store = await Store.findOne({ where: { utilisateur_id: user.id } });
-        storeInfo = store ? { id: store.id, nom_boutique: store.nom_boutique } : null;
+        if (!store) {
+          return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        }
+
+        if (store.statut_inscription === 'EN_ATTENTE') {
+          return res.status(403).json({ message: 'Votre compte Epicier est en attente de validation par un administrateur.' });
+        }
+        if (store.statut_inscription === 'REFUSE') {
+          return res.status(403).json({ message: 'Votre demande d\'inscription a été refusée par un administrateur.' });
+        }
+
+        storeInfo = {
+          id: store.id,
+          nom_boutique: store.nom_boutique,
+          statut_inscription: store.statut_inscription,
+        };
       }
 
       const token = jwt.sign(
@@ -139,32 +299,200 @@ const authController = {
     }
   },
 
-  // Validation Epicier par l'Administrateur
+  // Validation Epicier par l'Administrateur (statut sur la table epiciers)
   validateEpicier: async (req, res) => {
     try {
-      const { userId, action } = req.body; // action: 'ACCEPTER' ou 'REFUSER'
+      const { userId, action } = req.body;
 
-      // Ici on devrait théoriquement vérifier que req.user (issu du JWT) est un ADMIN
-      
       const user = await User.findByPk(userId);
       if (!user || user.role !== 'EPICIER') {
         return res.status(404).json({ message: 'Epicier introuvable.' });
       }
 
+      const store = await Store.findOne({ where: { utilisateur_id: userId } });
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique épicier introuvable.' });
+      }
+
       if (action === 'ACCEPTER') {
-        user.statut_inscription = 'ACCEPTE';
+        store.statut_inscription = 'ACCEPTE';
       } else if (action === 'REFUSER') {
-        user.statut_inscription = 'REFUSE';
+        store.statut_inscription = 'REFUSE';
       } else {
         return res.status(400).json({ message: 'Action invalide.' });
       }
 
-      await user.save();
+      await store.save();
       res.status(200).json({ message: `Le compte Epicier a été ${action === 'ACCEPTER' ? 'accepté' : 'refusé'}.` });
 
     } catch (error) {
       console.error('Erreur validateEpicier:', error);
       res.status(500).json({ message: 'Erreur lors de la validation', error: error.message });
+    }
+  },
+
+  // Connexion via Google
+  googleLogin: async (req, res) => {
+    try {
+      const { idToken, accessToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
+      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      
+      let payload;
+
+      if (idToken) {
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        payload = ticket.getPayload();
+      } else if (accessToken) {
+        const https = require('https');
+        const fetchUserData = (token) => {
+          return new Promise((resolve, reject) => {
+            https.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`, (res) => {
+              let data = '';
+              res.on('data', (chunk) => data += chunk);
+              res.on('end', () => resolve(JSON.parse(data)));
+            }).on('error', reject);
+          });
+        };
+        payload = await fetchUserData(accessToken);
+      }
+
+      if (!payload) {
+        return res.status(401).json({ message: "Aucun jeton valide fourni." });
+      }
+
+      const { email, name, given_name, family_name, sub: googleId } = payload;
+
+      let user = await User.findOne({ 
+        where: { 
+          [require('sequelize').Op.or]: [
+            { email },
+            { id_google: googleId }
+          ]
+        } 
+      });
+
+      let isNewUser = false;
+      let newStore = null;
+
+      if (!user) {
+        if (role === 'EPICIER') {
+          if (!doc_verf) {
+            return res.status(400).json({ message: "Le document de vérification est obligatoire pour s'inscrire en tant qu'épicier." });
+          }
+          user = await User.create({
+            nom: family_name || name || 'Inconnu',
+            prenom: given_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_google: googleId,
+            role: 'EPICIER',
+            doc_verf,
+            is_active: true,
+            email_verified: true, // Google already verified the email
+          });
+          
+          newStore = await Store.create({
+            utilisateur_id: user.id,
+            nom_boutique: nom_boutique || `Epicerie de ${given_name || name}`,
+            adresse: adresse || 'À configurer',
+            telephone: telephone || null,
+            description: description_boutique,
+            statut_inscription: 'EN_ATTENTE',
+            is_active: true
+          });
+        } else {
+          user = await User.create({
+            nom: family_name || name || 'Inconnu',
+            prenom: given_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_google: googleId,
+            adresse: 'Google Auth',
+            role: 'CLIENT',
+            is_active: true,
+            email_verified: true, // Google already verified the email
+          });
+        }
+        isNewUser = true;
+      } else if (!user.id_google) {
+        user.id_google = googleId;
+        user.email_verified = true; // Link Google = email verified
+        await user.save();
+      }
+
+      if (user && user.role === 'CLIENT' && role === 'EPICIER') {
+        return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client. Vous ne pouvez pas vous connecter en tant qu'Epicier." });
+      }
+
+      if (!user.is_active) {
+        return res.status(403).json({ message: 'Ce compte est inactif.' });
+      }
+
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const store = newStore || await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (!store) {
+          return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        }
+        if (store.statut_inscription === 'EN_ATTENTE') {
+          return res.status(403).json({ message: 'Votre compte Epicier est en attente de validation par un administrateur.' });
+        }
+        if (store.statut_inscription === 'REFUSE') {
+          return res.status(403).json({ message: 'Votre demande d\'inscription a été refusée par un administrateur.' });
+        }
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription };
+      }
+
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.status(200).json({
+        message: 'Connexion Google réussie',
+        token,
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+        },
+        store: storeInfo
+      });
+
+    } catch (error) {
+      console.error('Erreur googleLogin:', error);
+      res.status(401).json({ message: 'Échec de l\'authentification Google', error: error.message });
+    }
+  },
+
+  // Mettre à jour le token FCM de l'utilisateur
+  updateFCMToken: async (req, res) => {
+    try {
+      const { fcm_token } = req.body;
+      const userId = req.user.id;
+
+      if (!fcm_token) {
+        return res.status(400).json({ message: 'fcm_token requis' });
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+
+      user.fcm_token = fcm_token;
+      await user.save();
+
+      res.status(200).json({ message: 'FCM token mis à jour' });
+    } catch (error) {
+      console.error('Erreur updateFCMToken:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour du FCM token', error: error.message });
     }
   }
 };
