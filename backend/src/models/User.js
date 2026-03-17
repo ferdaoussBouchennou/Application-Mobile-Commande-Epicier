@@ -53,6 +53,22 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  fcm_token: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  email_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  otp_code: {
+    type: DataTypes.STRING(6),
+    allowNull: true,
+  },
+  otp_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'utilisateurs',
   timestamps: true,

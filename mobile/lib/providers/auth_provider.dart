@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/fcm_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -32,6 +33,9 @@ class AuthProvider with ChangeNotifier {
     if (_token != null) {
       _isLoggedIn = true;
       notifyListeners();
+      
+      // Update FCM token silently
+      FCMService().updateFCMToken(_token!);
     }
   }
 
@@ -51,6 +55,9 @@ class AuthProvider with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
 
+      // Sync FCM token
+      await FCMService().updateFCMToken(_token!);
+
       _setLoading(false);
       return true;
     } catch (e) {
@@ -64,31 +71,32 @@ class AuthProvider with ChangeNotifier {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
         clientId: dotenv.env['GOOGLE_CLIENT_ID'],
-        scopes: ['email', 'profile'],
+        scopes: ['email', 'profile', 'openid'],
       );
 
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         _setLoading(false);
-        return false; // Annulé par l'utilisateur
+        return false;
       }
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
+      final String? accessToken = googleAuth.accessToken;
 
-      if (idToken == null) {
-        throw Exception("Erreur lors de la récupération du token Google");
+      if (idToken == null && accessToken == null) {
+        throw Exception("Erreur lors de la récupération des jetons Google");
       }
 
-      // Prepare payload
-      Map<String, dynamic> payload = {
+      final Map<String, dynamic> payload = {
         'idToken': idToken,
+        'accessToken': accessToken,
       };
-
+ 
       if (epicierData != null) {
         payload.addAll(epicierData);
       }
-
+ 
       // Envoi du token au backend pour vérification et connexion/inscription
       final response = await _apiService.post('/auth/google', payload);
 
@@ -99,6 +107,9 @@ class AuthProvider with ChangeNotifier {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', _token!);
+
+      // Sync FCM token
+      await FCMService().updateFCMToken(_token!);
 
       _setLoading(false);
       return true;
@@ -132,6 +143,56 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> verifyEmail(String email, String otp) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/verify-email', {'email': email, 'otp': otp});
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<void> resendOTP(String email) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/resend-otp', {'email': email});
+      _setLoading(false);
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/forgot-password', {'email': email});
+      _setLoading(false);
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<bool> resetPassword(String email, String otp, String newPassword) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/reset-password', {
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+      });
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
   void markSetupComplete() {
     if (_store != null) {
       _store!['statut_inscription'] = 'COMPLETE';
@@ -144,10 +205,8 @@ class AuthProvider with ChangeNotifier {
     _user = null;
     _store = null;
     _isLoggedIn = false;
-    
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
-    
     notifyListeners();
   }
 
