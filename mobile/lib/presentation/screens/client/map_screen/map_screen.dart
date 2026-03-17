@@ -64,6 +64,9 @@ class _MapScreenState extends State<MapScreen> {
     // Pages that manage their own AppBar (index 1 = StoreListScreen)
     final bool hideAppBar = _currentIndex == 1;
 
+    // Check if the user is logged in
+    final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
       appBar: hideAppBar
@@ -72,12 +75,20 @@ class _MapScreenState extends State<MapScreen> {
               backgroundColor: const Color(0xFF2D5016),
               foregroundColor: Colors.white,
               elevation: 0,
+              automaticallyImplyLeading: false, // Prevent default back button
+              leading: isLoggedIn 
+                  ? null // No back button for logged-in users
+                  : IconButton(
+                      icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      tooltip: 'Retour',
+                    ),
               title: Text(
                 _titles[_currentIndex],
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               actions: [
-                if (context.watch<AuthProvider>().isLoggedIn)
+                if (isLoggedIn)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                     child: TextButton.icon(
