@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import 'core/theme/app_theme.dart';
 import 'screens/auth/welcome_screen.dart';
+import 'presentation/screens/client/map_screen/map_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/store_provider.dart';
 import 'providers/category_provider.dart';
@@ -46,7 +47,11 @@ class MyApp extends StatelessWidget {
         title: 'MyHanut',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const WelcomeScreen(),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const WelcomeScreen(),
+          MapScreen.routeName: (context) => const MapScreen(),
+        },
       ),
     );
   }
