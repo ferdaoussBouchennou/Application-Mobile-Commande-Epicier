@@ -66,9 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }
         } else {
-          Navigator.pushReplacement(
+          Navigator.pushNamedAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => MapScreen()),
+            MapScreen.routeName,
+            (route) => false,
           );
         }
       }
@@ -334,11 +335,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     );
                                   }
                                 } else {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => MapScreen()),
-                                  );
-                                }
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      MapScreen.routeName,
+                                      (route) => false,
+                                    );
+                                  }
                               }
                             } catch (e) {
                               if (mounted) {
