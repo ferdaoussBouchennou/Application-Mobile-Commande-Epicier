@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
+const { generateOTP, sendOTP } = require('../utils/emailService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_314159';
 
@@ -18,6 +19,9 @@ const authController = {
         return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
       // Créer le client
       const newUser = await User.create({
         nom,
@@ -27,12 +31,19 @@ const authController = {
         role: 'CLIENT',
         telephone: telephone || null,
         adresse: adresse || null,
-        is_active: true
+        is_active: true,
+        email_verified: false,
+        otp_code: otp,
+        otp_expires_at: otpExpires,
       });
 
+      // Envoyer l'email de vérification
+      await sendOTP(email, otp, 'verify');
+
       res.status(201).json({
-        message: 'Client créé avec succès',
-        user: { id: newUser.id, nom: newUser.nom, prenom: newUser.prenom, email: newUser.email, role: newUser.role }
+        message: 'Client créé avec succès. Vérifiez votre email.',
+        requiresVerification: true,
+        email: newUser.email,
       });
     } catch (error) {
       console.error('Erreur registerClient:', error);
@@ -50,6 +61,9 @@ const authController = {
         return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
       // Créer l'utilisateur avec le rôle EPICIER
       const newUser = await User.create({
         nom,
@@ -58,11 +72,14 @@ const authController = {
         mdp,
         role: 'EPICIER',
         doc_verf,
-        is_active: true
+        is_active: true,
+        email_verified: false,
+        otp_code: otp,
+        otp_expires_at: otpExpires,
       });
 
       // Créer l'entrée dans la table epiciers (statut_inscription sur la boutique)
-      const newStore = await Store.create({
+      await Store.create({
         utilisateur_id: newUser.id,
         nom_boutique: nom_boutique || `Epicerie de ${prenom}`,
         adresse: adresse || 'À configurer',
@@ -73,14 +90,143 @@ const authController = {
         is_active: true
       });
 
+      // Envoyer l'email de vérification
+      await sendOTP(email, otp, 'verify');
+
       res.status(201).json({
-        message: 'Epicier créé avec succès',
-        user: { id: newUser.id, nom: newUser.nom, email: newUser.email, role: newUser.role },
-        store: newStore
+        message: 'Epicier créé avec succès. Vérifiez votre email.',
+        requiresVerification: true,
+        email: newUser.email,
       });
     } catch (error) {
       console.error('Erreur registerEpicier:', error);
       res.status(500).json({ message: 'Erreur lors de l\'inscription de l\'épicier', error: error.message });
+    }
+  },
+
+  // Vérification de l'email via OTP
+  verifyEmail: async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+      }
+
+      if (user.email_verified) {
+        return res.status(400).json({ message: 'Email déjà vérifié.' });
+      }
+
+      if (!user.otp_code || user.otp_code !== otp) {
+        return res.status(400).json({ message: 'Code OTP invalide.' });
+      }
+
+      if (!user.otp_expires_at || new Date() > new Date(user.otp_expires_at)) {
+        return res.status(400).json({ message: 'Code OTP expiré. Veuillez en demander un nouveau.' });
+      }
+
+      user.email_verified = true;
+      user.otp_code = null;
+      user.otp_expires_at = null;
+      await user.save();
+
+      res.status(200).json({ message: 'Email vérifié avec succès. Vous pouvez maintenant vous connecter.' });
+    } catch (error) {
+      console.error('Erreur verifyEmail:', error);
+      res.status(500).json({ message: 'Erreur lors de la vérification', error: error.message });
+    }
+  },
+
+  // Renvoyer le code OTP
+  resendOTP: async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+      }
+
+      if (user.email_verified) {
+        return res.status(400).json({ message: 'Email déjà vérifié.' });
+      }
+
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.otp_code = otp;
+      user.otp_expires_at = otpExpires;
+      await user.save();
+
+      await sendOTP(email, otp, 'verify');
+
+      res.status(200).json({ message: 'Code OTP renvoyé avec succès.' });
+    } catch (error) {
+      console.error('Erreur resendOTP:', error);
+      res.status(500).json({ message: 'Erreur lors du renvoi du code', error: error.message });
+    }
+  },
+
+  // Mot de passe oublié – envoi OTP
+  forgotPassword: async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      const user = await User.findOne({ where: { email } });
+      // Toujours répondre 200 pour ne pas exposer si l'email existe
+      if (!user) {
+        return res.status(200).json({ message: 'Si cet email existe, un code vous sera envoyé.' });
+      }
+
+      const otp = generateOTP();
+      const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+      user.otp_code = otp;
+      user.otp_expires_at = otpExpires;
+      await user.save();
+
+      await sendOTP(email, otp, 'reset');
+
+      res.status(200).json({ message: 'Si cet email existe, un code vous sera envoyé.' });
+    } catch (error) {
+      console.error('Erreur forgotPassword:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'envoi du code', error: error.message });
+    }
+  },
+
+  // Réinitialisation du mot de passe via OTP
+  resetPassword: async (req, res) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+
+      if (!email || !otp || !newPassword) {
+        return res.status(400).json({ message: 'Email, code OTP et nouveau mot de passe requis.' });
+      }
+
+      const user = await User.findOne({ where: { email } });
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+      }
+
+      if (!user.otp_code || user.otp_code !== otp) {
+        return res.status(400).json({ message: 'Code OTP invalide.' });
+      }
+
+      if (!user.otp_expires_at || new Date() > new Date(user.otp_expires_at)) {
+        return res.status(400).json({ message: 'Code OTP expiré. Veuillez en demander un nouveau.' });
+      }
+
+      // Assigning triggers the beforeUpdate hook to hash the password
+      user.mdp = newPassword;
+      user.otp_code = null;
+      user.otp_expires_at = null;
+      await user.save();
+
+      res.status(200).json({ message: 'Mot de passe réinitialisé avec succès.' });
+    } catch (error) {
+      console.error('Erreur resetPassword:', error);
+      res.status(500).json({ message: 'Erreur lors de la réinitialisation', error: error.message });
     }
   },
 
@@ -101,6 +247,11 @@ const authController = {
 
       if (!user.is_active) {
         return res.status(403).json({ message: 'Ce compte est inactif.' });
+      }
+
+      // Vérification de l'email
+      if (!user.email_verified) {
+        return res.status(403).json({ message: 'EMAIL_NOT_VERIFIED', email: user.email });
       }
 
       let storeInfo = null;
@@ -151,9 +302,7 @@ const authController = {
   // Validation Epicier par l'Administrateur (statut sur la table epiciers)
   validateEpicier: async (req, res) => {
     try {
-      const { userId, action } = req.body; // action: 'ACCEPTER' ou 'REFUSER'
-
-      // Ici on devrait théoriquement vérifier que req.user (issu du JWT) est un ADMIN
+      const { userId, action } = req.body;
 
       const user = await User.findByPk(userId);
       if (!user || user.role !== 'EPICIER') {
@@ -191,14 +340,12 @@ const authController = {
       let payload;
 
       if (idToken) {
-        // Vérification du token d'identité (Mobile)
         const ticket = await client.verifyIdToken({
           idToken,
           audience: process.env.GOOGLE_CLIENT_ID,
         });
         payload = ticket.getPayload();
       } else if (accessToken) {
-        // Fallback Jeton d'accès (Web)
         const https = require('https');
         const fetchUserData = (token) => {
           return new Promise((resolve, reject) => {
@@ -218,7 +365,6 @@ const authController = {
 
       const { email, name, given_name, family_name, sub: googleId } = payload;
 
-      // Chercher ou créer l'utilisateur
       let user = await User.findOne({ 
         where: { 
           [require('sequelize').Op.or]: [
@@ -244,7 +390,8 @@ const authController = {
             id_google: googleId,
             role: 'EPICIER',
             doc_verf,
-            is_active: true
+            is_active: true,
+            email_verified: true, // Google already verified the email
           });
           
           newStore = await Store.create({
@@ -257,7 +404,6 @@ const authController = {
             is_active: true
           });
         } else {
-          // Créer un nouvel utilisateur (rôle CLIENT par défaut)
           user = await User.create({
             nom: family_name || name || 'Inconnu',
             prenom: given_name || '',
@@ -266,17 +412,17 @@ const authController = {
             id_google: googleId,
             adresse: 'Google Auth',
             role: 'CLIENT',
-            is_active: true
+            is_active: true,
+            email_verified: true, // Google already verified the email
           });
         }
         isNewUser = true;
       } else if (!user.id_google) {
-        // Si l'utilisateur existait déjà par email mais n'avait pas d'ID Google lié
         user.id_google = googleId;
+        user.email_verified = true; // Link Google = email verified
         await user.save();
       }
 
-      // Si l'utilisateur existe déjà en tant que CLIENT mais souhaite s'inscrire comme EPICIER via Google
       if (user && user.role === 'CLIENT' && role === 'EPICIER') {
         return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client. Vous ne pouvez pas vous connecter en tant qu'Epicier." });
       }
@@ -297,10 +443,9 @@ const authController = {
         if (store.statut_inscription === 'REFUSE') {
           return res.status(403).json({ message: 'Votre demande d\'inscription a été refusée par un administrateur.' });
         }
-        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription, };
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription };
       }
 
-      // Générer le JWT MyHanut
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
         JWT_SECRET,

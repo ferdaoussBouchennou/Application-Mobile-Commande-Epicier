@@ -143,6 +143,56 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> verifyEmail(String email, String otp) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/verify-email', {'email': email, 'otp': otp});
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<void> resendOTP(String email) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/resend-otp', {'email': email});
+      _setLoading(false);
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/forgot-password', {'email': email});
+      _setLoading(false);
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<bool> resetPassword(String email, String otp, String newPassword) async {
+    _setLoading(true);
+    try {
+      await _apiService.post('/auth/reset-password', {
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+      });
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
   void markSetupComplete() {
     if (_store != null) {
       _store!['statut_inscription'] = 'COMPLETE';
