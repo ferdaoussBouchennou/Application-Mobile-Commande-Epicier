@@ -4,7 +4,7 @@ import '../../../data/services/api_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/auth_provider.dart';
-import '../auth/login_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'add_epicier_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
@@ -179,7 +179,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                       context.read<AuthProvider>().logout();
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                         (route) => false,
                       );
                     },

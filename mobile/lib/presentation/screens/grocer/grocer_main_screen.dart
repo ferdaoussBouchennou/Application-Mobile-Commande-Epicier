@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
-import '../auth/login_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
 import 'catalogue/grocer_catalogue_placeholder_screen.dart';
@@ -71,7 +71,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
               context.read<AuthProvider>().logout();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
                 (route) => false,
               );
             },

@@ -185,16 +185,37 @@ const authController = {
   // Connexion via Google
   googleLogin: async (req, res) => {
     try {
-      const { idToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
+      const { idToken, accessToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
       const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      
+      let payload;
 
-      // Vérification du token auprès de Google
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
+      if (idToken) {
+        // Vérification du token d'identité (Mobile)
+        const ticket = await client.verifyIdToken({
+          idToken,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        payload = ticket.getPayload();
+      } else if (accessToken) {
+        // Fallback Jeton d'accès (Web)
+        const https = require('https');
+        const fetchUserData = (token) => {
+          return new Promise((resolve, reject) => {
+            https.get(`https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`, (res) => {
+              let data = '';
+              res.on('data', (chunk) => data += chunk);
+              res.on('end', () => resolve(JSON.parse(data)));
+            }).on('error', reject);
+          });
+        };
+        payload = await fetchUserData(accessToken);
+      }
 
-      const payload = ticket.getPayload();
+      if (!payload) {
+        return res.status(401).json({ message: "Aucun jeton valide fourni." });
+      }
+
       const { email, name, given_name, family_name, sub: googleId } = payload;
 
       // Chercher ou créer l'utilisateur
@@ -270,11 +291,11 @@ const authController = {
         if (!store) {
           return res.status(403).json({ message: 'Profil épicier introuvable.' });
         }
-        if (store.statut_inscription !== 'ACCEPTE') {
-          const message = store.statut_inscription === 'EN_ATTENTE'
-            ? 'Votre compte Epicier est en attente de validation par un administrateur.'
-            : 'Votre demande d\'inscription a été refusée par un administrateur.';
-          return res.status(403).json({ message });
+        if (store.statut_inscription === 'EN_ATTENTE') {
+          return res.status(403).json({ message: 'Votre compte Epicier est en attente de validation par un administrateur.' });
+        }
+        if (store.statut_inscription === 'REFUSE') {
+          return res.status(403).json({ message: 'Votre demande d\'inscription a été refusée par un administrateur.' });
         }
         storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription, };
       }
