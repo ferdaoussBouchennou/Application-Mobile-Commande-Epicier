@@ -5,6 +5,7 @@ import '../store_list_screen.dart';
 import '../cart_screen.dart';
 import '../client_orders_screen.dart';
 import '../notifications/notifications_screen.dart';
+import 'home_map_tab.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../screens/auth/welcome_screen.dart';
@@ -30,8 +31,8 @@ class _MapScreenState extends State<MapScreen> {
 
   List<Widget> _buildPages() {
     return [
-      // Page 0 : Accueil
-      const _HomeTab(),
+      // Page 0 : Accueil (Carte)
+      const HomeMapTab(),
       // Page 1 : Épiciers (gère son propre AppBar)
       const StoreListScreen(),
       // Page 2 : Panier
@@ -61,8 +62,8 @@ class _MapScreenState extends State<MapScreen> {
 
     final pages = _buildPages();
 
-    // Pages that manage their own AppBar (index 1 = StoreListScreen)
-    final bool hideAppBar = _currentIndex == 1;
+    // Pages that manage their own AppBar (index 0 = HomeMapTab, index 1 = StoreListScreen)
+    final bool hideAppBar = _currentIndex == 0 || _currentIndex == 1;
 
     // Check if the user is logged in
     final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
@@ -165,28 +166,5 @@ class _MapScreenState extends State<MapScreen> {
         (route) => false,
       );
     }
-  }
-}
-
-// ─── Home tab placeholder ────────────────────────────────────────────────────
-class _HomeTab extends StatelessWidget {
-  const _HomeTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.map_outlined, size: 80, color: Color(0xFF7A5C44)),
-          SizedBox(height: 20),
-          Text(
-            'Carte & Épiciers autour de vous',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, color: Color(0xFF7A5C44)),
-          ),
-        ],
-      ),
-    );
   }
 }
