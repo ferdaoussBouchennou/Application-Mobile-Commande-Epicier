@@ -238,8 +238,8 @@ class _HomeMapTabState extends State<HomeMapTab> {
                               markers.add(
                                 Marker(
                                   point: LatLng(store.latitude!, store.longitude!),
-                                  width: isSelected ? 86 : 64,
-                                  height: isSelected ? 86 : 64,
+                                  width: isSelected ? 100 : 64,
+                                  height: isSelected ? 100 : 64,
                                   rotate: true,
                                   child: GestureDetector(
                                     onTap: () {
@@ -292,6 +292,7 @@ class _HomeMapTabState extends State<HomeMapTab> {
                                             Container(
                                               margin: const EdgeInsets.only(top: 5),
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              constraints: const BoxConstraints(maxWidth: 90),
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
                                                 borderRadius: BorderRadius.circular(6),
@@ -300,6 +301,8 @@ class _HomeMapTabState extends State<HomeMapTab> {
                                               child: Text(
                                                 store.nomBoutique,
                                                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                         ],
