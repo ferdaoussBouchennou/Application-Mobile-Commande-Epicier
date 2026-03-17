@@ -5,6 +5,8 @@ import '../../../../providers/category_provider.dart';
 import '../../../widgets/custom_bottom_nav_bar.dart';
 import '../../../widgets/custom_header.dart';
 import '../product_list_screen.dart';
+import '../map_screen/map_screen.dart';
+import '../../../../providers/cart_provider.dart';
 
 class StoreCatalogScreen extends StatefulWidget {
   final Store store;
@@ -145,7 +147,9 @@ class _StoreCatalogScreenState extends State<StoreCatalogScreen> {
       bottomNavigationBar: CustomBottomNavBar(
         currentIndex: 1,
         onTap: (index) {
-          if (index == 0) Navigator.popUntil(context, (route) => route.isFirst);
+          if (index == 1) return; // Already in Épiciers flow
+          context.read<CartProvider>().setPendingTabIndex(index);
+          Navigator.popUntil(context, (route) => route.settings.name == MapScreen.routeName || route.isFirst);
         },
       ),
     );
