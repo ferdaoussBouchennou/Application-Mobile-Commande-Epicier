@@ -1,6 +1,6 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const bcrypt = require('bcrypt');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
+const bcrypt = require("bcrypt");
 
 const User = sequelize.define('User', {
   id: {
@@ -32,13 +32,13 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
-  telephone: {
-    type: DataTypes.STRING(20),
+  id_facebook: {
+    type: DataTypes.STRING(100),
     allowNull: true,
   },
-  adresse: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
+  id_instagram: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
   },
   role: {
     type: DataTypes.ENUM('CLIENT', 'ADMIN', 'EPICIER'),
@@ -49,20 +49,38 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255), // Augmenté pour laisser place aux noms de fichiers longs
     allowNull: true,
   },
-  statut_inscription: {
-    type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE'),
-    allowNull: false,
-    defaultValue: 'ACCEPTE', // Par défaut pour le CLIENT. Pour l'épicier, on forcera EN_ATTENTE.
-  },
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
+  },
+  fcm_token: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  email_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  otp_code: {
+    type: DataTypes.STRING(6),
+    allowNull: true,
+  },
+  otp_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
   },
 }, {
   tableName: 'utilisateurs',
   timestamps: true,
   createdAt: 'date_creation',
   updatedAt: false, 
+  validate: {
+    checkEpicierDoc() {
+      if (this.role === 'EPICIER' && !this.doc_verf) {
+        throw new Error("Un document de vérification est obligatoire pour s'inscrire en tant qu'épicier.");
+      }
+    }
+  },
   hooks: {
     beforeCreate: async (user) => {
       if (user.mdp) {
