@@ -7,6 +7,8 @@ import '../../../providers/auth_provider.dart';
 import '../grocer/grocer_main_screen.dart';
 import '../grocer/setup/grocer_setup_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'forgot_password_screen.dart';
+import 'verify_email_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -72,9 +74,25 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-        );
+        final msg = e.toString().replaceAll('Exception: ', '');
+        if (msg.contains('EMAIL_NOT_VERIFIED')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Veuillez vérifier votre email avant de vous connecter.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => VerifyEmailScreen(email: _emailController.text.trim()),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg)),
+          );
+        }
       }
     }
   }
@@ -221,7 +239,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Mot de passe oublié
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                      );
+                    },
                     child: const Text(
                       'Mot de passe oublié ?',
                       style: TextStyle(
