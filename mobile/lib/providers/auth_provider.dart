@@ -88,15 +88,15 @@ class AuthProvider with ChangeNotifier {
         throw Exception("Erreur lors de la récupération des jetons Google");
       }
 
-      final response = await _apiService.post('/auth/google', {
+      final Map<String, dynamic> payload = {
         'idToken': idToken,
         'accessToken': accessToken,
       };
-
+ 
       if (epicierData != null) {
         payload.addAll(epicierData);
       }
-
+ 
       // Envoi du token au backend pour vérification et connexion/inscription
       final response = await _apiService.post('/auth/google', payload);
 
