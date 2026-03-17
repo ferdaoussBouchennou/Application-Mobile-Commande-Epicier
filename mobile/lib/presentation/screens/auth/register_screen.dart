@@ -530,7 +530,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           iconData: FontAwesomeIcons.facebook,
                           iconColor: const Color(0xFF1877F2),
                           label: 'Facebook',
-                          onPressed: () {},
+                          onPressed: () async {
+                            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                            
+                            Map<String, dynamic>? epicierData;
+                            if (_isEpicier) {
+                              if (_docFileName == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Veuillez joindre un document de vérification avant de continuer avec Facebook')),
+                                );
+                                return;
+                              }
+                              epicierData = {
+                                'role': 'EPICIER',
+                                'doc_verf': _docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName,
+                                'telephone': _phoneController.text.trim(),
+                              };
+                            }
+
+                            try {
+                              final success = await authProvider.loginWithFacebook(epicierData: epicierData);
+                              if (success && mounted) {
+                                final role = authProvider.user?['role'] as String?;
+                                if (role == 'ADMIN') {
+                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen())); // Redirect to login for admin validation
+                                } else if (role == 'EPICIER') {
+                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GrocerMainScreen()));
+                                } else {
+                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MapScreen()));
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Erreur Facebook: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -539,7 +576,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           iconData: FontAwesomeIcons.instagram,
                           iconColor: const Color(0xFFE4405F),
                           label: 'Instagram',
-                          onPressed: () {},
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Connexion Instagram bientôt disponible. Utilisez Facebook ou Google.'),
+                                backgroundColor: Colors.blueAccent,
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
