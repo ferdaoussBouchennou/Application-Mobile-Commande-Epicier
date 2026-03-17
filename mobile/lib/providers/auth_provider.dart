@@ -71,7 +71,7 @@ class AuthProvider with ChangeNotifier {
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
         clientId: dotenv.env['GOOGLE_CLIENT_ID'],
-        scopes: ['email', 'profile'],
+        scopes: ['email', 'profile', 'openid'],
       );
 
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
@@ -82,15 +82,23 @@ class AuthProvider with ChangeNotifier {
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final String? idToken = googleAuth.idToken;
+      final String? accessToken = googleAuth.accessToken;
 
-      if (idToken == null) {
-        throw Exception("Erreur token Google");
+      if (idToken == null && accessToken == null) {
+        throw Exception("Erreur lors de la récupération des jetons Google");
       }
 
       final response = await _apiService.post('/auth/google', {
         'idToken': idToken,
-        if (epicierData != null) ...epicierData,
-      });
+        'accessToken': accessToken,
+      };
+
+      if (epicierData != null) {
+        payload.addAll(epicierData);
+      }
+
+      // Envoi du token au backend pour vérification et connexion/inscription
+      final response = await _apiService.post('/auth/google', payload);
 
       _token = response['token'];
       _user = response['user'];
