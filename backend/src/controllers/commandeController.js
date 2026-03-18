@@ -263,9 +263,7 @@ const commandeController = {
         return res.status(400).json({ message: 'Ce produit n\'est pas en attente d\'acceptation.' });
       }
       const produitNom = detail.Product?.nom ?? 'Un produit';
-      detail.rupture = 1;
-      detail.en_attente_acceptation_client = 0;
-      await detail.save();
+      await DetailCommande.destroy({ where: { id: detailId, commande_id: id } });
       const allDetails = await DetailCommande.findAll({
         where: { commande_id: id },
       });
