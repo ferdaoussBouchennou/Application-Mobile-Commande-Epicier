@@ -102,15 +102,6 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     );
   }
 
-  Future<void> _updateNotes(String? token, int orderId, String notes) async {
-    if (token == null) return;
-    await _api.patch(
-      '/epicier/commandes/$orderId/notes',
-      {'notes': notes},
-      token: token,
-    );
-  }
-
   Future<void> _markRupture(String? token, int orderId, int detailId) async {
     if (token == null) return;
     await _api.patch(
@@ -168,7 +159,6 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
           acceptOrder: (id) => _acceptOrder(token, id),
           refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
           updateStatut: (id, s) => _updateStatut(token, id, s),
-          updateNotes: (id, notes) => _updateNotes(token, id, notes),
           markRupture: (id, detailId) => _markRupture(token, id, detailId),
           onAction: _onOrderAction,
         )).toList(),
@@ -185,7 +175,6 @@ class _OrdersList extends StatefulWidget {
   final Future<void> Function(int orderId) acceptOrder;
   final Future<void> Function(int, String) refuseOrder;
   final Future<void> Function(int, String) updateStatut;
-  final Future<void> Function(int, String) updateNotes;
   final Future<void> Function(int, int) markRupture;
   final VoidCallback onAction;
 
@@ -197,7 +186,6 @@ class _OrdersList extends StatefulWidget {
     required this.acceptOrder,
     required this.refuseOrder,
     required this.updateStatut,
-    required this.updateNotes,
     required this.markRupture,
     required this.onAction,
   });
@@ -303,7 +291,6 @@ class _OrdersListState extends State<_OrdersList> {
           acceptOrder: widget.acceptOrder,
           refuseOrder: widget.refuseOrder,
           updateStatut: widget.updateStatut,
-          updateNotes: widget.updateNotes,
           markRupture: widget.markRupture,
         ),
       ),
@@ -319,7 +306,6 @@ class _OrderCard extends StatelessWidget {
   final Future<void> Function(int) acceptOrder;
   final Future<void> Function(int, String) refuseOrder;
   final Future<void> Function(int, String) updateStatut;
-  final Future<void> Function(int, String) updateNotes;
   final Future<void> Function(int, int) markRupture;
 
   const _OrderCard({
@@ -330,7 +316,6 @@ class _OrderCard extends StatelessWidget {
     required this.acceptOrder,
     required this.refuseOrder,
     required this.updateStatut,
-    required this.updateNotes,
     required this.markRupture,
   });
 
@@ -560,7 +545,6 @@ class _OrderCard extends StatelessWidget {
         orderId: order.id,
         initialDetail: detail,
         fetchDetail: fetchDetail,
-        updateNotes: updateNotes,
         markRupture: markRupture,
         onAction: onAction,
       ),
@@ -572,7 +556,6 @@ class _TicketSheet extends StatefulWidget {
   final int orderId;
   final GrocerOrderDetail initialDetail;
   final Future<GrocerOrderDetail?> Function(int) fetchDetail;
-  final Future<void> Function(int, String) updateNotes;
   final Future<void> Function(int, int) markRupture;
   final VoidCallback onAction;
 
@@ -580,7 +563,6 @@ class _TicketSheet extends StatefulWidget {
     required this.orderId,
     required this.initialDetail,
     required this.fetchDetail,
-    required this.updateNotes,
     required this.markRupture,
     required this.onAction,
   });
@@ -591,8 +573,6 @@ class _TicketSheet extends StatefulWidget {
 
 class _TicketSheetState extends State<_TicketSheet> {
   late GrocerOrderDetail _detail;
-  final _notesController = TextEditingController();
-  bool _savingNotes = false;
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
 
@@ -600,57 +580,12 @@ class _TicketSheetState extends State<_TicketSheet> {
   void initState() {
     super.initState();
     _detail = widget.initialDetail;
-    _notesController.text = _detail.notes ?? '';
-  }
-
-  @override
-  void dispose() {
-    _notesController.dispose();
-    super.dispose();
   }
 
   Future<void> _refreshDetail() async {
     final d = await widget.fetchDetail(widget.orderId);
     if (mounted && d != null) {
-      setState(() {
-        _detail = d;
-        _notesController.text = d.notes ?? '';
-      });
-    }
-  }
-
-  Future<void> _saveNotes() async {
-    final notes = _notesController.text.trim();
-    setState(() => _savingNotes = true);
-    try {
-      await widget.updateNotes(widget.orderId, notes);
-      if (mounted) {
-        setState(() => _detail = GrocerOrderDetail(
-          id: _detail.id,
-          clientNom: _detail.clientNom,
-          clientPrenom: _detail.clientPrenom,
-          clientEmail: _detail.clientEmail,
-          dateCommande: _detail.dateCommande,
-          dateRecuperation: _detail.dateRecuperation,
-          creneau: _detail.creneau,
-          montantTotal: _detail.montantTotal,
-          statut: _detail.statut,
-          messageRefus: _detail.messageRefus,
-          notes: notes.isEmpty ? null : notes,
-          details: _detail.details,
-        ));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Notes enregistrées')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _savingNotes = false);
+      setState(() => _detail = d);
     }
   }
 
@@ -737,31 +672,21 @@ class _TicketSheetState extends State<_TicketSheet> {
             if (_detail.clientEmail != null) _DetailRow('Email', _detail.clientEmail!),
             _DetailRow('Créneau', _detail.creneau),
             _DetailRow('Statut', _detail.statut),
-            const SizedBox(height: 12),
-            const Text('Notes', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: GrocerTheme.textDark)),
-            const SizedBox(height: 4),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              enabled: canEdit,
-              decoration: const InputDecoration(
-                hintText: 'Notes pour la commande...',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (canEdit)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: ElevatedButton.icon(
-                  onPressed: _savingNotes ? null : _saveNotes,
-                  icon: _savingNotes ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save, size: 18),
-                  label: Text(_savingNotes ? 'Enregistrement...' : 'Enregistrer les notes'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GrocerTheme.primary,
-                    foregroundColor: Colors.white,
-                  ),
+            if (_detail.notes != null && _detail.notes!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Notes client', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: GrocerTheme.textDark)),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
+                child: Text(_detail.notes!, style: const TextStyle(fontSize: 14)),
               ),
+            ],
             const Divider(height: 24),
             const Text(
               'Articles',
