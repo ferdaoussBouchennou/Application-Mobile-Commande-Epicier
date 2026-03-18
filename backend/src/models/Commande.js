@@ -46,6 +46,11 @@ const Commande = sequelize.define('Commande', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  client_accepte_modification: {
+    type: DataTypes.TINYINT,
+    allowNull: true,
+    defaultValue: 0,
+  },
   montant_total: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
