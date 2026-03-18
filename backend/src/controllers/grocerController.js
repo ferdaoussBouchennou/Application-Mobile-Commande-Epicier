@@ -774,12 +774,14 @@ const grocerController = {
       }
       const detailList = commande.DetailCommandes || commande.details || [];
       const details = detailList.map((d) => ({
+        id: d.id,
         produit_id: d.produit_id,
         nom: d.Product?.nom ?? d.produit?.nom ?? '',
         image_principale: d.Product?.image_principale ?? d.produit?.image_principale ?? null,
         quantite: d.quantite,
         prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
         total_ligne: parseFloat(d.total_ligne ?? 0),
+        rupture: !!d.rupture,
       }));
       res.status(200).json({
         id: commande.id,
@@ -792,11 +794,84 @@ const grocerController = {
         montant_total: parseFloat(commande.montant_total ?? 0),
         statut: commande.statut,
         message_refus: commande.message_refus ?? null,
+        notes: commande.notes ?? null,
         details,
       });
     } catch (error) {
       console.error('Erreur getCommandeById:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération de la commande', error: error.message });
+    }
+  },
+
+  updateCommandeNotes: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const { id } = req.params;
+      const { notes } = req.body || {};
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const commande = await Commande.findOne({
+        where: { id, epicier_id: epicierId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      commande.notes = notes != null ? String(notes).trim() || null : commande.notes;
+      await commande.save();
+      res.status(200).json({ message: 'Notes mises à jour', notes: commande.notes });
+    } catch (error) {
+      console.error('Erreur updateCommandeNotes:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour des notes', error: error.message });
+    }
+  },
+
+  markRuptureDetail: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const { id, detailId } = req.params;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const commande = await Commande.findOne({
+        where: { id, epicier_id: epicierId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      if (!['reçue', 'prête'].includes(commande.statut)) {
+        return res.status(400).json({ message: 'Seules les commandes reçues ou prêtes peuvent être modifiées.' });
+      }
+      const detail = await DetailCommande.findOne({
+        where: { id: detailId, commande_id: id },
+        include: [{ model: Product, attributes: ['nom'] }],
+      });
+      if (!detail) {
+        return res.status(404).json({ message: 'Ligne de commande introuvable' });
+      }
+      if (detail.rupture) {
+        return res.status(400).json({ message: 'Ce produit est déjà marqué en rupture.' });
+      }
+      detail.rupture = 1;
+      await detail.save();
+      const allDetails = await DetailCommande.findAll({
+        where: { commande_id: id },
+      });
+      const newTotal = allDetails
+        .filter((d) => !d.rupture)
+        .reduce((sum, d) => sum + parseFloat(d.total_ligne ?? 0), 0);
+      commande.montant_total = newTotal;
+      await commande.save();
+      const produitNom = detail.Product?.nom ?? detail.produit?.nom ?? 'Un produit';
+      const msg = `Le produit "${produitNom}" est en rupture de stock dans votre commande #${id}. La commande a été modifiée (nouveau total: ${newTotal.toFixed(2)} MAD). Souhaitez-vous continuer? Contactez l'épicier pour plus d'infos.`;
+      _sendNotificationToClient(commande.client_id, commande.id, 'rupture', msg);
+      res.status(200).json({
+        message: 'Produit marqué en rupture. Client notifié.',
+        montant_total: newTotal,
+      });
+    } catch (error) {
+      console.error('Erreur markRuptureDetail:', error);
+      res.status(500).json({ message: 'Erreur lors du marquage rupture', error: error.message });
     }
   },
 
