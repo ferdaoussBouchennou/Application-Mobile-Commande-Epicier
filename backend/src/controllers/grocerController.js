@@ -698,6 +698,7 @@ const grocerController = {
       const ids = commandes.map((c) => c.id);
       const countMap = {};
       const ruptureMap = {};
+      const pendingMap = {};
       if (ids.length > 0) {
         const rows = await sequelize.query(
           `SELECT commande_id, SUM(quantite) AS total FROM detailscommande WHERE commande_id IN (${ids.join(',')}) GROUP BY commande_id`,
@@ -709,6 +710,11 @@ const grocerController = {
           { type: QueryTypes.SELECT }
         );
         ruptureRows.forEach((r) => { ruptureMap[r.commande_id] = true; });
+        const pendingRows = await sequelize.query(
+          `SELECT commande_id FROM detailscommande WHERE commande_id IN (${ids.join(',')}) AND en_attente_acceptation_client = 1`,
+          { type: QueryTypes.SELECT }
+        );
+        pendingRows.forEach((r) => { pendingMap[r.commande_id] = true; });
       }
       const result = commandes.map((c) => {
         let creneau = '';
@@ -789,6 +795,7 @@ const grocerController = {
         prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
         total_ligne: parseFloat(d.total_ligne ?? 0),
         rupture: !!d.rupture,
+        en_attente_acceptation_client: !!d.en_attente_acceptation_client,
       }));
       res.status(200).json({
         id: commande.id,
@@ -851,13 +858,12 @@ const grocerController = {
       await commande.save();
 
       if (wasRupture && setRupture === 0) {
-        const clientAccepte = !!commande.client_accepte_modification;
-        const msg = clientAccepte
-          ? `Le produit "${produitNom}" est à nouveau disponible. Souhaitez-vous l'ajouter à votre commande #${id}? Contactez l'épicier.`
-          : `Le produit "${produitNom}" est à nouveau disponible dans votre commande #${id} (nouveau total: ${newTotal.toFixed(2)} MAD).`;
+        detail.en_attente_acceptation_client = 1;
+        await detail.save();
+        const msg = `Le produit "${produitNom}" est à nouveau disponible. Souhaitez-vous l'ajouter à votre commande #${id}? (nouveau total: ${newTotal.toFixed(2)} MAD)`;
         _sendNotificationToClient(commande.client_id, commande.id, 'produit_disponible', msg);
         return res.status(200).json({
-          message: 'Produit retiré de la rupture. Client notifié.',
+          message: 'Produit retiré de la rupture. Client notifié. En attente de son acceptation.',
           montant_total: newTotal,
           rupture: false,
         });
@@ -913,6 +919,14 @@ const grocerController = {
       }
       if (commande.statut !== 'reçue') {
         return res.status(400).json({ message: 'Seules les commandes reçues peuvent être acceptées.' });
+      }
+      const pendingCount = await DetailCommande.count({
+        where: { commande_id: id, en_attente_acceptation_client: 1 },
+      });
+      if (pendingCount > 0) {
+        return res.status(400).json({
+          message: 'En attente de l\'acceptation du client pour des produits remis en stock. Vous ne pouvez pas accepter la commande tant que le client n\'a pas répondu.',
+        });
       }
       commande.statut = 'prête';
       commande.lu_epicier = 1;

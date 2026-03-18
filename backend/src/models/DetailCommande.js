@@ -37,6 +37,11 @@ const DetailCommande = sequelize.define('DetailCommande', {
     allowNull: true,
     defaultValue: 0,
   },
+  en_attente_acceptation_client: {
+    type: DataTypes.TINYINT,
+    allowNull: true,
+    defaultValue: 0,
+  },
 }, {
   tableName: 'detailsCommande',
   timestamps: false,
