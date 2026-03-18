@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../../../../data/models/grocer_order.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../providers/auth_provider.dart';
 import '../grocer_theme.dart';
 
-/// Écran Mes Commandes — onglets Reçue (défaut), Prête, Livrée ou Récupérée.
+/// Écran Mes Commandes — onglets Nouvelles / Prêtes.
+/// Badge nouvelles commandes, acceptation/refus, bon de préparation, confirmation récupération.
 class GrocerOrdersScreen extends StatefulWidget {
-  const GrocerOrdersScreen({super.key});
+  final void Function(int)? onNewOrdersCount;
+
+  const GrocerOrdersScreen({super.key, this.onNewOrdersCount});
 
   @override
   State<GrocerOrdersScreen> createState() => _GrocerOrdersScreenState();
@@ -17,24 +22,39 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ApiService _api = ApiService();
+  Timer? _pollTimer;
 
   static const List<String> _tabLabels = [
-    'Reçue',
-    'Prête',
-    'Livrée ou Récupérée',
+    'Nouvelles',
+    'Prêtes',
   ];
-  static const List<String> _statuts = ['reçue', 'prête', 'livrée'];
+  static const List<String> _statuts = ['reçue', 'prête'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, initialIndex: 0, vsync: this);
+    _tabController = TabController(length: 2, initialIndex: 0, vsync: this);
+    _fetchNewCount();
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchNewCount());
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchNewCount() async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      final data = await _api.get('/epicier/commandes/count-new', token: token);
+      final count = (data as Map<String, dynamic>?)?['count'] as int? ?? 0;
+      if (mounted) {
+        widget.onNewOrdersCount?.call(count);
+      }
+    } catch (_) {}
   }
 
   Future<List<GrocerOrder>> _fetchOrders(String? token, String statut) async {
@@ -44,8 +64,33 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
       token: token,
     ) as List<dynamic>?;
     return list
-        ?.map((e) => GrocerOrder.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList() ?? [];
+            ?.map((e) => GrocerOrder.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList() ??
+        [];
+  }
+
+  Future<GrocerOrderDetail?> _fetchOrderDetail(String? token, int orderId) async {
+    if (token == null) return null;
+    try {
+      final data = await _api.get('/epicier/commandes/$orderId', token: token);
+      return GrocerOrderDetail.fromJson(Map<String, dynamic>.from(data as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _acceptOrder(String? token, int orderId) async {
+    if (token == null) return;
+    await _api.post('/epicier/commandes/$orderId/accepter', {}, token: token);
+  }
+
+  Future<void> _refuseOrder(String? token, int orderId, String message) async {
+    if (token == null) return;
+    await _api.post(
+      '/epicier/commandes/$orderId/refuser',
+      {'message': message},
+      token: token,
+    );
   }
 
   Future<void> _updateStatut(String? token, int orderId, String statut) async {
@@ -57,19 +102,23 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     );
   }
 
+  void _onOrderAction() {
+    _fetchNewCount();
+  }
+
   @override
   Widget build(BuildContext context) {
     final token = context.watch<AuthProvider>().token;
     return Scaffold(
       backgroundColor: GrocerTheme.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF8B6914),
+        backgroundColor: GrocerTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.inventory_2_outlined, size: 22),
+            const Icon(Icons.receipt_long_outlined, size: 22),
             const SizedBox(width: 8),
             const Text(
               'Mes Commandes',
@@ -78,12 +127,6 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
           ],
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -103,7 +146,11 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
           token: token,
           statut: statut,
           fetchOrders: () => _fetchOrders(token, statut),
-          updateStatut: (id, newStatut) => _updateStatut(token, id, newStatut),
+          fetchDetail: (id) => _fetchOrderDetail(token, id),
+          acceptOrder: (id) => _acceptOrder(token, id),
+          refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+          updateStatut: (id, s) => _updateStatut(token, id, s),
+          onAction: _onOrderAction,
         )).toList(),
       ),
     );
@@ -114,13 +161,21 @@ class _OrdersList extends StatefulWidget {
   final String? token;
   final String statut;
   final Future<List<GrocerOrder>> Function() fetchOrders;
-  final Future<void> Function(int orderId, String newStatut) updateStatut;
+  final Future<GrocerOrderDetail?> Function(int) fetchDetail;
+  final Future<void> Function(int orderId) acceptOrder;
+  final Future<void> Function(int, String) refuseOrder;
+  final Future<void> Function(int, String) updateStatut;
+  final VoidCallback onAction;
 
   const _OrdersList({
     required this.token,
     required this.statut,
     required this.fetchOrders,
+    required this.fetchDetail,
+    required this.acceptOrder,
+    required this.refuseOrder,
     required this.updateStatut,
+    required this.onAction,
   });
 
   @override
@@ -215,7 +270,14 @@ class _OrdersListState extends State<_OrdersList> {
         itemCount: _orders.length,
         itemBuilder: (context, index) => _OrderCard(
           order: _orders[index],
-          onStatutUpdated: _load,
+          statut: widget.statut,
+          onAction: () {
+            _load();
+            widget.onAction();
+          },
+          fetchDetail: widget.fetchDetail,
+          acceptOrder: widget.acceptOrder,
+          refuseOrder: widget.refuseOrder,
           updateStatut: widget.updateStatut,
         ),
       ),
@@ -225,12 +287,20 @@ class _OrdersListState extends State<_OrdersList> {
 
 class _OrderCard extends StatelessWidget {
   final GrocerOrder order;
-  final VoidCallback onStatutUpdated;
-  final Future<void> Function(int orderId, String newStatut) updateStatut;
+  final String statut;
+  final VoidCallback onAction;
+  final Future<GrocerOrderDetail?> Function(int) fetchDetail;
+  final Future<void> Function(int) acceptOrder;
+  final Future<void> Function(int, String) refuseOrder;
+  final Future<void> Function(int, String) updateStatut;
 
   const _OrderCard({
     required this.order,
-    required this.onStatutUpdated,
+    required this.statut,
+    required this.onAction,
+    required this.fetchDetail,
+    required this.acceptOrder,
+    required this.refuseOrder,
     required this.updateStatut,
   });
 
@@ -295,59 +365,38 @@ class _OrderCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (isRecue)
+                if (isRecue) ...[
                   _ActionButton(
-                    label: 'Préparer',
-                    icon: Icons.restaurant,
-                    primary: true,
-                    onPressed: () async {
-                      try {
-                        await updateStatut(order.id, 'prête');
-                        onStatutUpdated();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Commande marquée prête')),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                if (isPrete) ...[
-                  _ActionButton(
-                    label: 'Marquer Livrée/Récupérée',
+                    label: 'Accepter',
                     icon: Icons.check_circle_outline,
                     primary: true,
-                    onPressed: () async {
-                      try {
-                        await updateStatut(order.id, 'livrée');
-                        onStatutUpdated();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Commande marquée livrée')),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-                          );
-                        }
-                      }
-                    },
+                    onPressed: () => _acceptOrder(context),
                   ),
                   _ActionButton(
-                    label: 'Détails',
-                    icon: Icons.info_outline,
+                    label: 'Refuser',
+                    icon: Icons.cancel_outlined,
                     primary: false,
-                    onPressed: () {
-                      _showDetails(context, order);
-                    },
+                    onPressed: () => _refuseOrder(context),
+                  ),
+                  _ActionButton(
+                    label: 'Bon de préparation',
+                    icon: Icons.description_outlined,
+                    primary: false,
+                    onPressed: () => _showBonPreparation(context),
+                  ),
+                ],
+                if (isPrete) ...[
+                  _ActionButton(
+                    label: 'Confirmer récupération',
+                    icon: Icons.check_circle_outline,
+                    primary: true,
+                    onPressed: () => _setStatut(context, 'livrée'),
+                  ),
+                  _ActionButton(
+                    label: 'Bon de préparation',
+                    icon: Icons.description_outlined,
+                    primary: false,
+                    onPressed: () => _showBonPreparation(context),
                   ),
                 ],
                 if (isLivree)
@@ -355,7 +404,7 @@ class _OrderCard extends StatelessWidget {
                     label: 'Voir détails',
                     icon: Icons.visibility_outlined,
                     primary: false,
-                    onPressed: () => _showDetails(context, order),
+                    onPressed: () => _showBonPreparation(context),
                   ),
               ],
             ),
@@ -365,28 +414,245 @@ class _OrderCard extends StatelessWidget {
     );
   }
 
-  void _showDetails(BuildContext context, GrocerOrder order) {
+  Future<void> _acceptOrder(BuildContext context) async {
+    try {
+      await acceptOrder(order.id);
+      onAction();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Commande acceptée et prête')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  Future<void> _refuseOrder(BuildContext context) async {
+    final controller = TextEditingController(text: order.messageRefus ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Refuser la commande'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Message au client (obligatoire) :'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Ex: Produit indisponible, réessayez plus tard',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: GrocerTheme.trendNegative,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Refuser'),
+            ),
+          ],
+        );
+      },
+    );
+    if (result != null && result.isNotEmpty) {
+      try {
+        await refuseOrder(order.id, result);
+        onAction();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Commande refusée, le client a été notifié')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+          );
+        }
+      }
+    } else if (result != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Veuillez saisir un message pour le client')),
+        );
+      }
+    }
+  }
+
+  Future<void> _setStatut(BuildContext context, String newStatut) async {
+    try {
+      await updateStatut(order.id, newStatut);
+      onAction();
+      if (context.mounted) {
+        final msg = newStatut == 'prête'
+            ? 'Commande marquée prête'
+            : 'Récupération confirmée';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg)),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  Future<void> _showBonPreparation(BuildContext context) async {
+    final detail = await fetchDetail(order.id);
+    if (!context.mounted || detail == null) return;
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: GrocerTheme.cardBackground,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: GrocerTheme.cardBackground,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Bon de préparation #CMD-${detail.id}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: GrocerTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _DetailRow('Client', '${detail.clientPrenom} ${detail.clientNom}'),
+              if (detail.clientEmail != null) _DetailRow('Email', detail.clientEmail!),
+              _DetailRow('Créneau', detail.creneau),
+              _DetailRow('Statut', detail.statut),
+              const Divider(height: 24),
+              const Text(
+                'Articles',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: GrocerTheme.textDark,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...detail.details.map((d) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (d.imagePrincipale != null && d.imagePrincipale!.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          ApiConstants.formatImageUrl(d.imagePrincipale!),
+                          width: 48,
+                          height: 48,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const SizedBox(width: 48, height: 48),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.inventory_2_outlined),
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(d.nom, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          Text(
+                            '${d.quantite} × ${_formatPrice(d.prixUnitaire)} = ${_formatPrice(d.totalLigne)} MAD',
+                            style: TextStyle(fontSize: 12, color: GrocerTheme.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(
+                    '${_formatPrice(detail.montantTotal)} MAD',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: GrocerTheme.primary),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('#CMD-${order.id}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 8),
-            Text('Client : ${order.clientPrenom} ${order.clientNom}'),
-            Text('${order.articleCount} articles · ${_formatPrice(order.montantTotal)} MAD'),
-            Text('Créneau : ${order.creneau}'),
-            Text('Statut : ${order.statut}'),
-          ],
-        ),
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(label, style: TextStyle(color: GrocerTheme.textMuted, fontSize: 13)),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+        ],
       ),
     );
   }
@@ -401,22 +667,32 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bg;
     Color fg;
+    String label;
     switch (statut) {
       case 'reçue':
         bg = const Color(0xFFFFE4D4);
         fg = const Color(0xFFB85C38);
+        label = 'Nouvelle';
         break;
       case 'prête':
         bg = const Color(0xFFD4EDDA);
         fg = const Color(0xFF1A7F6E);
+        label = 'Prête';
+        break;
+      case 'refusee':
+        bg = const Color(0xFFFFEBEE);
+        fg = const Color(0xFFC62828);
+        label = 'Refusée';
         break;
       case 'livrée':
         bg = const Color(0xFFE8F4E8);
         fg = GrocerTheme.primary;
+        label = 'Récupérée';
         break;
       default:
         bg = Colors.grey.shade200;
         fg = Colors.grey.shade800;
+        label = statut;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -425,7 +701,7 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        statut == 'livrée' ? 'Livrée' : statut == 'prête' ? 'Prête' : 'Reçue',
+        label,
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: fg),
       ),
     );
