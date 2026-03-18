@@ -697,12 +697,18 @@ const grocerController = {
       });
       const ids = commandes.map((c) => c.id);
       const countMap = {};
+      const ruptureMap = {};
       if (ids.length > 0) {
         const rows = await sequelize.query(
           `SELECT commande_id, SUM(quantite) AS total FROM detailscommande WHERE commande_id IN (${ids.join(',')}) GROUP BY commande_id`,
           { type: QueryTypes.SELECT }
         );
         rows.forEach((r) => { countMap[r.commande_id] = Number(r.total ?? 0); });
+        const ruptureRows = await sequelize.query(
+          `SELECT commande_id FROM detailscommande WHERE commande_id IN (${ids.join(',')}) AND rupture = 1`,
+          { type: QueryTypes.SELECT }
+        );
+        ruptureRows.forEach((r) => { ruptureMap[r.commande_id] = true; });
       }
       const result = commandes.map((c) => {
         let creneau = '';
@@ -723,6 +729,7 @@ const grocerController = {
           statut: c.statut,
           message_refus: c.message_refus ?? null,
           article_count: countMap[c.id] ?? 0,
+          has_rupture: !!ruptureMap[c.id],
         };
       });
       res.status(200).json(result);
