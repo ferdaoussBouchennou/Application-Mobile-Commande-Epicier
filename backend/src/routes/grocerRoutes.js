@@ -17,6 +17,12 @@ router.post('/upload-store-image', authMiddleware, (req, res, next) => {
 
 router.get('/dashboard', authMiddleware, requireEpicier, grocerController.getDashboard);
 router.get('/commandes', authMiddleware, requireEpicier, grocerController.getCommandes);
+router.get('/commandes/count-new', authMiddleware, requireEpicier, grocerController.getCommandesCountNew);
+router.get('/commandes/:id', authMiddleware, requireEpicier, grocerController.getCommandeById);
+router.patch('/commandes/:id/items/:detailId/rupture', authMiddleware, requireEpicier, grocerController.markRuptureDetail);
+router.patch('/commandes/:id/confirmer-acceptation-client', authMiddleware, requireEpicier, grocerController.confirmerAcceptationClient);
+router.post('/commandes/:id/accepter', authMiddleware, requireEpicier, grocerController.acceptCommande);
+router.post('/commandes/:id/refuser', authMiddleware, requireEpicier, grocerController.refuseCommande);
 router.patch('/commandes/:id/statut', authMiddleware, requireEpicier, grocerController.updateCommandeStatut);
 router.get('/products', authMiddleware, requireEpicier, grocerController.getMyProducts);
 router.get('/products/available-for-category/:categoryId', authMiddleware, requireEpicier, grocerController.getAvailableProductsForCategory);
