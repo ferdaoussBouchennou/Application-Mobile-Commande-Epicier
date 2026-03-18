@@ -182,7 +182,7 @@ class _HomeMapTabState extends State<HomeMapTab> {
                       ),
                     ),
                     Text(
-                      'Proche de chez vous à Tétouan',
+                      'Proche de chez vous',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey,
