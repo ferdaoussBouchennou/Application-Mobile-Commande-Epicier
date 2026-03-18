@@ -44,37 +44,43 @@ class GrocerOrder {
   }
 }
 
-/// Détail d'une ligne de commande (bon de préparation)
+/// Détail d'une ligne de commande (ticket articles)
 class GrocerOrderDetailLine {
+  final int id;
   final int produitId;
   final String nom;
   final String? imagePrincipale;
   final int quantite;
   final double prixUnitaire;
   final double totalLigne;
+  final bool rupture;
 
   GrocerOrderDetailLine({
+    required this.id,
     required this.produitId,
     required this.nom,
     this.imagePrincipale,
     required this.quantite,
     required this.prixUnitaire,
     required this.totalLigne,
+    this.rupture = false,
   });
 
   static GrocerOrderDetailLine fromJson(Map<String, dynamic> json) {
     return GrocerOrderDetailLine(
+      id: int.tryParse(json['id']?.toString() ?? '0') ?? 0,
       produitId: int.tryParse(json['produit_id']?.toString() ?? '0') ?? 0,
       nom: json['nom']?.toString() ?? '',
       imagePrincipale: json['image_principale']?.toString(),
       quantite: int.tryParse(json['quantite']?.toString() ?? '0') ?? 0,
       prixUnitaire: double.tryParse(json['prix_unitaire']?.toString() ?? '0') ?? 0,
       totalLigne: double.tryParse(json['total_ligne']?.toString() ?? '0') ?? 0,
+      rupture: json['rupture'] == true,
     );
   }
 }
 
-/// Détail complet d'une commande (pour bon de préparation)
+/// Détail complet d'une commande (ticket articles/quantités/notes)
 class GrocerOrderDetail {
   final int id;
   final String clientNom;
@@ -86,6 +92,7 @@ class GrocerOrderDetail {
   final double montantTotal;
   final String statut;
   final String? messageRefus;
+  final String? notes;
   final List<GrocerOrderDetailLine> details;
 
   GrocerOrderDetail({
@@ -99,6 +106,7 @@ class GrocerOrderDetail {
     required this.montantTotal,
     required this.statut,
     this.messageRefus,
+    this.notes,
     required this.details,
   });
 
@@ -115,6 +123,7 @@ class GrocerOrderDetail {
       montantTotal: double.tryParse(json['montant_total']?.toString() ?? '0') ?? 0,
       statut: json['statut']?.toString() ?? 'reçue',
       messageRefus: json['message_refus']?.toString(),
+      notes: json['notes']?.toString(),
       details: detailsList
           .map((e) => GrocerOrderDetailLine.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList(),
