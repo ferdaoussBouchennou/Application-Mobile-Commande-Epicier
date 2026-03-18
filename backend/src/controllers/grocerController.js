@@ -858,12 +858,19 @@ const grocerController = {
       await commande.save();
 
       if (wasRupture && setRupture === 0) {
-        detail.en_attente_acceptation_client = 1;
-        await detail.save();
-        const msg = `Le produit "${produitNom}" est à nouveau disponible. Souhaitez-vous l'ajouter à votre commande #${id}? (nouveau total: ${newTotal.toFixed(2)} MAD)`;
+        const clientAccepte = !!commande.client_accepte_modification;
+        if (clientAccepte) {
+          detail.en_attente_acceptation_client = 1;
+          await detail.save();
+        }
+        const msg = clientAccepte
+          ? `Le produit "${produitNom}" est à nouveau disponible. Souhaitez-vous l'ajouter à votre commande #${id}? (nouveau total: ${newTotal.toFixed(2)} MAD)`
+          : `Le produit "${produitNom}" est à nouveau disponible dans votre commande #${id} (nouveau total: ${newTotal.toFixed(2)} MAD).`;
         _sendNotificationToClient(commande.client_id, commande.id, 'produit_disponible', msg);
         return res.status(200).json({
-          message: 'Produit retiré de la rupture. Client notifié. En attente de son acceptation.',
+          message: clientAccepte
+            ? 'Produit retiré de la rupture. Client notifié. En attente de son acceptation.'
+            : 'Produit retiré de la rupture. Client notifié. Vous pouvez accepter la commande.',
           montant_total: newTotal,
           rupture: false,
         });
