@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -17,7 +20,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -30,6 +33,20 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+
+        // Load .env variables
+        val envFile = project.file("../../.env")
+        val env = Properties()
+        if (envFile.exists()) {
+            env.load(FileInputStream(envFile))
+        }
+
+        val fbId = env.getProperty("FACEBOOK_APP_ID") ?: ""
+        val fbToken = env.getProperty("FACEBOOK_CLIENT_TOKEN") ?: ""
+
+        resValue("string", "facebook_app_id", fbId)
+        resValue("string", "facebook_client_token", fbToken)
+        resValue("string", "fb_login_protocol_scheme", "fb$fbId")
     }
 
     buildTypes {

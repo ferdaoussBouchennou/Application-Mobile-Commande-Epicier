@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MyHanut</string>
+    <!-- Social Login Placeholders (Add real values in .env later) -->
+    <!-- Social Login values are now injected from .env via build.gradle.kts -->
+</resources>
