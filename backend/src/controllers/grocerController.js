@@ -850,6 +850,14 @@ const grocerController = {
       detail.rupture = setRupture;
       await detail.save();
 
+      const epicierProduct = await EpicierProduct.findOne({
+        where: { epicier_id: epicierId, produit_id: detail.produit_id },
+      });
+      if (epicierProduct) {
+        epicierProduct.rupture_stock = setRupture === 1;
+        await epicierProduct.save();
+      }
+
       const allDetails = await DetailCommande.findAll({
         where: { commande_id: id },
       });
