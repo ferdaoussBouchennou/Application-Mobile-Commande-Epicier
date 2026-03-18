@@ -102,6 +102,24 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     );
   }
 
+  Future<void> _updateNotes(String? token, int orderId, String notes) async {
+    if (token == null) return;
+    await _api.patch(
+      '/epicier/commandes/$orderId/notes',
+      {'notes': notes},
+      token: token,
+    );
+  }
+
+  Future<void> _markRupture(String? token, int orderId, int detailId) async {
+    if (token == null) return;
+    await _api.patch(
+      '/epicier/commandes/$orderId/items/$detailId/rupture',
+      {},
+      token: token,
+    );
+  }
+
   void _onOrderAction() {
     _fetchNewCount();
   }
@@ -150,6 +168,8 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
           acceptOrder: (id) => _acceptOrder(token, id),
           refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
           updateStatut: (id, s) => _updateStatut(token, id, s),
+          updateNotes: (id, notes) => _updateNotes(token, id, notes),
+          markRupture: (id, detailId) => _markRupture(token, id, detailId),
           onAction: _onOrderAction,
         )).toList(),
       ),
@@ -165,6 +185,8 @@ class _OrdersList extends StatefulWidget {
   final Future<void> Function(int orderId) acceptOrder;
   final Future<void> Function(int, String) refuseOrder;
   final Future<void> Function(int, String) updateStatut;
+  final Future<void> Function(int, String) updateNotes;
+  final Future<void> Function(int, int) markRupture;
   final VoidCallback onAction;
 
   const _OrdersList({
@@ -175,6 +197,8 @@ class _OrdersList extends StatefulWidget {
     required this.acceptOrder,
     required this.refuseOrder,
     required this.updateStatut,
+    required this.updateNotes,
+    required this.markRupture,
     required this.onAction,
   });
 
@@ -279,6 +303,8 @@ class _OrdersListState extends State<_OrdersList> {
           acceptOrder: widget.acceptOrder,
           refuseOrder: widget.refuseOrder,
           updateStatut: widget.updateStatut,
+          updateNotes: widget.updateNotes,
+          markRupture: widget.markRupture,
         ),
       ),
     );
@@ -293,6 +319,8 @@ class _OrderCard extends StatelessWidget {
   final Future<void> Function(int) acceptOrder;
   final Future<void> Function(int, String) refuseOrder;
   final Future<void> Function(int, String) updateStatut;
+  final Future<void> Function(int, String) updateNotes;
+  final Future<void> Function(int, int) markRupture;
 
   const _OrderCard({
     required this.order,
@@ -302,6 +330,8 @@ class _OrderCard extends StatelessWidget {
     required this.acceptOrder,
     required this.refuseOrder,
     required this.updateStatut,
+    required this.updateNotes,
+    required this.markRupture,
   });
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
@@ -379,10 +409,10 @@ class _OrderCard extends StatelessWidget {
                     onPressed: () => _refuseOrder(context),
                   ),
                   _ActionButton(
-                    label: 'Bon de préparation',
+                    label: 'Ticket',
                     icon: Icons.description_outlined,
                     primary: false,
-                    onPressed: () => _showBonPreparation(context),
+                    onPressed: () => _showTicket(context),
                   ),
                 ],
                 if (isPrete) ...[
@@ -393,10 +423,10 @@ class _OrderCard extends StatelessWidget {
                     onPressed: () => _setStatut(context, 'livrée'),
                   ),
                   _ActionButton(
-                    label: 'Bon de préparation',
+                    label: 'Ticket',
                     icon: Icons.description_outlined,
                     primary: false,
-                    onPressed: () => _showBonPreparation(context),
+                    onPressed: () => _showTicket(context),
                   ),
                 ],
                 if (isLivree)
@@ -404,7 +434,7 @@ class _OrderCard extends StatelessWidget {
                     label: 'Voir détails',
                     icon: Icons.visibility_outlined,
                     primary: false,
-                    onPressed: () => _showBonPreparation(context),
+                    onPressed: () => _showTicket(context),
                   ),
               ],
             ),
@@ -519,115 +549,315 @@ class _OrderCard extends StatelessWidget {
     }
   }
 
-  Future<void> _showBonPreparation(BuildContext context) async {
+  Future<void> _showTicket(BuildContext context) async {
     final detail = await fetchDetail(order.id);
     if (!context.mounted || detail == null) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, scrollController) => Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            color: GrocerTheme.cardBackground,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      builder: (ctx) => _TicketSheet(
+        orderId: order.id,
+        initialDetail: detail,
+        fetchDetail: fetchDetail,
+        updateNotes: updateNotes,
+        markRupture: markRupture,
+        onAction: onAction,
+      ),
+    );
+  }
+}
+
+class _TicketSheet extends StatefulWidget {
+  final int orderId;
+  final GrocerOrderDetail initialDetail;
+  final Future<GrocerOrderDetail?> Function(int) fetchDetail;
+  final Future<void> Function(int, String) updateNotes;
+  final Future<void> Function(int, int) markRupture;
+  final VoidCallback onAction;
+
+  const _TicketSheet({
+    required this.orderId,
+    required this.initialDetail,
+    required this.fetchDetail,
+    required this.updateNotes,
+    required this.markRupture,
+    required this.onAction,
+  });
+
+  @override
+  State<_TicketSheet> createState() => _TicketSheetState();
+}
+
+class _TicketSheetState extends State<_TicketSheet> {
+  late GrocerOrderDetail _detail;
+  final _notesController = TextEditingController();
+  bool _savingNotes = false;
+
+  static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
+
+  @override
+  void initState() {
+    super.initState();
+    _detail = widget.initialDetail;
+    _notesController.text = _detail.notes ?? '';
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshDetail() async {
+    final d = await widget.fetchDetail(widget.orderId);
+    if (mounted && d != null) {
+      setState(() {
+        _detail = d;
+        _notesController.text = d.notes ?? '';
+      });
+    }
+  }
+
+  Future<void> _saveNotes() async {
+    final notes = _notesController.text.trim();
+    setState(() => _savingNotes = true);
+    try {
+      await widget.updateNotes(widget.orderId, notes);
+      if (mounted) {
+        setState(() => _detail = GrocerOrderDetail(
+          id: _detail.id,
+          clientNom: _detail.clientNom,
+          clientPrenom: _detail.clientPrenom,
+          clientEmail: _detail.clientEmail,
+          dateCommande: _detail.dateCommande,
+          dateRecuperation: _detail.dateRecuperation,
+          creneau: _detail.creneau,
+          montantTotal: _detail.montantTotal,
+          statut: _detail.statut,
+          messageRefus: _detail.messageRefus,
+          notes: notes.isEmpty ? null : notes,
+          details: _detail.details,
+        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notes enregistrées')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingNotes = false);
+    }
+  }
+
+  Future<void> _onMarkRupture(GrocerOrderDetailLine line) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rupture de stock'),
+        content: Text(
+          'Marquer "${line.nom}" en rupture?\n\nLe client sera notifié et cet article sera retiré du total. Souhaitez-vous continuer la commande sans ce produit?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
           ),
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: GrocerTheme.trendNegative,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Marquer rupture'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await widget.markRupture(widget.orderId, line.id);
+      widget.onAction();
+      await _refreshDetail();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Produit marqué en rupture. Client notifié.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canEdit = ['reçue', 'prête'].contains(_detail.statut);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: GrocerTheme.cardBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: ListView(
+          controller: scrollController,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Ticket #CMD-${_detail.id}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: GrocerTheme.textDark,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _DetailRow('Client', '${_detail.clientPrenom} ${_detail.clientNom}'),
+            if (_detail.clientEmail != null) _DetailRow('Email', _detail.clientEmail!),
+            _DetailRow('Créneau', _detail.creneau),
+            _DetailRow('Statut', _detail.statut),
+            const SizedBox(height: 12),
+            const Text('Notes', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: GrocerTheme.textDark)),
+            const SizedBox(height: 4),
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              enabled: canEdit,
+              decoration: const InputDecoration(
+                hintText: 'Notes pour la commande...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            if (canEdit)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ElevatedButton.icon(
+                  onPressed: _savingNotes ? null : _saveNotes,
+                  icon: _savingNotes ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save, size: 18),
+                  label: Text(_savingNotes ? 'Enregistrement...' : 'Enregistrer les notes'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: GrocerTheme.primary,
+                    foregroundColor: Colors.white,
                   ),
                 ),
               ),
-              Text(
-                'Bon de préparation #CMD-${detail.id}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: GrocerTheme.textDark,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _DetailRow('Client', '${detail.clientPrenom} ${detail.clientNom}'),
-              if (detail.clientEmail != null) _DetailRow('Email', detail.clientEmail!),
-              _DetailRow('Créneau', detail.creneau),
-              _DetailRow('Statut', detail.statut),
-              const Divider(height: 24),
-              const Text(
-                'Articles',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: GrocerTheme.textDark,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...detail.details.map((d) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (d.imagePrincipale != null && d.imagePrincipale!.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          ApiConstants.formatImageUrl(d.imagePrincipale!),
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const SizedBox(width: 48, height: 48),
-                        ),
-                      )
-                    else
-                      Container(
+            const Divider(height: 24),
+            const Text(
+              'Articles',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: GrocerTheme.textDark),
+            ),
+            const SizedBox(height: 8),
+            ..._detail.details.map((d) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (d.imagePrincipale != null && d.imagePrincipale!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        ApiConstants.formatImageUrl(d.imagePrincipale!),
                         width: 48,
                         height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.inventory_2_outlined),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox(width: 48, height: 48),
                       ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(d.nom, style: const TextStyle(fontWeight: FontWeight.w500)),
-                          Text(
-                            '${d.quantite} × ${_formatPrice(d.prixUnitaire)} = ${_formatPrice(d.totalLigne)} MAD',
-                            style: TextStyle(fontSize: 12, color: GrocerTheme.textMuted),
-                          ),
-                        ],
+                    )
+                  else
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: const Icon(Icons.inventory_2_outlined),
                     ),
-                  ],
-                ),
-              )),
-              const Divider(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(
-                    '${_formatPrice(detail.montantTotal)} MAD',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: GrocerTheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                d.nom,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  decoration: d.rupture ? TextDecoration.lineThrough : null,
+                                  color: d.rupture ? Colors.grey : null,
+                                ),
+                              ),
+                            ),
+                            if (d.rupture)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: GrocerTheme.trendNegative.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('Rupture', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GrocerTheme.trendNegative)),
+                              )
+                            else if (canEdit)
+                              TextButton(
+                                onPressed: () => _onMarkRupture(d),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text('Rupture', style: TextStyle(fontSize: 12, color: GrocerTheme.trendNegative)),
+                              ),
+                          ],
+                        ),
+                        Text(
+                          '${d.quantite} × ${_formatPrice(d.prixUnitaire)} = ${_formatPrice(d.totalLigne)} MAD',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: d.rupture ? Colors.grey : GrocerTheme.textMuted,
+                            decoration: d.rupture ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            )),
+            const Divider(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  '${_formatPrice(_detail.montantTotal)} MAD',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: GrocerTheme.primary),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
