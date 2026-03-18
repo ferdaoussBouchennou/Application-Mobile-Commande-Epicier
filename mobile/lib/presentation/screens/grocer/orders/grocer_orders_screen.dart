@@ -538,7 +538,7 @@ class _OrderCard extends StatelessWidget {
   Future<void> _showTicket(BuildContext context) async {
     final detail = await fetchDetail(order.id);
     if (!context.mounted || detail == null) return;
-    showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -550,6 +550,7 @@ class _OrderCard extends StatelessWidget {
         onAction: onAction,
       ),
     );
+    onAction();
   }
 }
 
@@ -574,6 +575,7 @@ class _TicketSheet extends StatefulWidget {
 
 class _TicketSheetState extends State<_TicketSheet> {
   late GrocerOrderDetail _detail;
+  Timer? _refreshTimer;
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
 
@@ -584,6 +586,15 @@ class _TicketSheetState extends State<_TicketSheet> {
   void initState() {
     super.initState();
     _detail = widget.initialDetail;
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) _refreshDetail();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _refreshDetail() async {
