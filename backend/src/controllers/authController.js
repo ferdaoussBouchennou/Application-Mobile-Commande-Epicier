@@ -586,20 +586,24 @@ const authController = {
     }
   },
 
-  // Connexion via Instagram (Similaire à Facebook via Graph API)
+  // Connexion via Instagram (Unifié avec Meta Graph API)
   instagramLogin: async (req, res) => {
     try {
       const { accessToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
       
+      if (!accessToken) {
+        return res.status(400).json({ message: 'accessToken requis' });
+      }
+
       const https = require('https');
       const fetchUserData = (token) => {
         return new Promise((resolve, reject) => {
-          // Note: Instagram Basic Display API uses a different endpoint but often handled via Meta Graph if linked
-          https.get(`https://graph.instagram.com/me?fields=id,username,account_type&access_token=${token}`, (instRes) => {
+          // On utilise graph.facebook.com car Instagram est unifié sous Meta
+          // Pour les comptes pros, on peut obtenir l'ID Instagram via /me?fields=instagram_accounts
+          https.get(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${token}`, (metaRes) => {
             let data = '';
-            instRes.on('data', (chunk) => data += chunk);
-            instRes.on('end')
-            instRes.on('end', () => resolve(JSON.parse(data)));
+            metaRes.on('data', (chunk) => data += chunk);
+            metaRes.on('end', () => resolve(JSON.parse(data)));
           }).on('error', reject);
         });
       };
@@ -607,39 +611,82 @@ const authController = {
       const payload = await fetchUserData(accessToken);
       
       if (!payload || payload.error) {
-        return res.status(401).json({ message: "Jeton Instagram invalide.", error: payload?.error });
+        console.error('Erreur Meta Graph:', payload?.error);
+        return res.status(401).json({ message: "Jeton Meta/Instagram invalide.", error: payload?.error });
       }
 
-      const { username, id: instagramId } = payload;
-      const email = `${username}@instagram.com`; // Instagram Basic Display doesn't always provide email
+      const { id: metaId, name, email: metaEmail, picture } = payload;
+      
+      // Fallback email si non fourni par Meta
+      const email = metaEmail || `${metaId}@meta.com`;
+      const [prenom, ...nomParties] = (name || 'Utilisateur Insta').split(' ');
+      const nom = nomParties.join(' ') || prenom;
 
+      // Recherche par id_instagram ou email
       let user = await User.findOne({ 
         where: { 
           [require('sequelize').Op.or]: [
             { email },
-            { id_instagram: instagramId }
+            { id_instagram: metaId }
           ]
         } 
       });
 
+      let isNewUser = false;
+      let newStore = null;
+
       if (!user) {
-         user = await User.create({
-            nom: username,
-            prenom: 'Instagram',
-            email,
-            mdp: await bcrypt.hash(Math.random().toString(36), 10),
-            id_instagram: instagramId,
-            role: 'CLIENT', // Default to client for Instagram
-            is_active: true,
-            email_verified: true,
+        // Validation spécifique Épicier pour les nouveaux comptes
+        if (role === 'EPICIER') {
+          if (!doc_verf) return res.status(400).json({ message: "DOCUMENT_REQUIRED: Un document est requis." });
+          if (!nom_boutique) return res.status(400).json({ message: "STORE_NAME_REQUIRED: Le nom de boutique est requis." });
+        }
+
+        user = await User.create({
+          nom,
+          prenom,
+          email,
+          mdp: await bcrypt.hash(Math.random().toString(36), 10),
+          id_instagram: metaId, // On stocke l'ID Meta dans le champ instagram
+          role: role || 'CLIENT',
+          doc_verf: role === 'EPICIER' ? doc_verf : null,
+          is_active: true,
+          email_verified: true,
+        });
+
+        if (role === 'EPICIER') {
+          const { Store } = require('../models'); 
+          newStore = await Store.create({
+            utilisateur_id: user.id,
+            nom_boutique,
+            description: description_boutique || '',
+            adresse: adresse || '',
+            telephone: telephone || '',
+            statut_inscription: 'EN_ATTENTE'
           });
+        }
+        isNewUser = true;
       } else if (!user.id_instagram) {
-        user.id_instagram = instagramId;
+        user.id_instagram = metaId;
+        user.email_verified = true;
         await user.save();
       }
 
+      // Vérification du rôle existant
+      if (user && user.role === 'CLIENT' && role === 'EPICIER') {
+        return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client." });
+      }
+
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const { Store } = require('../models');
+        const store = newStore || await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (!store) return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription };
+      }
+
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
         JWT_SECRET,
         { expiresIn: '30d' }
       );
@@ -647,7 +694,8 @@ const authController = {
       res.status(200).json({
         message: 'Connexion Instagram réussie',
         token,
-        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role }
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        store: storeInfo
       });
     } catch (error) {
       console.error('Erreur instagramLogin:', error);
