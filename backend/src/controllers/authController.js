@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const { generateOTP, sendOTP } = require('../utils/emailService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_314159';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const authController = {
   // Inscription Client
@@ -468,6 +468,238 @@ const authController = {
     } catch (error) {
       console.error('Erreur googleLogin:', error);
       res.status(401).json({ message: 'Échec de l\'authentification Google', error: error.message });
+    }
+  },
+  
+  // Connexion via Facebook
+  facebookLogin: async (req, res) => {
+    try {
+      const { accessToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
+      
+      const https = require('https');
+      const fetchUserData = (token) => {
+        return new Promise((resolve, reject) => {
+          https.get(`https://graph.facebook.com/me?fields=id,name,email,first_name,last_name&access_token=${token}`, (fbRes) => {
+            let data = '';
+            fbRes.on('data', (chunk) => data += chunk);
+            fbRes.on('end', () => resolve(JSON.parse(data)));
+          }).on('error', reject);
+        });
+      };
+      
+      const payload = await fetchUserData(accessToken);
+      
+      if (!payload || payload.error) {
+        return res.status(401).json({ message: "Jeton Facebook invalide.", error: payload?.error });
+      }
+
+      const { email, name, first_name, last_name, id: facebookId } = payload;
+      
+      // The rest of the logic is shared with googleLogin (find or create user)
+      // I will extract this logic if possible or replicate it for now to avoid breaking things
+      let user = await User.findOne({ 
+        where: { 
+          [require('sequelize').Op.or]: [
+            { email },
+            { id_facebook: facebookId }
+          ]
+        } 
+      });
+
+      let isNewUser = false;
+      let newStore = null;
+
+      if (!user) {
+        if (role === 'EPICIER') {
+          if (!doc_verf) {
+            return res.status(400).json({ message: "Le document de vérification est obligatoire." });
+          }
+          user = await User.create({
+            nom: last_name || name || 'Inconnu',
+            prenom: first_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_facebook: facebookId,
+            role: 'EPICIER',
+            doc_verf,
+            is_active: true,
+            email_verified: true,
+          });
+          
+          newStore = await Store.create({
+            utilisateur_id: user.id,
+            nom_boutique: nom_boutique || `Epicerie de ${first_name || name}`,
+            adresse: adresse || 'À configurer',
+            telephone: telephone || null,
+            description: description_boutique,
+            statut_inscription: 'EN_ATTENTE',
+            is_active: true
+          });
+        } else {
+          user = await User.create({
+            nom: last_name || name || 'Inconnu',
+            prenom: first_name || '',
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_facebook: facebookId,
+            role: 'CLIENT',
+            is_active: true,
+            email_verified: true,
+          });
+        }
+        isNewUser = true;
+      } else if (!user.id_facebook) {
+        user.id_facebook = facebookId;
+        user.email_verified = true;
+        await user.save();
+      }
+
+      // Check role constraints and store status
+      if (user && user.role === 'CLIENT' && role === 'EPICIER') {
+        return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client." });
+      }
+
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const store = newStore || await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (!store) return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        if (store.statut_inscription === 'EN_ATTENTE') return res.status(403).json({ message: 'Compte en attente de validation.' });
+        if (store.statut_inscription === 'REFUSE') return res.status(403).json({ message: 'Demande refusée.' });
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription };
+      }
+
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.status(200).json({
+        message: 'Connexion Facebook réussie',
+        token,
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        store: storeInfo
+      });
+    } catch (error) {
+      console.error('Erreur facebookLogin:', error);
+      res.status(401).json({ message: 'Échec de l\'authentification Facebook', error: error.message });
+    }
+  },
+
+  // Connexion via Instagram (Unifié avec Meta Graph API)
+  instagramLogin: async (req, res) => {
+    try {
+      const { accessToken, role, doc_verf, nom_boutique, description_boutique, adresse, telephone } = req.body;
+      
+      if (!accessToken) {
+        return res.status(400).json({ message: 'accessToken requis' });
+      }
+
+      const https = require('https');
+      const fetchUserData = (token) => {
+        return new Promise((resolve, reject) => {
+          // On utilise graph.facebook.com car Instagram est unifié sous Meta
+          // Pour les comptes pros, on peut obtenir l'ID Instagram via /me?fields=instagram_accounts
+          https.get(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${token}`, (metaRes) => {
+            let data = '';
+            metaRes.on('data', (chunk) => data += chunk);
+            metaRes.on('end', () => resolve(JSON.parse(data)));
+          }).on('error', reject);
+        });
+      };
+      
+      const payload = await fetchUserData(accessToken);
+      
+      if (!payload || payload.error) {
+        console.error('Erreur Meta Graph:', payload?.error);
+        return res.status(401).json({ message: "Jeton Meta/Instagram invalide.", error: payload?.error });
+      }
+
+      const { id: metaId, name, email: metaEmail, picture } = payload;
+      
+      // Fallback email si non fourni par Meta
+      const email = metaEmail || `${metaId}@meta.com`;
+      const [prenom, ...nomParties] = (name || 'Utilisateur Insta').split(' ');
+      const nom = nomParties.join(' ') || prenom;
+
+      // Recherche par id_instagram ou email
+      let user = await User.findOne({ 
+        where: { 
+          [require('sequelize').Op.or]: [
+            { email },
+            { id_instagram: metaId }
+          ]
+        } 
+      });
+
+      let isNewUser = false;
+      let newStore = null;
+
+      if (!user) {
+        // Validation spécifique Épicier pour les nouveaux comptes
+        if (role === 'EPICIER') {
+          if (!doc_verf) return res.status(400).json({ message: "DOCUMENT_REQUIRED: Un document est requis." });
+          if (!nom_boutique) return res.status(400).json({ message: "STORE_NAME_REQUIRED: Le nom de boutique est requis." });
+        }
+
+        user = await User.create({
+          nom,
+          prenom,
+          email,
+          mdp: await bcrypt.hash(Math.random().toString(36), 10),
+          id_instagram: metaId, // On stocke l'ID Meta dans le champ instagram
+          role: role || 'CLIENT',
+          doc_verf: role === 'EPICIER' ? doc_verf : null,
+          is_active: true,
+          email_verified: true,
+        });
+
+        if (role === 'EPICIER') {
+          const { Store } = require('../models'); 
+          newStore = await Store.create({
+            utilisateur_id: user.id,
+            nom_boutique,
+            description: description_boutique || '',
+            adresse: adresse || '',
+            telephone: telephone || '',
+            statut_inscription: 'EN_ATTENTE'
+          });
+        }
+        isNewUser = true;
+      } else if (!user.id_instagram) {
+        user.id_instagram = metaId;
+        user.email_verified = true;
+        await user.save();
+      }
+
+      // Vérification du rôle existant
+      if (user && user.role === 'CLIENT' && role === 'EPICIER') {
+        return res.status(400).json({ message: "EMAIL_EXISTS: Cet email est déjà associé à un compte Client." });
+      }
+
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const { Store } = require('../models');
+        const store = newStore || await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (!store) return res.status(403).json({ message: 'Profil épicier introuvable.' });
+        storeInfo = { id: store.id, nom_boutique: store.nom_boutique, statut_inscription: store.statut_inscription };
+      }
+
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role, storeId: storeInfo ? storeInfo.id : null },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+
+      res.status(200).json({
+        message: 'Connexion Instagram réussie',
+        token,
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        store: storeInfo
+      });
+    } catch (error) {
+      console.error('Erreur instagramLogin:', error);
+      res.status(401).json({ message: 'Échec de l\'authentification Instagram', error: error.message });
     }
   },
 
