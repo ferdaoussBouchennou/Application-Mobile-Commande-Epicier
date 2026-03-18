@@ -795,6 +795,7 @@ const grocerController = {
         statut: commande.statut,
         message_refus: commande.message_refus ?? null,
         notes: commande.notes ?? null,
+        client_accepte_modification: !!commande.client_accepte_modification,
         details,
       });
     } catch (error) {
@@ -849,6 +850,28 @@ const grocerController = {
     } catch (error) {
       console.error('Erreur markRuptureDetail:', error);
       res.status(500).json({ message: 'Erreur lors du marquage rupture', error: error.message });
+    }
+  },
+
+  confirmerAcceptationClient: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const { id } = req.params;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const commande = await Commande.findOne({
+        where: { id, epicier_id: epicierId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      commande.client_accepte_modification = 1;
+      await commande.save();
+      res.status(200).json({ message: 'Acceptation client enregistrée', client_accepte_modification: true });
+    } catch (error) {
+      console.error('Erreur confirmerAcceptationClient:', error);
+      res.status(500).json({ message: 'Erreur lors de la confirmation', error: error.message });
     }
   },
 

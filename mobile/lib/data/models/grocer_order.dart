@@ -93,6 +93,7 @@ class GrocerOrderDetail {
   final String statut;
   final String? messageRefus;
   final String? notes;
+  final bool clientAccepteModification;
   final List<GrocerOrderDetailLine> details;
 
   GrocerOrderDetail({
@@ -107,6 +108,7 @@ class GrocerOrderDetail {
     required this.statut,
     this.messageRefus,
     this.notes,
+    this.clientAccepteModification = false,
     required this.details,
   });
 
@@ -124,6 +126,7 @@ class GrocerOrderDetail {
       statut: json['statut']?.toString() ?? 'reçue',
       messageRefus: json['message_refus']?.toString(),
       notes: json['notes']?.toString(),
+      clientAccepteModification: json['client_accepte_modification'] == true,
       details: detailsList
           .map((e) => GrocerOrderDetailLine.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList(),
