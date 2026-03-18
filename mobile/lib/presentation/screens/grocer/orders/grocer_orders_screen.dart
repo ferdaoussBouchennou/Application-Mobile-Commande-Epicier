@@ -111,15 +111,6 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     );
   }
 
-  Future<void> _confirmerAcceptationClient(String? token, int orderId) async {
-    if (token == null) return;
-    await _api.patch(
-      '/epicier/commandes/$orderId/confirmer-acceptation-client',
-      {},
-      token: token,
-    );
-  }
-
   void _onOrderAction() {
     _fetchNewCount();
   }
@@ -169,7 +160,6 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
           refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
           updateStatut: (id, s) => _updateStatut(token, id, s),
           markRupture: (id, detailId) => _markRupture(token, id, detailId),
-          confirmerAcceptationClient: (id) => _confirmerAcceptationClient(token, id),
           onAction: _onOrderAction,
         )).toList(),
       ),
@@ -186,7 +176,6 @@ class _OrdersList extends StatefulWidget {
   final Future<void> Function(int, String) refuseOrder;
   final Future<void> Function(int, String) updateStatut;
   final Future<void> Function(int, int) markRupture;
-  final Future<void> Function(int) confirmerAcceptationClient;
   final VoidCallback onAction;
 
   const _OrdersList({
@@ -198,7 +187,6 @@ class _OrdersList extends StatefulWidget {
     required this.refuseOrder,
     required this.updateStatut,
     required this.markRupture,
-    required this.confirmerAcceptationClient,
     required this.onAction,
   });
 
@@ -304,7 +292,6 @@ class _OrdersListState extends State<_OrdersList> {
           refuseOrder: widget.refuseOrder,
           updateStatut: widget.updateStatut,
           markRupture: widget.markRupture,
-          confirmerAcceptationClient: widget.confirmerAcceptationClient,
         ),
       ),
     );
@@ -320,7 +307,6 @@ class _OrderCard extends StatelessWidget {
   final Future<void> Function(int, String) refuseOrder;
   final Future<void> Function(int, String) updateStatut;
   final Future<void> Function(int, int) markRupture;
-  final Future<void> Function(int) confirmerAcceptationClient;
 
   const _OrderCard({
     required this.order,
@@ -331,7 +317,6 @@ class _OrderCard extends StatelessWidget {
     required this.refuseOrder,
     required this.updateStatut,
     required this.markRupture,
-    required this.confirmerAcceptationClient,
   });
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
@@ -396,12 +381,13 @@ class _OrderCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 if (isRecue) ...[
-                  _ActionButton(
-                    label: 'Accepter',
-                    icon: Icons.check_circle_outline,
-                    primary: true,
-                    onPressed: () => _acceptOrder(context),
-                  ),
+                  if (!order.hasRupture)
+                    _ActionButton(
+                      label: 'Accepter',
+                      icon: Icons.check_circle_outline,
+                      primary: true,
+                      onPressed: () => _acceptOrder(context),
+                    ),
                   _ActionButton(
                     label: 'Refuser',
                     icon: Icons.cancel_outlined,
@@ -561,7 +547,6 @@ class _OrderCard extends StatelessWidget {
         initialDetail: detail,
         fetchDetail: fetchDetail,
         markRupture: markRupture,
-        confirmerAcceptationClient: confirmerAcceptationClient,
         onAction: onAction,
       ),
     );
@@ -573,7 +558,6 @@ class _TicketSheet extends StatefulWidget {
   final GrocerOrderDetail initialDetail;
   final Future<GrocerOrderDetail?> Function(int) fetchDetail;
   final Future<void> Function(int, int) markRupture;
-  final Future<void> Function(int) confirmerAcceptationClient;
   final VoidCallback onAction;
 
   const _TicketSheet({
@@ -581,7 +565,6 @@ class _TicketSheet extends StatefulWidget {
     required this.initialDetail,
     required this.fetchDetail,
     required this.markRupture,
-    required this.confirmerAcceptationClient,
     required this.onAction,
   });
 
@@ -595,25 +578,6 @@ class _TicketSheetState extends State<_TicketSheet> {
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
 
   bool get _hasRupture => _detail.details.any((d) => d.rupture);
-
-  Future<void> _onConfirmerAcceptationClient() async {
-    try {
-      await widget.confirmerAcceptationClient(widget.orderId);
-      widget.onAction();
-      await _refreshDetail();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Acceptation client enregistrée.')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
-      }
-    }
-  }
 
   @override
   void initState() {
@@ -711,39 +675,41 @@ class _TicketSheetState extends State<_TicketSheet> {
             if (_detail.clientEmail != null) _DetailRow('Email', _detail.clientEmail!),
             _DetailRow('Créneau', _detail.creneau),
             _DetailRow('Statut', _detail.statut),
-            if (_hasRupture && canEdit) ...[
+            if (_hasRupture) ...[
               const SizedBox(height: 12),
-              _detail.clientAccepteModification
-                  ? Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: GrocerTheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: GrocerTheme.primary),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: GrocerTheme.primary, size: 24),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Text(
-                              'Client a accepté la commande malgré les ruptures',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: GrocerTheme.primary),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ElevatedButton.icon(
-                      onPressed: _onConfirmerAcceptationClient,
-                      icon: const Icon(Icons.check_circle_outline, size: 20),
-                      label: const Text('Client a accepté (confirmer)'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: GrocerTheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _detail.clientAccepteModification
+                      ? GrocerTheme.primary.withValues(alpha: 0.15)
+                      : Colors.orange.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _detail.clientAccepteModification ? GrocerTheme.primary : Colors.orange,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _detail.clientAccepteModification ? Icons.check_circle : Icons.schedule,
+                      color: _detail.clientAccepteModification ? GrocerTheme.primary : Colors.orange,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _detail.clientAccepteModification
+                            ? 'Client a accepté la commande malgré les ruptures.'
+                            : 'En attente de l\'acceptation du client pour les ruptures.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: _detail.clientAccepteModification ? GrocerTheme.primary : Colors.orange.shade800,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+              ),
             ],
             if (_detail.notes != null && _detail.notes!.isNotEmpty) ...[
               const SizedBox(height: 12),
