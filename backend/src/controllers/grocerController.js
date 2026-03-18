@@ -834,11 +834,13 @@ const grocerController = {
       if (!detail) {
         return res.status(404).json({ message: 'Ligne de commande introuvable' });
       }
-      if (detail.rupture) {
-        return res.status(400).json({ message: 'Ce produit est déjà marqué en rupture.' });
-      }
-      detail.rupture = 1;
+      const produitNom = detail.Product?.nom ?? 'Un produit';
+      const wasRupture = !!detail.rupture;
+      const setRupture = wasRupture ? 0 : 1;
+
+      detail.rupture = setRupture;
       await detail.save();
+
       const allDetails = await DetailCommande.findAll({
         where: { commande_id: id },
       });
@@ -847,12 +849,26 @@ const grocerController = {
         .reduce((sum, d) => sum + parseFloat(d.total_ligne ?? 0), 0);
       commande.montant_total = newTotal;
       await commande.save();
-      const produitNom = detail.Product?.nom ?? detail.produit?.nom ?? 'Un produit';
+
+      if (wasRupture && setRupture === 0) {
+        const clientAccepte = !!commande.client_accepte_modification;
+        const msg = clientAccepte
+          ? `Le produit "${produitNom}" est à nouveau disponible. Souhaitez-vous l'ajouter à votre commande #${id}? Contactez l'épicier.`
+          : `Le produit "${produitNom}" est à nouveau disponible dans votre commande #${id} (nouveau total: ${newTotal.toFixed(2)} MAD).`;
+        _sendNotificationToClient(commande.client_id, commande.id, 'produit_disponible', msg);
+        return res.status(200).json({
+          message: 'Produit retiré de la rupture. Client notifié.',
+          montant_total: newTotal,
+          rupture: false,
+        });
+      }
+
       const msg = `Le produit "${produitNom}" est en rupture de stock dans votre commande #${id}. La commande a été modifiée (nouveau total: ${newTotal.toFixed(2)} MAD). Souhaitez-vous continuer? Contactez l'épicier pour plus d'infos.`;
       _sendNotificationToClient(commande.client_id, commande.id, 'rupture', msg);
       res.status(200).json({
         message: 'Produit marqué en rupture. Client notifié.',
         montant_total: newTotal,
+        rupture: true,
       });
     } catch (error) {
       console.error('Erreur markRuptureDetail:', error);
