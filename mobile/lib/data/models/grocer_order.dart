@@ -12,6 +12,7 @@ class GrocerOrder {
   final int articleCount;
   final bool hasRupture;
   final bool hasPendingAcceptance;
+  final bool clientAccepteModification;
 
   GrocerOrder({
     required this.id,
@@ -26,6 +27,7 @@ class GrocerOrder {
     required this.articleCount,
     this.hasRupture = false,
     this.hasPendingAcceptance = false,
+    this.clientAccepteModification = false,
   });
 
   String get clientDisplay => clientNom.isNotEmpty
@@ -46,6 +48,7 @@ class GrocerOrder {
       articleCount: int.tryParse(json['article_count']?.toString() ?? '0') ?? 0,
       hasRupture: json['has_rupture'] == true,
       hasPendingAcceptance: json['has_pending_acceptance'] == true,
+      clientAccepteModification: json['client_accepte_modification'] == true,
     );
   }
 }
