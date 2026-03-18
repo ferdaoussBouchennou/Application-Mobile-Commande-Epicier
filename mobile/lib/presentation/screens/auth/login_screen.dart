@@ -411,13 +411,44 @@ class _LoginScreenState extends State<LoginScreen> {
                           iconData: FontAwesomeIcons.instagram,
                           iconColor: const Color(0xFFE4405F),
                           label: 'Instagram',
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Connexion Instagram bientôt disponible. Utilisez Facebook ou Google.'),
-                                backgroundColor: Colors.blueAccent,
-                              ),
-                            );
+                          onPressed: () async {
+                            try {
+                              final auth = context.read<AuthProvider>();
+                              final success = await auth.loginWithInstagram();
+                              if (success && mounted) {
+                                final role = auth.user?['role'] as String?;
+                                if (role == 'ADMIN') {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+                                  );
+                                } else if (role == 'EPICIER') {
+                                  if (auth.needsSetup) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+                                    );
+                                  } else {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+                                    );
+                                  }
+                                } else {
+                                  Navigator.pushNamedAndRemoveUntil(
+                                    context,
+                                    MapScreen.routeName,
+                                    (route) => false,
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Erreur Instagram: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
                           },
                         ),
                       ),
