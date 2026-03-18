@@ -19,7 +19,6 @@ router.get('/dashboard', authMiddleware, requireEpicier, grocerController.getDas
 router.get('/commandes', authMiddleware, requireEpicier, grocerController.getCommandes);
 router.get('/commandes/count-new', authMiddleware, requireEpicier, grocerController.getCommandesCountNew);
 router.get('/commandes/:id', authMiddleware, requireEpicier, grocerController.getCommandeById);
-router.patch('/commandes/:id/notes', authMiddleware, requireEpicier, grocerController.updateCommandeNotes);
 router.patch('/commandes/:id/items/:detailId/rupture', authMiddleware, requireEpicier, grocerController.markRuptureDetail);
 router.post('/commandes/:id/accepter', authMiddleware, requireEpicier, grocerController.acceptCommande);
 router.post('/commandes/:id/refuser', authMiddleware, requireEpicier, grocerController.refuseCommande);

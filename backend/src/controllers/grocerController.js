@@ -803,29 +803,6 @@ const grocerController = {
     }
   },
 
-  updateCommandeNotes: async (req, res) => {
-    try {
-      const epicierId = req.user.storeId;
-      const { id } = req.params;
-      const { notes } = req.body || {};
-      if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
-      }
-      const commande = await Commande.findOne({
-        where: { id, epicier_id: epicierId },
-      });
-      if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
-      }
-      commande.notes = notes != null ? String(notes).trim() || null : commande.notes;
-      await commande.save();
-      res.status(200).json({ message: 'Notes mises à jour', notes: commande.notes });
-    } catch (error) {
-      console.error('Erreur updateCommandeNotes:', error);
-      res.status(500).json({ message: 'Erreur lors de la mise à jour des notes', error: error.message });
-    }
-  },
-
   markRuptureDetail: async (req, res) => {
     try {
       const epicierId = req.user.storeId;
