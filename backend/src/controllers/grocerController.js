@@ -736,6 +736,8 @@ const grocerController = {
           message_refus: c.message_refus ?? null,
           article_count: countMap[c.id] ?? 0,
           has_rupture: !!ruptureMap[c.id],
+          has_pending_acceptance: !!pendingMap[c.id],
+          client_accepte_modification: !!c.client_accepte_modification,
         };
       });
       res.status(200).json(result);
