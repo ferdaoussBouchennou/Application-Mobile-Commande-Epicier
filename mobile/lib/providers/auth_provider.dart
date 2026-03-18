@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -167,48 +166,18 @@ class AuthProvider with ChangeNotifier {
   Future<bool> loginWithInstagram({Map<String, dynamic>? epicierData}) async {
     _setLoading(true);
     try {
-      final String? clientId = dotenv.env['INSTAGRAM_APP_ID'];
-      final String? clientSecret = dotenv.env['INSTAGRAM_APP_SECRET'];
-      final String redirectUri = 'myhanut://auth';
-      
-      if (clientId == null || clientSecret == null) {
-        throw Exception("Identifiants Instagram manquants dans le fichier .env");
-      }
-
-      final url = 'https://api.instagram.com/oauth/authorize'
-          '?client_id=$clientId'
-          '&redirect_uri=$redirectUri'
-          '&scope=user_profile,user_media'
-          '&response_type=code';
-
-      final result = await FlutterWebAuth2.authenticate(
-        url: url,
-        callbackUrlScheme: "myhanut",
+      // Pour Instagram moderne (2026), on utilise le flux Meta (Facebook Auth)
+      // car les deux plateformes sont désormais unifiées.
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
       );
 
-      final code = Uri.parse(result).queryParameters['code'];
-      if (code == null) {
+      if (result.status != LoginStatus.success) {
         _setLoading(false);
         return false;
       }
 
-      final tokenResponse = await http.post(
-        Uri.parse('https://api.instagram.com/oauth/access_token'),
-        body: {
-          'client_id': clientId,
-          'client_secret': clientSecret,
-          'grant_type': 'authorization_code',
-          'redirect_uri': redirectUri,
-          'code': code,
-        },
-      );
-
-      final tokenData = json.decode(tokenResponse.body);
-      final String? accessToken = tokenData['access_token'];
-
-      if (accessToken == null) {
-        throw Exception("Échec de la récupération du token Instagram : ${tokenData['error_message'] ?? 'Erreur inconnue'}");
-      }
+      final String accessToken = result.accessToken!.tokenString;
 
       final Map<String, dynamic> payload = {
         'accessToken': accessToken,
@@ -218,6 +187,7 @@ class AuthProvider with ChangeNotifier {
         payload.addAll(epicierData);
       }
 
+      // On envoie le token au endpoint Instagram du backend
       final response = await _apiService.post('/auth/instagram', payload);
 
       _token = response['token'];
