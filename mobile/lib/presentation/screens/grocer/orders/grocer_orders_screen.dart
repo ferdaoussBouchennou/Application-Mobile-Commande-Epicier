@@ -592,13 +592,16 @@ class _TicketSheetState extends State<_TicketSheet> {
     }
   }
 
-  Future<void> _onMarkRupture(GrocerOrderDetailLine line) async {
+  Future<void> _onToggleRupture(GrocerOrderDetailLine line) async {
+    final isRupture = line.rupture;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Rupture de stock'),
+        title: Text(isRupture ? 'Produit à nouveau en stock' : 'Rupture de stock'),
         content: Text(
-          'Marquer "${line.nom}" en rupture?\n\nLe client sera notifié et cet article sera retiré du total. Souhaitez-vous continuer la commande sans ce produit?',
+          isRupture
+              ? 'Remettre "${line.nom}" en stock?\n\nLe client sera notifié que ce produit est à nouveau disponible.'
+              : 'Marquer "${line.nom}" en rupture?\n\nLe client sera notifié et cet article sera retiré du total. Souhaitez-vous continuer la commande sans ce produit?',
         ),
         actions: [
           TextButton(
@@ -608,10 +611,10 @@ class _TicketSheetState extends State<_TicketSheet> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: GrocerTheme.trendNegative,
+              backgroundColor: isRupture ? GrocerTheme.primary : GrocerTheme.trendNegative,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Marquer rupture'),
+            child: Text(isRupture ? 'Remettre en stock' : 'Marquer rupture'),
           ),
         ],
       ),
@@ -623,7 +626,11 @@ class _TicketSheetState extends State<_TicketSheet> {
       await _refreshDetail();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Produit marqué en rupture. Client notifié.')),
+          SnackBar(
+            content: Text(
+              isRupture ? 'Produit remis en stock. Client notifié.' : 'Produit marqué en rupture. Client notifié.',
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -776,17 +783,30 @@ class _TicketSheetState extends State<_TicketSheet> {
                               ),
                             ),
                             if (d.rupture)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: GrocerTheme.trendNegative.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text('Rupture', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GrocerTheme.trendNegative)),
-                              )
+                              canEdit
+                                  ? InkWell(
+                                      onTap: () => _onToggleRupture(d),
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: GrocerTheme.trendNegative.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text('Rupture', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GrocerTheme.trendNegative)),
+                                      ),
+                                    )
+                                  : Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: GrocerTheme.trendNegative.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text('Rupture', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: GrocerTheme.trendNegative)),
+                                    )
                             else if (canEdit)
                               TextButton(
-                                onPressed: () => _onMarkRupture(d),
+                                onPressed: () => _onToggleRupture(d),
                                 style: TextButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(horizontal: 8),
                                   minimumSize: Size.zero,
