@@ -29,9 +29,18 @@ const Commande = sequelize.define('Commande', {
     allowNull: true,
   },
   statut: {
-    type: DataTypes.ENUM('reçue', 'prête', 'livrée'),
+    type: DataTypes.ENUM('reçue', 'prête', 'refusee', 'livrée'),
     allowNull: false,
     defaultValue: 'reçue',
+  },
+  message_refus: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  lu_epicier: {
+    type: DataTypes.TINYINT,
+    allowNull: true,
+    defaultValue: 0,
   },
   montant_total: {
     type: DataTypes.DECIMAL(10, 2),
