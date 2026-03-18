@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const { generateOTP, sendOTP } = require('../utils/emailService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_314159';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const authController = {
   // Inscription Client
