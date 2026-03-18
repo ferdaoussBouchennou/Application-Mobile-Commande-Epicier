@@ -10,6 +10,7 @@ class GrocerOrder {
   final String statut; // 'reçue' | 'prête' | 'refusee' | 'livrée'
   final String? messageRefus;
   final int articleCount;
+  final bool hasRupture;
 
   GrocerOrder({
     required this.id,
@@ -22,6 +23,7 @@ class GrocerOrder {
     required this.statut,
     this.messageRefus,
     required this.articleCount,
+    this.hasRupture = false,
   });
 
   String get clientDisplay => clientNom.isNotEmpty
@@ -40,6 +42,7 @@ class GrocerOrder {
       statut: json['statut']?.toString() ?? 'reçue',
       messageRefus: json['message_refus']?.toString(),
       articleCount: int.tryParse(json['article_count']?.toString() ?? '0') ?? 0,
+      hasRupture: json['has_rupture'] == true,
     );
   }
 }
