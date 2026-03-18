@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../data/services/api_service.dart';
 import '../../data/services/fcm_service.dart';
 
@@ -109,6 +112,91 @@ class AuthProvider with ChangeNotifier {
       await prefs.setString('auth_token', _token!);
 
       // Sync FCM token
+      await FCMService().updateFCMToken(_token!);
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<bool> loginWithFacebook({Map<String, dynamic>? epicierData}) async {
+    _setLoading(true);
+    try {
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
+
+      if (result.status != LoginStatus.success) {
+        _setLoading(false);
+        return false;
+      }
+
+      final String accessToken = result.accessToken!.tokenString;
+
+      final Map<String, dynamic> payload = {
+        'accessToken': accessToken,
+      };
+
+      if (epicierData != null) {
+        payload.addAll(epicierData);
+      }
+
+      final response = await _apiService.post('/auth/facebook', payload);
+
+      _token = response['token'];
+      _user = response['user'];
+      _store = response['store'];
+      _isLoggedIn = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', _token!);
+      await FCMService().updateFCMToken(_token!);
+
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<bool> loginWithInstagram({Map<String, dynamic>? epicierData}) async {
+    _setLoading(true);
+    try {
+      // Pour Instagram moderne (2026), on utilise le flux Meta (Facebook Auth)
+      // car les deux plateformes sont désormais unifiées.
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
+
+      if (result.status != LoginStatus.success) {
+        _setLoading(false);
+        return false;
+      }
+
+      final String accessToken = result.accessToken!.tokenString;
+
+      final Map<String, dynamic> payload = {
+        'accessToken': accessToken,
+      };
+
+      if (epicierData != null) {
+        payload.addAll(epicierData);
+      }
+
+      // On envoie le token au endpoint Instagram du backend
+      final response = await _apiService.post('/auth/instagram', payload);
+
+      _token = response['token'];
+      _user = response['user'];
+      _store = response['store'];
+      _isLoggedIn = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', _token!);
       await FCMService().updateFCMToken(_token!);
 
       _setLoading(false);

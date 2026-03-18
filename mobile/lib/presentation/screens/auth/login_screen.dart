@@ -364,7 +364,45 @@ class _LoginScreenState extends State<LoginScreen> {
                           iconData: FontAwesomeIcons.facebook,
                           iconColor: const Color(0xFF1877F2),
                           label: 'Facebook',
-                          onPressed: () {},
+                          onPressed: () async {
+                            try {
+                              final auth = context.read<AuthProvider>();
+                              final success = await auth.loginWithFacebook();
+                              if (success && mounted) {
+                                final role = auth.user?['role'] as String?;
+                                if (role == 'ADMIN') {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+                                  );
+                                } else if (role == 'EPICIER') {
+                                  if (auth.needsSetup) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+                                    );
+                                  } else {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+                                    );
+                                  }
+                                } else {
+                                  Navigator.pushNamedAndRemoveUntil(
+                                    context,
+                                    MapScreen.routeName,
+                                    (route) => false,
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Erreur Facebook: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -373,7 +411,45 @@ class _LoginScreenState extends State<LoginScreen> {
                           iconData: FontAwesomeIcons.instagram,
                           iconColor: const Color(0xFFE4405F),
                           label: 'Instagram',
-                          onPressed: () {},
+                          onPressed: () async {
+                            try {
+                              final auth = context.read<AuthProvider>();
+                              final success = await auth.loginWithInstagram();
+                              if (success && mounted) {
+                                final role = auth.user?['role'] as String?;
+                                if (role == 'ADMIN') {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+                                  );
+                                } else if (role == 'EPICIER') {
+                                  if (auth.needsSetup) {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+                                    );
+                                  } else {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+                                    );
+                                  }
+                                } else {
+                                  Navigator.pushNamedAndRemoveUntil(
+                                    context,
+                                    MapScreen.routeName,
+                                    (route) => false,
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Erreur Instagram: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
                         ),
                       ),
                     ],

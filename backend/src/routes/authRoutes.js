@@ -9,6 +9,8 @@ router.post('/register/client', authController.registerClient);
 router.post('/register/epicier', authController.registerEpicier);
 router.post('/login', authController.login);
 router.post('/google', authController.googleLogin);
+router.post('/facebook', authController.facebookLogin);
+router.post('/instagram', authController.instagramLogin);
 
 // Vérification d'email et OTP
 router.post('/verify-email', authController.verifyEmail);
