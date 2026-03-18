@@ -381,7 +381,7 @@ class _OrderCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 if (isRecue) ...[
-                  if (!order.hasRupture)
+                  if (!order.hasRupture && !order.hasPendingAcceptance)
                     _ActionButton(
                       label: 'Accepter',
                       icon: Icons.check_circle_outline,
@@ -578,6 +578,7 @@ class _TicketSheetState extends State<_TicketSheet> {
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
 
   bool get _hasRupture => _detail.details.any((d) => d.rupture);
+  bool get _hasPendingAcceptance => _detail.details.any((d) => d.enAttenteAcceptationClient);
 
   @override
   void initState() {
@@ -682,6 +683,29 @@ class _TicketSheetState extends State<_TicketSheet> {
             if (_detail.clientEmail != null) _DetailRow('Email', _detail.clientEmail!),
             _DetailRow('Créneau', _detail.creneau),
             _DetailRow('Statut', _detail.statut),
+            if (_hasPendingAcceptance) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade700),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.hourglass_empty, color: Colors.amber.shade700, size: 24),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Produit(s) remis en stock. En attente de l\'acceptation du client. Vous ne pouvez pas accepter la commande.',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_hasRupture) ...[
               const SizedBox(height: 12),
               Container(
@@ -782,7 +806,17 @@ class _TicketSheetState extends State<_TicketSheet> {
                                 ),
                               ),
                             ),
-                            if (d.rupture)
+                            if (d.enAttenteAcceptationClient)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.amber.shade700),
+                                ),
+                                child: Text('En attente client', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.amber.shade900)),
+                              )
+                            else if (d.rupture)
                               canEdit
                                   ? InkWell(
                                       onTap: () => _onToggleRupture(d),

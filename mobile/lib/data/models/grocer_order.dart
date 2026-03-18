@@ -11,6 +11,7 @@ class GrocerOrder {
   final String? messageRefus;
   final int articleCount;
   final bool hasRupture;
+  final bool hasPendingAcceptance;
 
   GrocerOrder({
     required this.id,
@@ -24,6 +25,7 @@ class GrocerOrder {
     this.messageRefus,
     required this.articleCount,
     this.hasRupture = false,
+    this.hasPendingAcceptance = false,
   });
 
   String get clientDisplay => clientNom.isNotEmpty
@@ -43,6 +45,7 @@ class GrocerOrder {
       messageRefus: json['message_refus']?.toString(),
       articleCount: int.tryParse(json['article_count']?.toString() ?? '0') ?? 0,
       hasRupture: json['has_rupture'] == true,
+      hasPendingAcceptance: json['has_pending_acceptance'] == true,
     );
   }
 }
@@ -57,6 +60,7 @@ class GrocerOrderDetailLine {
   final double prixUnitaire;
   final double totalLigne;
   final bool rupture;
+  final bool enAttenteAcceptationClient;
 
   GrocerOrderDetailLine({
     required this.id,
@@ -67,6 +71,7 @@ class GrocerOrderDetailLine {
     required this.prixUnitaire,
     required this.totalLigne,
     this.rupture = false,
+    this.enAttenteAcceptationClient = false,
   });
 
   static GrocerOrderDetailLine fromJson(Map<String, dynamic> json) {
@@ -79,6 +84,7 @@ class GrocerOrderDetailLine {
       prixUnitaire: double.tryParse(json['prix_unitaire']?.toString() ?? '0') ?? 0,
       totalLigne: double.tryParse(json['total_ligne']?.toString() ?? '0') ?? 0,
       rupture: json['rupture'] == true,
+      enAttenteAcceptationClient: json['en_attente_acceptation_client'] == true,
     );
   }
 }
