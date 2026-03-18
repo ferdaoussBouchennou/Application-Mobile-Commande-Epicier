@@ -73,6 +73,26 @@ function toCatalogueItem(epicierProduct, product) {
   };
 }
 
+async function _sendNotificationToClient(clientId, commandeId, action, message) {
+  try {
+    const { sendNotification } = require('../utils/notification');
+    const details = await sequelize.query(
+      `SELECT fcm_token FROM utilisateurs WHERE id = :clientId`,
+      { replacements: { clientId }, type: QueryTypes.SELECT }
+    );
+    const msg = message || `Votre commande #${commandeId} a été ${action}.`;
+    if (details.length > 0 && details[0].fcm_token) {
+      await sendNotification(details[0].fcm_token, 'Mise à jour commande', msg);
+    }
+    await sequelize.query(
+      'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, CURDATE(), 0)',
+      { replacements: { client_id: clientId, message: msg }, type: QueryTypes.INSERT }
+    );
+  } catch (e) {
+    console.error('Notification error:', e);
+  }
+}
+
 const grocerController = {
   // Liste des produits du catalogue de l'épicier connecté (optionnel: filtre par categorie_id)
   getMyProducts: async (req, res) => {
@@ -665,7 +685,7 @@ const grocerController = {
       if (!epicierId) {
         return res.status(403).json({ message: 'Store ID manquant' });
       }
-      const statut = req.query.statut; // 'reçue' | 'prête' | 'livrée'
+      const statut = req.query.statut; // 'reçue' | 'prête' | 'livrée' | 'refusee'
       const where = { epicier_id: epicierId };
       if (statut) {
         where.statut = statut;
@@ -679,7 +699,7 @@ const grocerController = {
       const countMap = {};
       if (ids.length > 0) {
         const rows = await sequelize.query(
-          `SELECT commande_id, SUM(quantite) AS total FROM detailsCommande WHERE commande_id IN (${ids.join(',')}) GROUP BY commande_id`,
+          `SELECT commande_id, SUM(quantite) AS total FROM detailscommande WHERE commande_id IN (${ids.join(',')}) GROUP BY commande_id`,
           { type: QueryTypes.SELECT }
         );
         rows.forEach((r) => { countMap[r.commande_id] = Number(r.total ?? 0); });
@@ -701,6 +721,7 @@ const grocerController = {
           creneau,
           montant_total: parseFloat(c.montant_total ?? 0),
           statut: c.statut,
+          message_refus: c.message_refus ?? null,
           article_count: countMap[c.id] ?? 0,
         };
       });
@@ -708,6 +729,130 @@ const grocerController = {
     } catch (error) {
       console.error('Erreur getCommandes:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération des commandes', error: error.message });
+    }
+  },
+
+  getCommandesCountNew: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const count = await Commande.count({
+        where: { epicier_id: epicierId, statut: 'reçue' },
+      });
+      res.status(200).json({ count });
+    } catch (error) {
+      console.error('Erreur getCommandesCountNew:', error);
+      res.status(500).json({ message: 'Erreur lors du comptage', error: error.message });
+    }
+  },
+
+  getCommandeById: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const { id } = req.params;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const commande = await Commande.findOne({
+        where: { id, epicier_id: epicierId },
+        include: [
+          { model: User, as: 'client', attributes: ['nom', 'prenom', 'email'] },
+          { model: DetailCommande, include: [{ model: Product, attributes: ['id', 'nom', 'image_principale'] }] },
+        ],
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      let creneau = '';
+      if (commande.date_recuperation) {
+        const d = new Date(commande.date_recuperation);
+        const h = d.getHours();
+        const m = d.getMinutes();
+        creneau = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} – ${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+      const detailList = commande.DetailCommandes || commande.details || [];
+      const details = detailList.map((d) => ({
+        produit_id: d.produit_id,
+        nom: d.Product?.nom ?? d.produit?.nom ?? '',
+        image_principale: d.Product?.image_principale ?? d.produit?.image_principale ?? null,
+        quantite: d.quantite,
+        prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
+        total_ligne: parseFloat(d.total_ligne ?? 0),
+      }));
+      res.status(200).json({
+        id: commande.id,
+        client_nom: commande.client?.nom ?? '',
+        client_prenom: commande.client?.prenom ?? '',
+        client_email: commande.client?.email ?? '',
+        date_commande: commande.date_commande,
+        date_recuperation: commande.date_recuperation,
+        creneau,
+        montant_total: parseFloat(commande.montant_total ?? 0),
+        statut: commande.statut,
+        message_refus: commande.message_refus ?? null,
+        details,
+      });
+    } catch (error) {
+      console.error('Erreur getCommandeById:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération de la commande', error: error.message });
+    }
+  },
+
+  acceptCommande: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const { id } = req.params;
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const commande = await Commande.findOne({
+        where: { id, epicier_id: epicierId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      if (commande.statut !== 'reçue') {
+        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être acceptées.' });
+      }
+      commande.statut = 'prête';
+      commande.lu_epicier = 1;
+      await commande.save();
+      _sendNotificationToClient(commande.client_id, commande.id, 'acceptée', 'Votre commande a été acceptée et est prête à être récupérée.');
+      res.status(200).json({ message: 'Commande acceptée', statut: commande.statut });
+    } catch (error) {
+      console.error('Erreur acceptCommande:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'acceptation', error: error.message });
+    }
+  },
+
+  refuseCommande: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const { id } = req.params;
+      const { message } = req.body || {};
+      if (!epicierId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const commande = await Commande.findOne({
+        where: { id, epicier_id: epicierId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      if (commande.statut !== 'reçue') {
+        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être refusées.' });
+      }
+      commande.statut = 'refusee';
+      commande.message_refus = (message && String(message).trim()) || 'Commande refusée par l\'épicier.';
+      commande.lu_epicier = 1;
+      await commande.save();
+      _sendNotificationToClient(commande.client_id, commande.id, 'refusée', commande.message_refus);
+      res.status(200).json({ message: 'Commande refusée', statut: commande.statut });
+    } catch (error) {
+      console.error('Erreur refuseCommande:', error);
+      res.status(500).json({ message: 'Erreur lors du refus', error: error.message });
     }
   },
 
@@ -730,10 +875,10 @@ const grocerController = {
       }
       const current = commande.statut;
       if (statut === 'prête' && current !== 'reçue') {
-        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être marquées prêtes.' });
+        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être marquées prêtes. Utilisez accepter.' });
       }
       if (statut === 'livrée' && current !== 'prête') {
-        return res.status(400).json({ message: 'Seules les commandes prêtes peuvent être marquées livrées.' });
+        return res.status(400).json({ message: 'Seules les commandes prêtes peuvent être marquées livrées (récupérées).' });
       }
       commande.statut = statut;
       await commande.save();
