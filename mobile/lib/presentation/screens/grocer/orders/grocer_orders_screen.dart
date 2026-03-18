@@ -381,7 +381,7 @@ class _OrderCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 if (isRecue) ...[
-                  if (!order.hasRupture && !order.hasPendingAcceptance)
+                  if ((!order.hasRupture || order.clientAccepteModification) && !order.hasPendingAcceptance)
                     _ActionButton(
                       label: 'Accepter',
                       icon: Icons.check_circle_outline,
