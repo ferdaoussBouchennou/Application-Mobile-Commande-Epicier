@@ -17,9 +17,11 @@ class ApiService {
 
   Future<dynamic> get(String endpoint, {String? token}) async {
     try {
+      final headers = _headers(token: token);
+      print('ApiService DEBUG: GET $_baseUrl$endpoint headers=$headers');
       final response = await http.get(
         Uri.parse('$_baseUrl$endpoint'),
-        headers: _headers(token: token),
+        headers: headers,
       );
       return _handleResponse(response);
     } catch (e) {

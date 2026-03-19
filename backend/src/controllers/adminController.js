@@ -242,8 +242,10 @@ exports.getCategories = async (req, res) => {
         };
       })
     );
+    console.log(`getCategories admin: found ${list.length} categories`);
     res.json(list);
   } catch (error) {
+    console.error('Error in getCategories admin:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -467,11 +469,13 @@ exports.getStoreProducts = async (req, res) => {
       image_principale: ep.produit.image_principale,
       is_active: !!ep.is_active,
       rupture_stock: !!ep.rupture_stock,
-      stock: ep.id, // Assuming ep.id for now or if there is a stock field, image shows "Stock: 24"
+      stock: 24, // Placeholder for stock
     }));
 
+    console.log(`Fetched ${products.length} products for storeId: ${storeId}`);
     res.json(products);
   } catch (error) {
+    console.error('Error getStoreProducts admin:', error);
     res.status(500).json({ error: error.message });
   }
 };

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/product.dart';
 import '../../../data/models/category.dart' as model;
 import '../../../data/services/api_service.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../providers/auth_provider.dart';
 
 class AdminProductFormScreen extends StatefulWidget {
   final UserModel storeOwner;
@@ -29,6 +34,8 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   bool _isVisible = true;
   List<model.Category> _categories = [];
   bool _isSubmitting = false;
+  File? _imageFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -46,7 +53,8 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final List<dynamic> data = await _apiService.get('/admin/categories');
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+      final List<dynamic> data = await _apiService.get('/admin/categories', token: token);
       if (mounted) {
         setState(() {
           _categories = data.map((json) => model.Category.fromJson(json)).toList();
@@ -60,11 +68,19 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() => _imageFile = File(image.path));
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isSubmitting = true);
     try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
       final data = {
         'nom': _nameController.text,
         'prix': double.parse(_priceController.text),
@@ -74,10 +90,34 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
         'is_active': _isVisible,
       };
 
+      if (token == null) throw Exception('Non authentifié');
+
       if (widget.product == null) {
-        await _apiService.post('/admin/products', data);
+        // Upload image first if picked
+        if (_imageFile != null) {
+          final res = await _apiService.uploadProductImageAdmin(
+            token: token,
+            categorieId: _selectedCategoryId!,
+            bytes: await _imageFile!.readAsBytes(),
+            filename: 'product_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            productName: _nameController.text,
+          );
+          data['image_principale'] = res;
+        }
+        await _apiService.post('/admin/products', data, token: token);
       } else {
-        await _apiService.put('/admin/products/${widget.product!.id}', data);
+        // Update product
+        if (_imageFile != null) {
+          final res = await _apiService.uploadProductImageAdmin(
+            token: token,
+            categorieId: _selectedCategoryId!,
+            bytes: await _imageFile!.readAsBytes(),
+            filename: 'product_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            productName: _nameController.text,
+          );
+          data['image_principale'] = res;
+        }
+        await _apiService.put('/admin/products/${widget.product!.id}', data, token: token);
       }
       
       if (mounted) Navigator.pop(context, true);
@@ -164,21 +204,31 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Container(
-            height: 120,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDF6F0),
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: const Color(0xFFF5EDDA), style: BorderStyle.solid),
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.camera_enhance_outlined, size: 40, color: Colors.grey),
-                SizedBox(height: 8),
-                Text('Appuyer pour ajouter une photo', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
+          InkWell(
+            onTap: _pickImage,
+            child: Container(
+              height: 120,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFDF6F0),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: const Color(0xFFF5EDDA), style: BorderStyle.solid),
+                image: _imageFile != null 
+                  ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                  : widget.product?.imagePrincipale != null
+                    ? DecorationImage(image: NetworkImage(ApiConstants.formatImageUrl(widget.product!.imagePrincipale)), fit: BoxFit.cover)
+                    : null,
+              ),
+              child: _imageFile == null && widget.product?.imagePrincipale == null
+                ? const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.camera_enhance_outlined, size: 40, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text('Appuyer pour ajouter une photo', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  )
+                : const SizedBox.shrink(),
             ),
           ),
         ],
