@@ -10,6 +10,7 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../screens/auth/welcome_screen.dart';
 
+import '../../../../providers/order_provider.dart';
 import '../../../../providers/notification_provider.dart';
 
 class MapScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _MapScreenState extends State<MapScreen> {
         final token = context.read<AuthProvider>().token;
         if (token != null && token.isNotEmpty) {
           context.read<NotificationProvider>().fetchNotifications(token);
+          context.read<OrderProvider>().startPolling(token);
         }
       }
     });
@@ -51,7 +53,11 @@ class _MapScreenState extends State<MapScreen> {
       // Page 1 : Épiciers (gère son propre AppBar)
       const StoreListScreen(),
       // Page 2 : Panier
-      CartScreen(onOrderConfirmed: () => setState(() => _currentIndex = 3)),
+      CartScreen(onOrderConfirmed: () {
+        final token = context.read<AuthProvider>().token;
+        context.read<OrderProvider>().fetchOrders(token);
+        setState(() => _currentIndex = 3);
+      }),
       // Page 3 : Commandes
       const ClientOrdersScreen(),
       // Page 4 : Notifications
@@ -174,6 +180,7 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     if (confirmed == true && mounted) {
+      context.read<OrderProvider>().stopPolling();
       context.read<AuthProvider>().logout();
       Navigator.pushAndRemoveUntil(
         context,
