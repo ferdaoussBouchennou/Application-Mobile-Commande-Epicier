@@ -11,11 +11,15 @@ const authController = {
   // Inscription Client
   registerClient: async (req, res) => {
     try {
-      const { nom, prenom, email, mdp, adresse, telephone } = req.body;
+      let { nom, prenom, email, mdp, adresse, telephone } = req.body;
+      email = email ? email.trim().toLowerCase() : '';
+
+      console.log(`Tentative d'inscription client: ${email}`);
 
       // Vérifier si l'email existe
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
+        console.log(`Échec inscription: l'email ${email} existe déjà.`);
         return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 
@@ -54,10 +58,14 @@ const authController = {
   // Inscription Epicier
   registerEpicier: async (req, res) => {
     try {
-      const { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique, image_url } = req.body;
+      let { nom, prenom, email, mdp, adresse, telephone, doc_verf, nom_boutique, description_boutique, image_url } = req.body;
+      email = email ? email.trim().toLowerCase() : '';
+
+      console.log(`Tentative d'inscription épicier: ${email}`);
 
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
+        console.log(`Échec inscription épicier: l'email ${email} existe déjà.`);
         return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
       }
 

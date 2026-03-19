@@ -55,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     final nom = _nomController.text.trim();
     final prenom = _prenomController.text.trim();
-    final email = _emailController.text.trim();
+    final email = _emailController.text.trim().toLowerCase();
     final mdp = _passwordController.text.trim();
     final phone = _phoneController.text.trim();
 
@@ -132,7 +132,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        if (e.toString().contains('EMAIL_EXISTS')) {
+        final errorMsg = e.toString();
+        if (errorMsg.contains('EMAIL_EXISTS')) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Cet email est déjà utilisé. Veuillez vous connecter.'),
