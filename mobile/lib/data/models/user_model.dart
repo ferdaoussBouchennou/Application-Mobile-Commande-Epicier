@@ -40,4 +40,9 @@ class UserModel {
   }
 
   String get fullName => '$prenom $nom';
+
+  // Getters for Epicier stats
+  int get produitsCount => store?['produits_count'] ?? 0;
+  int get commandesCount => store?['commandes_count'] ?? 0;
+  double get rating => double.tryParse(store?['rating']?.toString() ?? '0.0') ?? 0.0;
 }

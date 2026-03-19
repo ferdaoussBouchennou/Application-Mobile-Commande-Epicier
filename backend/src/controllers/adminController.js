@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const sequelize = require('../config/db');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const Category = require('../models/Category');
@@ -23,9 +24,27 @@ function sanitizeName(str) {
 
 exports.getStats = async (req, res) => {
   try {
-    const pendingCount = await Store.count({ where: { statut_inscription: 'EN_ATTENTE' } });
-    const activeCount = await User.count({ where: { is_active: true, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
-    const suspendedCount = await User.count({ where: { is_active: false, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
+    const { role } = req.query;
+    let userWhere = { role: { [Op.ne]: 'ADMIN' } };
+    let storeWhere = {};
+
+    if (role) {
+      userWhere.role = role;
+      storeWhere['$utilisateur.role$'] = role;
+    }
+
+    const pendingCount = await Store.count({ 
+      where: { ...storeWhere, statut_inscription: 'EN_ATTENTE' },
+      include: role ? [{ model: User, as: 'utilisateur', where: { role } }] : []
+    });
+    
+    const activeCount = await User.count({ 
+      where: { ...userWhere, is_active: true } 
+    });
+    
+    const suspendedCount = await User.count({ 
+      where: { ...userWhere, is_active: false } 
+    });
 
     res.json({
       pending: pendingCount,
@@ -39,10 +58,18 @@ exports.getStats = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    const { role, status } = req.query;
+    const { role, status, search } = req.query;
     let where = { role: { [Op.ne]: 'ADMIN' } };
 
     if (role) where.role = role;
+
+    if (search) {
+      where[Op.or] = [
+        { nom: { [Op.like]: `%${search}%` } },
+        { prenom: { [Op.like]: `%${search}%` } },
+        { '$epicier.nom_boutique$': { [Op.like]: `%${search}%` } }
+      ];
+    }
 
     if (status === 'EN_ATTENTE') {
       where['$epicier.statut_inscription$'] = 'EN_ATTENTE';
@@ -57,8 +84,29 @@ exports.getUsers = async (req, res) => {
       include: [{
         model: Store,
         as: 'epicier',
-        required: false
+        required: false,
+        attributes: {
+          include: [
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM epicier_produits AS ep
+                WHERE ep.epicier_id = epicier.id AND ep.is_active = 1
+              )`),
+              'produits_count'
+            ],
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM commandes AS c
+                WHERE c.epicier_id = epicier.id
+              )`),
+              'commandes_count'
+            ]
+          ]
+        }
       }],
+      subQuery: false, // Required for Op.or on included model attributes
       order: [['date_creation', 'DESC']]
     });
 
