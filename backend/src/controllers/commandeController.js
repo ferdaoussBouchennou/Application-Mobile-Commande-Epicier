@@ -183,6 +183,80 @@ const commandeController = {
       res.status(500).json({ message: 'Erreur lors de la création de la commande', error: error.message });
     }
   },
+
+  accepterProduitRemisEnStock: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const { id, detailId } = req.params;
+      const commande = await Commande.findOne({
+        where: { id, client_id: clientId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      const detail = await DetailCommande.findOne({
+        where: { id: detailId, commande_id: id },
+        include: [{ model: Product, attributes: ['nom'] }],
+      });
+      if (!detail) {
+        return res.status(404).json({ message: 'Ligne de commande introuvable' });
+      }
+      if (!detail.en_attente_acceptation_client) {
+        return res.status(400).json({ message: 'Ce produit n\'est pas en attente d\'acceptation.' });
+      }
+      detail.en_attente_acceptation_client = 0;
+      await detail.save();
+      res.status(200).json({ message: 'Produit accepté dans la commande.', detail_id: detail.id });
+    } catch (error) {
+      console.error('Erreur accepterProduitRemisEnStock:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'acceptation du produit', error: error.message });
+    }
+  },
+
+  refuserProduitRemisEnStock: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const { id, detailId } = req.params;
+      const commande = await Commande.findOne({
+        where: { id, client_id: clientId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      const detail = await DetailCommande.findOne({
+        where: { id: detailId, commande_id: id },
+        include: [{ model: Product, attributes: ['nom'] }],
+      });
+      if (!detail) {
+        return res.status(404).json({ message: 'Ligne de commande introuvable' });
+      }
+      if (!detail.en_attente_acceptation_client) {
+        return res.status(400).json({ message: 'Ce produit n\'est pas en attente d\'acceptation.' });
+      }
+      const produitNom = detail.Product?.nom ?? 'Un produit';
+      await DetailCommande.destroy({ where: { id: detailId, commande_id: id } });
+      const allDetails = await DetailCommande.findAll({
+        where: { commande_id: id },
+      });
+      const newTotal = allDetails
+        .filter((d) => !d.rupture)
+        .reduce((sum, d) => sum + parseFloat(d.total_ligne ?? 0), 0);
+      commande.montant_total = newTotal;
+      await commande.save();
+      const msg = `Le client a refusé d'ajouter le produit "${produitNom}" à la commande #${id}. Le produit a été retiré (nouveau total: ${newTotal.toFixed(2)} MAD). Vous pouvez accepter la commande.`;
+      await sequelize.query(
+        'INSERT INTO notifications_epicier (epicier_id, message, lue) VALUES (:epicier_id, :message, 0)',
+        { replacements: { epicier_id: commande.epicier_id, message: msg }, type: QueryTypes.INSERT }
+      );
+      res.status(200).json({
+        message: 'Produit retiré de la commande. L\'épicier a été notifié.',
+        montant_total: newTotal,
+      });
+    } catch (error) {
+      console.error('Erreur refuserProduitRemisEnStock:', error);
+      res.status(500).json({ message: 'Erreur lors du refus du produit', error: error.message });
+    }
+  },
 };
 
 module.exports = commandeController;
