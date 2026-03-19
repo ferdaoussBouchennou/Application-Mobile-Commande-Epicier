@@ -87,6 +87,8 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     }
     final dateText = detail.dateCommande != null && detail.dateCommande!.isNotEmpty
         ? _formatDateHour(detail.dateCommande) : null;
+    final recupDateText = detail.dateRecuperation != null && detail.dateRecuperation!.isNotEmpty
+        ? _formatPickupDate(detail.dateRecuperation) : null;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -187,7 +189,17 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                               children: [
                                 Icon(Icons.calendar_today_outlined, size: 18, color: _textMuted),
                                 const SizedBox(width: 8),
-                                Text(dateText!, style: TextStyle(fontSize: 14, color: _textMuted)),
+                                Text('Commandé le $dateText', style: TextStyle(fontSize: 14, color: _textMuted)),
+                              ],
+                            ),
+                          ],
+                          if (recupDateText != null && recupDateText.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.event_available, size: 18, color: _textMuted),
+                                const SizedBox(width: 8),
+                                Text('Récupération le $recupDateText', style: TextStyle(fontSize: 14, color: _textMuted)),
                               ],
                             ),
                           ],
@@ -300,6 +312,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         dateCommandeFormatted: order.dateCommandeFormatted,
         formatDateHour: _formatDateHour,
         dateCommande: order.dateCommande,
+        dateRecuperation: order.dateRecuperation,
         fetchOrderDetail: _fetchOrderDetail,
         primary: _primary,
         textDark: _textDark,
@@ -664,6 +677,20 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     );
   }
 
+  static String _formatPickupDate(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      final d = DateTime.parse(iso);
+      const mois = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juill', 'août', 'sept', 'oct', 'nov', 'déc'];
+      const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      final sem = jours[d.weekday - 1];
+      final m = mois[d.month - 1];
+      return '$sem ${d.day} $m ${d.year}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   static String _formatDateHour(String? iso) {
     if (iso == null || iso.isEmpty) return '';
     try {
@@ -687,6 +714,7 @@ class _SuivreOrderSheet extends StatefulWidget {
   final String creneau;
   final String? dateCommandeFormatted;
   final String? dateCommande;
+  final String? dateRecuperation;
   final String Function(String? iso) formatDateHour;
   final Future<ClientOrderDetail?> Function(int id) fetchOrderDetail;
   final Color primary;
@@ -700,6 +728,7 @@ class _SuivreOrderSheet extends StatefulWidget {
     required this.creneau,
     this.dateCommandeFormatted,
     this.dateCommande,
+    this.dateRecuperation,
     required this.formatDateHour,
     required this.fetchOrderDetail,
     required this.primary,
@@ -814,6 +843,16 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
                             ),
                           ],
                         ),
+                        if (widget.dateRecuperation != null && widget.dateRecuperation!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.event_available, size: 18, color: widget.textMuted),
+                              const SizedBox(width: 8),
+                              Text('Date: ${_formatPickupDate(widget.dateRecuperation)}', style: TextStyle(fontSize: 14, color: widget.textMuted)),
+                            ],
+                          ),
+                        ],
                         if (widget.creneau.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Row(
@@ -890,6 +929,19 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
     );
   }
 
+  static String _formatPickupDate(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      final d = DateTime.parse(iso);
+      const mois = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juill', 'août', 'sept', 'oct', 'nov', 'déc'];
+      const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      final sem = jours[d.weekday - 1];
+      final m = mois[d.month - 1];
+      return '$sem ${d.day} $m ${d.year}';
+    } catch (_) {
+      return '';
+    }
+  }
 }
 
 class _StepInfo {

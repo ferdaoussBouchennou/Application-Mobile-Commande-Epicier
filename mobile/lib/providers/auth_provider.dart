@@ -296,6 +296,35 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfile(Map<String, dynamic> data) async {
+    _setLoading(true);
+    try {
+      final response = await _apiService.put('/auth/update-profile', data, token: _token);
+      _user = response['user'];
+      notifyListeners();
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    _setLoading(true);
+    try {
+      await _apiService.put('/auth/update-password', {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      }, token: _token);
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      rethrow;
+    }
+  }
+
   void markSetupComplete() {
     if (_store != null) {
       _store!['statut_inscription'] = 'COMPLETE';

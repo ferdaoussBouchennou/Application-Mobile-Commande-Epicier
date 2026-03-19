@@ -76,6 +76,13 @@ class CustomBottomNavBar extends StatelessWidget {
           label: 'Notifs',
         ),
       );
+      allItems.add(
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
+          label: 'Profil',
+        ),
+      );
     }
 
     return Container(

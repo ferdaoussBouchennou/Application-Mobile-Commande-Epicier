@@ -298,6 +298,7 @@ const authController = {
           prenom: user.prenom,
           email: user.email,
           role: user.role,
+          telephone: user.telephone,
         },
         store: storeInfo
       });
@@ -469,6 +470,7 @@ const authController = {
           prenom: user.prenom,
           email: user.email,
           role: user.role,
+          telephone: user.telephone,
         },
         store: storeInfo
       });
@@ -585,7 +587,7 @@ const authController = {
       res.status(200).json({
         message: 'Connexion Facebook réussie',
         token,
-        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role, telephone: user.telephone },
         store: storeInfo
       });
     } catch (error) {
@@ -702,7 +704,7 @@ const authController = {
       res.status(200).json({
         message: 'Connexion Instagram réussie',
         token,
-        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role, telephone: user.telephone },
         store: storeInfo
       });
     } catch (error) {
@@ -763,12 +765,82 @@ const authController = {
           prenom: user.prenom,
           email: user.email,
           role: user.role,
+          telephone: user.telephone,
+          adresse: user.adresse
         },
         store: storeInfo
       });
     } catch (error) {
       console.error('Erreur getMe:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: error.message });
+    }
+  },
+
+  // Mettre à jour le profil (nom, prenom, telephone, adresse)
+  updateProfile: async (req, res) => {
+    try {
+      const { nom, prenom, telephone, adresse } = req.body;
+      const userId = req.user.id;
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+
+      if (nom) user.nom = nom;
+      if (prenom) user.prenom = prenom;
+      if (telephone) user.telephone = telephone;
+      if (adresse) user.adresse = adresse;
+
+      await user.save();
+
+      res.status(200).json({
+        message: 'Profil mis à jour avec succès',
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+          telephone: user.telephone,
+          adresse: user.adresse
+        }
+      });
+    } catch (error) {
+      console.error('Erreur updateProfile:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour du profil', error: error.message });
+    }
+  },
+
+  // Mettre à jour le mot de passe
+  updatePassword: async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: 'Ancien et nouveau mot de passe requis' });
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+
+      // Vérifier l'ancien mot de passe
+      const isMatch = await bcrypt.compare(currentPassword, user.mdp);
+      if (!isMatch) {
+        return res.status(401).json({ message: 'L\'ancien mot de passe est incorrect' });
+      }
+
+      // Mettre à jour le mot de passe (le hook beforeUpdate s'occupera du hashage)
+      user.mdp = newPassword;
+      await user.save();
+
+      res.status(200).json({ message: 'Mot de passe mis à jour avec succès' });
+    } catch (error) {
+      console.error('Erreur updatePassword:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour du mot de passe', error: error.message });
     }
   }
 };
