@@ -6,6 +6,8 @@ import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cart_provider.dart';
 import '../../../providers/order_provider.dart';
+import 'reclamations/claim_submission_screen.dart';
+import 'reclamations/client_reclamations_screen.dart';
 import '../../widgets/rate_order_sheet.dart';
 
 /// Liste des commandes du client (onglet Commandes).
@@ -155,6 +157,28 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                                   ),
                                 ),
                               _StatutChip(statut: detail.statut),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context); // close current sheet
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ClaimSubmissionScreen(commandeId: detail.id),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.report_problem_outlined, color: Colors.orange, size: 18),
+                                label: const Text(
+                                  'Faire une réclamation',
+                                  style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
                             ],
                           ),
                           if (dateText != null && dateText.isNotEmpty) ...[
@@ -385,6 +409,53 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
 
     return Column(
       children: [
+        // Entry to Reclamations
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ClientReclamationsScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade100),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.report_problem_outlined, color: Colors.orange.shade800, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mes Réclamations',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.shade900,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          'Suivez le statut de vos litiges',
+                          style: TextStyle(
+                            color: Colors.orange.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.orange.shade300, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
         // Filter chips
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
