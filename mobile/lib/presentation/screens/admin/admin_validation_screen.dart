@@ -177,12 +177,12 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 24),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 20),
       decoration: const BoxDecoration(
         color: Color(0xFF2D5016),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          bottomLeft: Radius.circular(25),
+          bottomRight: Radius.circular(25),
         ),
       ),
       child: Column(
@@ -192,42 +192,43 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
             children: [
               Row(
                 children: [
-                  Image.asset('assets/images/shop_icon.png', height: 30, errorBuilder: (_,__,___) => const Icon(Icons.store, color: Colors.white, size: 30)),
+                  Image.asset('assets/images/shop_icon.png', height: 26, errorBuilder: (_,__,___) => const Icon(Icons.store, color: Colors.white, size: 26)),
                   const SizedBox(width: 8),
                   const Text(
                     'MyHanut',
-                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
+                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
                   ),
                 ],
               ),
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF26444),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   IconButton(
-                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.orange, size: 28),
+                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.orange, size: 26),
                     onPressed: () {},
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
               _selectedRole == 'Client' ? 'Gestion des clients' : 'Gestion des épiceries',
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildSearchBar(),
         ],
       ),
@@ -249,7 +250,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           hintStyle: TextStyle(color: Colors.grey.shade400),
           prefixIcon: const Icon(Icons.search, color: Colors.blue),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
         ),
       ),
     );
