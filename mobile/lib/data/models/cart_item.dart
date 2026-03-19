@@ -33,4 +33,15 @@ class CartItem {
   }
 
   double get lineTotal => prix * quantite;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'produit_id': produitId,
+      'nom': nom,
+      'prix': prix,
+      'image_principale': imagePrincipale,
+      'epicier_id': epicierId,
+      'quantite': quantite,
+    };
+  }
 }

@@ -316,7 +316,13 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     }
     final cart = context.read<CartProvider>();
     for (final l in detail.lignes) {
-      await cart.addToCart(token, l.produitId, quantite: l.quantite, epicierId: order.epicierId);
+      await cart.addToCart(
+        produitId: l.produitId,
+        nom: l.nom,
+        prix: l.prixUnitaire,
+        quantite: l.quantite,
+        epicierId: order.epicierId,
+      );
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${detail.lignes.length} article(s) ajouté(s) au panier')));
