@@ -57,6 +57,10 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
+  telephone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+  },
   email_verified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,

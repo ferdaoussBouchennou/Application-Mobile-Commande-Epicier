@@ -27,13 +27,14 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
   static const List<String> _tabLabels = [
     'Nouvelles',
     'Prêtes',
+    'Historique',
   ];
-  static const List<String> _statuts = ['reçue', 'prête'];
+  static const List<String> _statuts = ['reçue', 'prête', 'historique'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, initialIndex: 0, vsync: this);
+    _tabController = TabController(length: 3, initialIndex: 0, vsync: this);
     _fetchNewCount();
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchNewCount());
   }
@@ -333,98 +334,102 @@ class _OrderCard extends StatelessWidget {
       elevation: 2,
       shadowColor: Colors.black12,
       color: const Color(0xFFF8F4EE),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '#CMD-${order.id}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: GrocerTheme.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.person_outline, size: 16, color: GrocerTheme.textMuted),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Client : ${order.clientDisplay}',
-                            style: TextStyle(fontSize: 14, color: GrocerTheme.textMuted),
+      child: InkWell(
+        onTap: () => _showTicket(context),
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '#CMD-${order.id}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: GrocerTheme.textDark,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${order.articleCount} article${order.articleCount > 1 ? 's' : ''} · ${_formatPrice(order.montantTotal)} MAD · Créneau ${order.creneau}',
-                        style: TextStyle(fontSize: 13, color: GrocerTheme.textMuted),
-                      ),
-                    ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(Icons.person_outline, size: 16, color: GrocerTheme.textMuted),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Client : ${order.clientDisplay}',
+                              style: TextStyle(fontSize: 14, color: GrocerTheme.textMuted),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${order.articleCount} article${order.articleCount > 1 ? 's' : ''} · ${_formatPrice(order.montantTotal)} MAD · Créneau ${order.creneau}',
+                          style: TextStyle(fontSize: 13, color: GrocerTheme.textMuted),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                _StatusChip(statut: order.statut),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (isRecue) ...[
-                  if ((!order.hasRupture || order.clientAccepteModification) && !order.hasPendingAcceptance)
+                  _StatusChip(statut: order.statut),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (isRecue) ...[
+                    if ((!order.hasRupture || order.clientAccepteModification) && !order.hasPendingAcceptance)
+                      _ActionButton(
+                        label: 'Accepter',
+                        icon: Icons.check_circle_outline,
+                        primary: true,
+                        onPressed: () => _acceptOrder(context),
+                      ),
                     _ActionButton(
-                      label: 'Accepter',
+                      label: 'Refuser',
+                      icon: Icons.cancel_outlined,
+                      primary: false,
+                      onPressed: () => _refuseOrder(context),
+                    ),
+                    _ActionButton(
+                      label: 'Ticket',
+                      icon: Icons.description_outlined,
+                      primary: false,
+                      onPressed: () => _showTicket(context),
+                    ),
+                  ],
+                  if (isPrete) ...[
+                    _ActionButton(
+                      label: 'Confirmer récupération',
                       icon: Icons.check_circle_outline,
                       primary: true,
-                      onPressed: () => _acceptOrder(context),
+                      onPressed: () => _setStatut(context, 'livrée'),
                     ),
-                  _ActionButton(
-                    label: 'Refuser',
-                    icon: Icons.cancel_outlined,
-                    primary: false,
-                    onPressed: () => _refuseOrder(context),
-                  ),
-                  _ActionButton(
-                    label: 'Ticket',
-                    icon: Icons.description_outlined,
-                    primary: false,
-                    onPressed: () => _showTicket(context),
-                  ),
+                    _ActionButton(
+                      label: 'Ticket',
+                      icon: Icons.description_outlined,
+                      primary: false,
+                      onPressed: () => _showTicket(context),
+                    ),
+                  ],
+                  if (isLivree || order.statut == 'refusee')
+                    _ActionButton(
+                      label: 'Voir détails',
+                      icon: Icons.visibility_outlined,
+                      primary: false,
+                      onPressed: () => _showTicket(context),
+                    ),
                 ],
-                if (isPrete) ...[
-                  _ActionButton(
-                    label: 'Confirmer récupération',
-                    icon: Icons.check_circle_outline,
-                    primary: true,
-                    onPressed: () => _setStatut(context, 'livrée'),
-                  ),
-                  _ActionButton(
-                    label: 'Ticket',
-                    icon: Icons.description_outlined,
-                    primary: false,
-                    onPressed: () => _showTicket(context),
-                  ),
-                ],
-                if (isLivree)
-                  _ActionButton(
-                    label: 'Voir détails',
-                    icon: Icons.visibility_outlined,
-                    primary: false,
-                    onPressed: () => _showTicket(context),
-                  ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -579,6 +584,16 @@ class _TicketSheetState extends State<_TicketSheet> {
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
 
+  String _getStatusLabel(String statut) {
+    switch (statut) {
+      case 'reçue': return 'Nouvelle';
+      case 'prête': return 'Prête';
+      case 'refusee': return 'Refusée';
+      case 'livrée': return 'Récupérée';
+      default: return statut;
+    }
+  }
+
   bool get _hasRupture => _detail.details.any((d) => d.rupture);
   bool get _hasPendingAcceptance => _detail.details.any((d) => d.enAttenteAcceptationClient);
 
@@ -691,9 +706,12 @@ class _TicketSheetState extends State<_TicketSheet> {
             ),
             const SizedBox(height: 12),
             _DetailRow('Client', '${_detail.clientPrenom} ${_detail.clientNom}'),
-            if (_detail.clientEmail != null) _DetailRow('Email', _detail.clientEmail!),
+            if (_detail.clientTelephone != null && _detail.clientTelephone!.isNotEmpty)
+              _DetailRow('Téléphone', _detail.clientTelephone!),
+            if (_detail.clientEmail != null && _detail.clientEmail!.isNotEmpty)
+              _DetailRow('Email', _detail.clientEmail!),
             _DetailRow('Créneau', _detail.creneau),
-            _DetailRow('Statut', _detail.statut),
+            _DetailRow('Statut', _getStatusLabel(_detail.statut)),
             if (_hasPendingAcceptance) ...[
               const SizedBox(height: 12),
               Container(
@@ -751,6 +769,21 @@ class _TicketSheetState extends State<_TicketSheet> {
                     ),
                   ],
                 ),
+              ),
+            ],
+            if (_detail.statut == 'refusee' && _detail.messageRefus != null && _detail.messageRefus!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('Motif de l\'annulation', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: GrocerTheme.textDark)),
+              const SizedBox(height: 4),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFEF9A9A)),
+                ),
+                child: Text(_detail.messageRefus!, style: const TextStyle(fontSize: 14, color: Color(0xFFC62828))),
               ),
             ],
             if (_detail.notes != null && _detail.notes!.isNotEmpty) ...[
