@@ -4,10 +4,8 @@ import '../../../providers/auth_provider.dart';
 import '../../../screens/auth/welcome_screen.dart';
 import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
-import 'catalogue/grocer_catalogue_placeholder_screen.dart';
-import 'orders/grocer_orders_screen.dart';
 import 'catalogue/grocer_catalogue_screen.dart';
-import 'orders/grocer_orders_placeholder_screen.dart';
+import 'orders/grocer_orders_screen.dart';
 import 'stats/grocer_stats_placeholder_screen.dart';
 
 /// Écran principal de l'espace Épicier — même design que MapScreen (parcourir sans compte).
@@ -20,6 +18,7 @@ class GrocerMainScreen extends StatefulWidget {
 
 class _GrocerMainScreenState extends State<GrocerMainScreen> {
   int _currentIndex = 0;
+  int _newOrdersCount = 0;
   VoidCallback? _catalogueRefresh;
   final GlobalKey<NavigatorState> _catalogueNavKey = GlobalKey<NavigatorState>();
 
@@ -40,16 +39,18 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
           ),
         ),
       ),
-      const GrocerOrdersPlaceholderScreen(),
+      GrocerOrdersScreen(
+        onNewOrdersCount: (count) => setState(() => _newOrdersCount = count),
+      ),
       const GrocerStatsPlaceholderScreen(),
     ];
   }
 
-  static const List<_NavItem> _navItems = [
-    _NavItem(Icons.home_outlined, Icons.home, 'Accueil', 0),
-    _NavItem(Icons.inventory_2_outlined, Icons.inventory_2, 'Catalogue', null),
-    _NavItem(Icons.receipt_long_outlined, Icons.receipt_long, 'Commandes', 5),
-    _NavItem(Icons.bar_chart_outlined, Icons.bar_chart, 'Stats', null),
+  List<_NavItem> get _navItems => [
+    const _NavItem(Icons.home_outlined, Icons.home, 'Accueil', null),
+    const _NavItem(Icons.inventory_2_outlined, Icons.inventory_2, 'Catalogue', null),
+    _NavItem(Icons.receipt_long_outlined, Icons.receipt_long, 'Commandes', _newOrdersCount),
+    const _NavItem(Icons.bar_chart_outlined, Icons.bar_chart, 'Stats', null),
   ];
 
   @override
