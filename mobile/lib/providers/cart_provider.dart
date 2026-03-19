@@ -109,9 +109,11 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId) async {
+  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId, {String? date}) async {
     try {
-      final res = await _api.get('/stores/$storeId/creneaux', token: token);
+      String url = '/stores/$storeId/creneaux';
+      if (date != null) url += '?date=$date';
+      final res = await _api.get(url, token: token);
       return Map<String, dynamic>.from(res as Map);
     } catch (e) {
       _error = e.toString();
