@@ -5,6 +5,7 @@ import '../store_list_screen.dart';
 import '../cart_screen.dart';
 import '../client_orders_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../profile/profile_screen.dart';
 import 'home_map_tab.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
@@ -44,6 +45,7 @@ class _MapScreenState extends State<MapScreen> {
     'Mon Panier',
     'Mes Commandes',
     'Notifications',
+    'Mon Profil',
   ];
 
   List<Widget> _buildPages() {
@@ -62,6 +64,8 @@ class _MapScreenState extends State<MapScreen> {
       const ClientOrdersScreen(),
       // Page 4 : Notifications
       const NotificationsScreen(),
+      // Page 5 : Profil
+      const ProfileScreen(),
     ];
   }
 
@@ -69,7 +73,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final cartProvider = context.watch<CartProvider>();
     final pending = cartProvider.pendingTabIndex;
-    if (pending != null && pending >= 0 && pending < 5) {
+    if (pending != null && pending >= 0 && pending < 6) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         cartProvider.clearPendingTabIndex();

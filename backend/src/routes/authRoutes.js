@@ -29,5 +29,9 @@ router.post('/fcm-token', authMiddleware, authController.updateFCMToken);
 // Récupérer le profil actuel (restauration de session)
 router.get('/me', authMiddleware, authController.getMe);
 
+// Mise à jour du profil et mot de passe
+router.put('/update-profile', authMiddleware, authController.updateProfile);
+router.put('/update-password', authMiddleware, authController.updatePassword);
+
 
 module.exports = router;
