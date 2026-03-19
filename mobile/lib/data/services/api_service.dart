@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
 import '../../core/utils/logger.dart';
@@ -183,6 +185,49 @@ class ApiService {
       return path;
     } catch (e) {
       Logger.error('uploadProductImageAdmin → $e');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> postMultipart(
+    String endpoint,
+    Map<String, dynamic> fields, {
+    String? token,
+    File? file,
+    Uint8List? bytes,
+    String? filename,
+    String fileField = 'photo',
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final request = http.MultipartRequest('POST', uri);
+      
+      // Headers
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+      // Fields
+      fields.forEach((key, value) {
+        if (value != null) request.fields[key] = value.toString();
+      });
+
+      // File (Mobile/Desktop)
+      if (file != null) {
+        request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+      } 
+      // Bytes (Web)
+      else if (bytes != null) {
+        request.files.add(http.MultipartFile.fromBytes(
+          fileField,
+          bytes,
+          filename: filename ?? 'upload.jpg',
+        ));
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      return _handleResponse(response);
+    } catch (e) {
+      Logger.error('POST MULTIPART $endpoint → $e');
       rethrow;
     }
   }

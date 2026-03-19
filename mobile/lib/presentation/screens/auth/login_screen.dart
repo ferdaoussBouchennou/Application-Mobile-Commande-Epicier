@@ -9,6 +9,9 @@ import '../grocer/setup/grocer_setup_screen.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'forgot_password_screen.dart';
 import 'verify_email_screen.dart';
+import '../../../data/models/product.dart';
+import '../../../data/models/store.dart';
+import '../../../providers/cart_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,6 +32,65 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleSuccessfulLogin() async {
+    final auth = context.read<AuthProvider>();
+    final user = auth.user;
+    final role = user?['role'];
+    final cartProvider = context.read<CartProvider>();
+    final pending = cartProvider.pendingAction;
+
+    if (pending != null && (role == 'CLIENT' || role == 'USER')) {
+      // Execute pending action
+      if (pending['type'] == 'add_to_cart') {
+        final product = pending['product'];
+        final store = pending['store'];
+        // Note: product and store might need casting if they were dynamic
+        await cartProvider.addToCart(
+          produitId: product.id,
+          nom: product.nom,
+          prix: product.prix.toDouble(),
+          imagePrincipale: product.imagePrincipale,
+          epicierId: store.id,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${product.nom} ajouté au panier')),
+          );
+        }
+      }
+      cartProvider.clearPendingAction();
+      
+      // Go back to the store page
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+
+    if (role == 'ADMIN') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+      );
+    } else if (role == 'EPICIER') {
+      if (auth.needsSetup) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+        );
+      }
+    } else {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        MapScreen.routeName,
+        (route) => false,
+      );
+    }
+  }
+
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final mdp = _passwordController.text.trim();
@@ -44,34 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final auth = context.read<AuthProvider>();
       final success = await auth.login(email, mdp);
       if (success && mounted) {
-        final user = context.read<AuthProvider>().user;
-        final role = user?['role'];
-
-        if (role == 'ADMIN') {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => AdminValidationScreen()),
-          );
-        } else if (role == 'EPICIER') {
-          final auth2 = context.read<AuthProvider>();
-          if (auth2.needsSetup) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
-            );
-          } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
-            );
-          }
-        } else {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            MapScreen.routeName,
-            (route) => false,
-          );
-        }
+        await _handleSuccessfulLogin();
       }
     } catch (e) {
       if (mounted) {
@@ -316,31 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               final auth = context.read<AuthProvider>();
                               final success = await auth.loginWithGoogle();
                               if (success && mounted) {
-                                final role = auth.user?['role'] as String?;
-                                if (role == 'ADMIN') {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
-                                  );
-                                } else if (role == 'EPICIER') {
-                                  if (auth.needsSetup) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
-                                    );
-                                  } else {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
-                                    );
-                                  }
-                                } else {
-                                    Navigator.pushNamedAndRemoveUntil(
-                                      context,
-                                      MapScreen.routeName,
-                                      (route) => false,
-                                    );
-                                  }
+                                await _handleSuccessfulLogin();
                               }
                             } catch (e) {
                               if (mounted) {
@@ -369,31 +380,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               final auth = context.read<AuthProvider>();
                               final success = await auth.loginWithFacebook();
                               if (success && mounted) {
-                                final role = auth.user?['role'] as String?;
-                                if (role == 'ADMIN') {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
-                                  );
-                                } else if (role == 'EPICIER') {
-                                  if (auth.needsSetup) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
-                                    );
-                                  } else {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
-                                    );
-                                  }
-                                } else {
-                                  Navigator.pushNamedAndRemoveUntil(
-                                    context,
-                                    MapScreen.routeName,
-                                    (route) => false,
-                                  );
-                                }
+                                await _handleSuccessfulLogin();
                               }
                             } catch (e) {
                               if (mounted) {
@@ -416,31 +403,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               final auth = context.read<AuthProvider>();
                               final success = await auth.loginWithInstagram();
                               if (success && mounted) {
-                                final role = auth.user?['role'] as String?;
-                                if (role == 'ADMIN') {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => AdminValidationScreen()),
-                                  );
-                                } else if (role == 'EPICIER') {
-                                  if (auth.needsSetup) {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
-                                    );
-                                  } else {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
-                                    );
-                                  }
-                                } else {
-                                  Navigator.pushNamedAndRemoveUntil(
-                                    context,
-                                    MapScreen.routeName,
-                                    (route) => false,
-                                  );
-                                }
+                                await _handleSuccessfulLogin();
                               }
                             } catch (e) {
                               if (mounted) {
