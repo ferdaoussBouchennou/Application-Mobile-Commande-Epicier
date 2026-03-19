@@ -59,22 +59,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final mdp = _passwordController.text.trim();
     final phone = _phoneController.text.trim();
 
-    if (nom.isEmpty || prenom.isEmpty || email.isEmpty || mdp.isEmpty || (_isEpicier && phone.isEmpty)) {
+    if (nom.isEmpty || prenom.isEmpty || email.isEmpty || mdp.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez remplir tous les champs obligatoires')),
       );
       return;
     }
 
-    if (_isEpicier) {
-      final phoneRegex = RegExp(r'^\d{10}$');
-      if (!phoneRegex.hasMatch(phone)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Le numéro de téléphone doit contenir exactement 10 chiffres')),
-        );
-        return;
-      }
+    final phoneRegex = RegExp(r'^\d{10}$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Le numéro de téléphone doit contenir exactement 10 chiffres (ex: 0612345678)')),
+      );
+      return;
+    }
 
+    if (_isEpicier) {
       if (_docFileName == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Veuillez joindre un document de vérification')),
@@ -112,6 +112,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'prenom': prenom,
           'email': email,
           'mdp': mdp,
+          'telephone': phone,
         });
       }
 
@@ -319,20 +320,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   
                   const SizedBox(height: 12),
                   
+                  const SizedBox(height: 12),
+                  
                   _buildTextField(
                     hintText: 'Email',
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                   ),
 
+                  const SizedBox(height: 12),
+
+                  _buildTextField(
+                    hintText: 'Téléphone (10 chiffres)',
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                  ),
+
                   // Si l'utilisateur a sélectionné "Epicier", afficher les champs supplémentaires
                   if (_isEpicier) ...[
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      hintText: 'Téléphone',
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                    ),
                     const SizedBox(height: 16),
                     
                     // Bouton pour uploader un document
