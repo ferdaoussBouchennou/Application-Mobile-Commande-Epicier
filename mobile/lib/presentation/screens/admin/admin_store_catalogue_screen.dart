@@ -398,7 +398,9 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => AdminProductFormScreen(storeOwner: widget.storeOwner, product: product)),
-                    ).then((value) => if (value == true) _fetchProducts());
+                    ).then((value) {
+                      if (value == true) _fetchProducts();
+                    });
                   }),
                   const SizedBox(width: 8),
                   _buildIconButton(Icons.delete_outline, const Color(0xFFFFEBEE), Colors.red, () => _deleteProduct(product.id)),
