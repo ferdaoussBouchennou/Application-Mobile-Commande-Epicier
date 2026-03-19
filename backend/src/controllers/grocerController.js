@@ -685,9 +685,11 @@ const grocerController = {
       if (!epicierId) {
         return res.status(403).json({ message: 'Store ID manquant' });
       }
-      const statut = req.query.statut; // 'reçue' | 'prête' | 'livrée' | 'refusee'
+      const statut = req.query.statut; // 'reçue' | 'prête' | 'livrée' | 'refusee' | 'historique'
       const where = { epicier_id: epicierId };
-      if (statut) {
+      if (statut === 'historique') {
+        where.statut = ['livrée', 'refusee'];
+      } else if (statut) {
         where.statut = statut;
       }
       const commandes = await Commande.findAll({
@@ -773,7 +775,7 @@ const grocerController = {
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
         include: [
-          { model: User, as: 'client', attributes: ['nom', 'prenom', 'email'] },
+          { model: User, as: 'client', attributes: ['nom', 'prenom', 'email', 'telephone'] },
           { model: DetailCommande, include: [{ model: Product, attributes: ['id', 'nom', 'image_principale'] }] },
         ],
       });
@@ -804,6 +806,7 @@ const grocerController = {
         client_nom: commande.client?.nom ?? '',
         client_prenom: commande.client?.prenom ?? '',
         client_email: commande.client?.email ?? '',
+        client_telephone: commande.client?.telephone ?? '',
         date_commande: commande.date_commande,
         date_recuperation: commande.date_recuperation,
         creneau,
