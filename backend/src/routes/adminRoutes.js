@@ -21,6 +21,7 @@ router.patch('/categories/:id/activate', authMiddleware, requireAdmin, adminCont
 
 // Gestion des produits par catégorie (admin)
 router.get('/stores', authMiddleware, requireAdmin, adminController.getStores);
+router.get('/stores/:storeId/products', authMiddleware, requireAdmin, adminController.getStoreProducts);
 router.get('/categories/:categoryId/products', authMiddleware, requireAdmin, adminController.getCategoryProducts);
 router.post('/products', authMiddleware, requireAdmin, adminController.createProduct);
 router.put('/products/:id', authMiddleware, requireAdmin, adminController.updateProduct);

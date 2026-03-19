@@ -10,6 +10,7 @@ import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_epicier_profile_screen.dart';
 import 'admin_disputes_screen.dart';
+import 'admin_store_catalogue_screen.dart';
 import '../../../core/constants/api_constants.dart';
 
 class AdminValidationScreen extends StatefulWidget {
@@ -530,9 +531,16 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           // Actions row
           Row(
             children: [
-              _buildActionBtn('Catalogue', const Color(0xFF2D5016), Icons.category_outlined),
+              _buildActionBtn('Catalogue', const Color(0xFF2D5016), Icons.category_outlined, onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AdminStoreCatalogueScreen(storeOwner: user)),
+                ).then((_) => _loadData());
+              }),
               const SizedBox(width: 8),
-              _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E)),
+              _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E), onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user)));
+              }),
               const SizedBox(width: 8),
               _buildActionBtn(
                 user.isActive ? 'Désact.' : 'Activer', 

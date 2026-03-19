@@ -102,6 +102,14 @@ exports.getUsers = async (req, res) => {
                 WHERE c.epicier_id = epicier.id
               )`),
               'commandes_count'
+            ],
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM epicier_produits AS ep
+                WHERE ep.epicier_id = epicier.id AND ep.rupture_stock = 1 AND ep.is_active = 1
+              )`),
+              'rupture_count'
             ]
           ]
         }
@@ -420,6 +428,49 @@ exports.createProduct = async (req, res) => {
       is_active: true,
       store_name: store.nom_boutique
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getStoreProducts = async (req, res) => {
+  try {
+    const { storeId } = req.params;
+    const { search, categoryId } = req.query;
+
+    let productWhere = {};
+    if (search) {
+      productWhere.nom = { [Op.like]: `%${search}%` };
+    }
+    if (categoryId) {
+      productWhere.categorie_id = categoryId;
+    }
+
+    const epicierProducts = await EpicierProduct.findAll({
+      where: { epicier_id: storeId },
+      include: [{
+        model: Product,
+        as: 'produit',
+        where: productWhere,
+        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }]
+      }],
+      order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']]
+    });
+
+    const products = epicierProducts.map(ep => ({
+      id: ep.produit.id,
+      nom: ep.produit.nom,
+      prix: parseFloat(ep.prix),
+      description: ep.produit.description,
+      categorie_id: ep.produit.categorie_id,
+      categorie_nom: ep.produit.categorie?.nom,
+      image_principale: ep.produit.image_principale,
+      is_active: !!ep.is_active,
+      rupture_stock: !!ep.rupture_stock,
+      stock: ep.id, // Assuming ep.id for now or if there is a stock field, image shows "Stock: 24"
+    }));
+
+    res.json(products);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
