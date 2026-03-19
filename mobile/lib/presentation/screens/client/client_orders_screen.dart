@@ -5,6 +5,7 @@ import '../../../data/models/client_order_detail.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cart_provider.dart';
+import '../../../providers/order_provider.dart';
 import '../../widgets/rate_order_sheet.dart';
 
 /// Liste des commandes du client (onglet Commandes).
@@ -23,67 +24,44 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
   static const Color _totalOrange = Color(0xFFB85C38);
 
   final ApiService _api = ApiService();
-  List<ClientOrder> _orders = [];
-  bool _loading = true;
-  String? _error;
   int _selectedFilterIndex = 0;
   static const List<String> _filterLabels = ['Toutes', 'Reçue', 'Prête', 'Livrée'];
   static const List<String?> _filterStatuts = [null, 'reçue', 'prête', 'livrée'];
 
-  List<ClientOrder> get _filteredOrders {
-    final statut = _filterStatuts[_selectedFilterIndex];
-    if (statut == null) return _orders;
-    return _orders.where((o) => o.statut == statut).toList();
-  }
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initPolling();
+    });
   }
 
-  Future<void> _load() async {
+  void _initPolling() {
     final token = context.read<AuthProvider>().token;
-    if (token == null || token.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _orders = [];
-        });
-      }
-      return;
+    if (token != null && token.isNotEmpty) {
+      context.read<OrderProvider>().startPolling(token);
     }
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
+  }
+
+  @override
+  void dispose() {
+    // Note: If you want polling to stop when the tab is hidden, this might not be enough as part of IndexedStack
+    // But since IndexedStack keeps the state alive, we might want to check for visibility.
+    // However, usually it's fine for small polling.
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    final token = context.read<AuthProvider>().token;
+    if (token != null) {
+      await context.read<OrderProvider>().fetchOrders(token);
     }
-    try {
-      final response = await _api.get('/commandes', token: token);
-      if (!mounted) return;
-      List<ClientOrder> orders = [];
-      if (response is List) {
-        for (final e in response) {
-          if (e is Map) {
-            try {
-              orders.add(ClientOrder.fromJson(Map<String, dynamic>.from(e as Map)));
-            } catch (_) {}
-          }
-        }
-      }
-      setState(() {
-        _orders = orders;
-        _loading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
-          _loading = false;
-        });
-      }
-    }
+  }
+
+  List<ClientOrder> _getFilteredOrders(List<ClientOrder> orders) {
+    final statut = _filterStatuts[_selectedFilterIndex];
+    if (statut == null) return orders;
+    return orders.where((o) => o.statut == statut).toList();
   }
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
@@ -345,6 +323,8 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final token = context.watch<AuthProvider>().token;
+    final orderProvider = context.watch<OrderProvider>();
+
     if (token == null || token.isEmpty) {
       return Center(
         child: Padding(
@@ -357,20 +337,20 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         ),
       );
     }
-    if (_loading) {
+    if (orderProvider.isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
-    if (_error != null) {
+    if (orderProvider.error != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+              Text(orderProvider.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 16),
               TextButton.icon(
-                onPressed: _load,
+                onPressed: _refresh,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Réessayer'),
               ),
@@ -379,7 +359,10 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         ),
       );
     }
-    if (_orders.isEmpty) {
+
+    final filteredOrders = _getFilteredOrders(orderProvider.orders);
+
+    if (orderProvider.orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -399,9 +382,10 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         ),
       );
     }
+
     return Column(
       children: [
-        // Filter chips (Toutes, Reçue, Prête, Livrée)
+        // Filter chips
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: SingleChildScrollView(
@@ -445,7 +429,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
           ),
         ),
         Expanded(
-          child: _filteredOrders.isEmpty
+          child: filteredOrders.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -461,13 +445,13 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _load,
+                  onRefresh: _refresh,
                   color: _primary,
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                    itemCount: _filteredOrders.length,
+                    itemCount: filteredOrders.length,
                     itemBuilder: (context, index) {
-                      final o = _filteredOrders[index];
+                      final o = filteredOrders[index];
                       final isLivree = o.statut == 'livrée';
                       final dateTimeText = o.dateCommandeFormatted?.isNotEmpty == true
                           ? o.dateCommandeFormatted!
