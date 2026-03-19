@@ -10,6 +10,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../widgets/custom_header.dart';
 import '../../widgets/custom_bottom_nav_bar.dart';
 import 'map_screen/map_screen.dart';
+import '../auth/login_screen.dart';
 
 class ProductListScreen extends StatefulWidget {
   final Store store;
@@ -248,13 +249,17 @@ class _ProductListScreenState extends State<ProductListScreen> {
                       onTap: isRupture
                           ? null
                           : () async {
-                              final token = context.read<AuthProvider>().token;
-                              if (token == null || token.isEmpty) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Connectez-vous pour ajouter au panier.')),
-                                  );
-                                }
+                              final auth = context.read<AuthProvider>();
+                              if (!auth.isLoggedIn) {
+                                context.read<CartProvider>().setPendingAction({
+                                  'type': 'add_to_cart',
+                                  'product': product,
+                                  'store': widget.store,
+                                });
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                );
                                 return;
                               }
                               await context.read<CartProvider>().addToCart(
