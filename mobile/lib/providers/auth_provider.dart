@@ -16,12 +16,14 @@ class AuthProvider with ChangeNotifier {
   Map<String, dynamic>? _user;
   Map<String, dynamic>? _store;
   bool _isLoading = false;
+  bool _initialized = false;
 
   bool get isLoggedIn => _isLoggedIn;
   String? get token => _token;
   Map<String, dynamic>? get user => _user;
   Map<String, dynamic>? get store => _store;
   bool get isLoading => _isLoading;
+  bool get initialized => _initialized;
 
   String? get storeStatut => _store?['statut_inscription'];
   bool get needsSetup => _user?['role'] == 'EPICIER' && storeStatut == 'ACCEPTE';
@@ -35,11 +37,24 @@ class AuthProvider with ChangeNotifier {
     _token = prefs.getString('auth_token');
     if (_token != null) {
       _isLoggedIn = true;
-      notifyListeners();
+      try {
+        final response = await _apiService.get('/auth/me', token: _token);
+        _user = response['user'];
+        _store = response['store'];
+      } catch (e) {
+        debugPrint("Session restoration failed: $e");
+        _token = null;
+        _isLoggedIn = false;
+        await prefs.remove('auth_token');
+      }
       
       // Update FCM token silently
-      FCMService().updateFCMToken(_token!);
+      if (_token != null) {
+        FCMService().updateFCMToken(_token!);
+      }
     }
+    _initialized = true;
+    notifyListeners();
   }
 
   Future<bool> login(String email, String mdp) async {

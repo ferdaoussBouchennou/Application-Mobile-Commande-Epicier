@@ -1,14 +1,18 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
+  host: process.env.EMAIL_HOST || process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.EMAIL_PORT || process.env.SMTP_PORT || '587'),
   secure: false, // true for 465, false for 587
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.EMAIL_USER || process.env.SMTP_USER,
+    pass: process.env.EMAIL_PASS || process.env.SMTP_PASS,
   },
 });
+
+// Mode développement (si pas d'email configuré)
+const isEmailConfigured = (process.env.EMAIL_USER && process.env.EMAIL_USER !== 'hafsazohri0@gmail.com') || 
+                          (process.env.SMTP_USER && process.env.SMTP_USER !== 'your_email@example.com');
 
 /**
  * Generate a random 6-digit OTP code
@@ -44,12 +48,26 @@ const sendOTP = async (email, code, type = 'verify') => {
     </div>
   `;
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || `"MyHanut" <${process.env.SMTP_USER}>`,
-    to: email,
-    subject,
-    html,
-  });
+  if (!isEmailConfigured) {
+    console.log('--- DEVELOPMENT MODE: OTP Sent to Console ---');
+    console.log(`To: ${email}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`CODE: ${code}`);
+    console.log('---------------------------------------------');
+    return;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"MyHanut" <${process.env.EMAIL_USER || process.env.SMTP_USER}>`,
+      to: email,
+      subject,
+      html,
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi de l\'email (transporter.sendMail):', error);
+    throw new Error('Impossible d\'envoyer le code de vérification.');
+  }
 };
 
 module.exports = { generateOTP, sendOTP };

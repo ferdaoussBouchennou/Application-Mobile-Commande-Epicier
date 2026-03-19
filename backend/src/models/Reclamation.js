@@ -9,14 +9,26 @@ const Reclamation = sequelize.define('Reclamation', {
     autoIncrement: true,
     primaryKey: true,
   },
+  motif: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
   description: {
     type: DataTypes.TEXT,
     allowNull: false,
   },
+  photo: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   statut: {
-    type: DataTypes.ENUM('Résolu', 'En médiation', 'Remboursé', 'Litige ouvert'),
+    type: DataTypes.ENUM('Ouverte', 'En cours', 'Résolue'),
     allowNull: false,
-    defaultValue: 'Litige ouvert',
+    defaultValue: 'Ouverte',
+  },
+  reponse_epicier: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
   client_id: {
     type: DataTypes.INTEGER,

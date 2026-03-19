@@ -726,6 +726,42 @@ const authController = {
       console.error('Erreur updateFCMToken:', error);
       res.status(500).json({ message: 'Erreur lors de la mise à jour du FCM token', error: error.message });
     }
+  },
+
+  // Récupérer les infos de l'utilisateur actuel (session restoration)
+  getMe: async (req, res) => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      }
+
+      let storeInfo = null;
+      if (user.role === 'EPICIER') {
+        const store = await Store.findOne({ where: { utilisateur_id: user.id } });
+        if (store) {
+          storeInfo = {
+            id: store.id,
+            nom_boutique: store.nom_boutique,
+            statut_inscription: store.statut_inscription,
+          };
+        }
+      }
+
+      res.status(200).json({
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+        },
+        store: storeInfo
+      });
+    } catch (error) {
+      console.error('Erreur getMe:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: error.message });
+    }
   }
 };
 

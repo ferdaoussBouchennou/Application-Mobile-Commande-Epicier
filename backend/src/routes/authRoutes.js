@@ -26,5 +26,8 @@ router.post('/validate-epicier', authController.validateEpicier);
 // Mise à jour du token FCM (requiert authentification)
 router.post('/fcm-token', authMiddleware, authController.updateFCMToken);
 
+// Récupérer le profil actuel (restauration de session)
+router.get('/me', authMiddleware, authController.getMe);
+
 
 module.exports = router;
