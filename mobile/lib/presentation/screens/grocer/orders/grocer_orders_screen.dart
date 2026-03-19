@@ -710,6 +710,8 @@ class _TicketSheetState extends State<_TicketSheet> {
               _DetailRow('Téléphone', _detail.clientTelephone!),
             if (_detail.clientEmail != null && _detail.clientEmail!.isNotEmpty)
               _DetailRow('Email', _detail.clientEmail!),
+            if (_detail.dateRecuperation != null && _detail.dateRecuperation!.isNotEmpty)
+              _DetailRow('Date', _formatPickupDate(_detail.dateRecuperation!)),
             _DetailRow('Créneau', _detail.creneau),
             _DetailRow('Statut', _getStatusLabel(_detail.statut)),
             if (_hasPendingAcceptance) ...[
@@ -923,6 +925,20 @@ class _TicketSheetState extends State<_TicketSheet> {
         ),
       ),
     );
+  }
+}
+
+  String _formatPickupDate(String? iso) {
+  if (iso == null || iso.isEmpty) return '';
+  try {
+    final d = DateTime.parse(iso);
+    const mois = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juill', 'août', 'sept', 'oct', 'nov', 'déc'];
+    const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    final sem = jours[d.weekday - 1];
+    final m = mois[d.month - 1];
+    return '$sem ${d.day} $m ${d.year}';
+  } catch (_) {
+    return '';
   }
 }
 
