@@ -11,12 +11,14 @@ class CartProvider with ChangeNotifier {
   bool _loading = false;
   String? _error;
   int? _pendingTabIndex;
+  Map<String, dynamic>? _pendingAction;
 
   List<CartItem> get items => List.unmodifiable(_items);
   double get total => _items.fold(0, (sum, i) => sum + i.lineTotal);
   bool get loading => _loading;
   String? get error => _error;
   int? get pendingTabIndex => _pendingTabIndex;
+  Map<String, dynamic>? get pendingAction => _pendingAction;
 
   int get itemCount => _items.fold(0, (sum, i) => sum + i.quantite);
   int get articleCount => _items.length;
@@ -164,6 +166,16 @@ class CartProvider with ChangeNotifier {
 
   void clearPendingTabIndex() {
     _pendingTabIndex = null;
+    notifyListeners();
+  }
+
+  void setPendingAction(Map<String, dynamic>? action) {
+    _pendingAction = action;
+    notifyListeners();
+  }
+
+  void clearPendingAction() {
+    _pendingAction = null;
     notifyListeners();
   }
 }
