@@ -26,11 +26,12 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      if (auth.isLoggedIn && auth.token != null) {
-        context.read<CartProvider>().fetchCart(auth.token);
-        context.read<NotificationProvider>().fetchNotifications(auth.token);
+    Future.microtask(() {
+      if (mounted) {
+        final token = context.read<AuthProvider>().token;
+        if (token != null && token.isNotEmpty) {
+          context.read<NotificationProvider>().fetchNotifications(token);
+        }
       }
     });
   }

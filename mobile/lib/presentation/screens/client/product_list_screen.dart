@@ -257,7 +257,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
                                 }
                                 return;
                               }
-                              await context.read<CartProvider>().addToCart(token, product.id, epicierId: widget.store.id);
+                              await context.read<CartProvider>().addToCart(
+                                produitId: product.id,
+                                nom: product.nom,
+                                prix: product.prix,
+                                imagePrincipale: product.imagePrincipale,
+                                epicierId: widget.store.id,
+                              );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('${product.nom} ajouté au panier')),
