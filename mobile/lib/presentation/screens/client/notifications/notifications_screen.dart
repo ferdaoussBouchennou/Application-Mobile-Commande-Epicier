@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../data/models/notification_model.dart';
-import '../../../../data/services/api_service.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
-
+import '../../../../providers/notification_provider.dart';
 
 /// NotificationsScreen — fetches real notifications from the backend
 /// and displays them grouped by date.
@@ -17,65 +16,34 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final ApiService _api = ApiService();
-  List<NotificationModel> _notifications = [];
-  bool _isLoading = true;
-  String? _error;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
-  String? get _token =>
-      context.read<AuthProvider>().token;
+  String? get _token => context.read<AuthProvider>().token;
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
   Future<void> _load() async {
-    if (!mounted) return;
-    setState(() { _isLoading = true; _error = null; });
-    try {
-      final token = _token;
-      final data = await _api.get('/notifications', token: token);
-      final list = (data as List)
-          .map((j) => NotificationModel.fromJson(j as Map<String, dynamic>))
-          .toList();
-      if (!mounted) return;
-      setState(() { _notifications = list; _isLoading = false; });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() { _error = e.toString(); _isLoading = false; });
-    }
+    final provider = context.read<NotificationProvider>();
+    await provider.fetchNotifications(_token);
   }
 
   Future<void> _markRead(int id) async {
-    try {
-      await _api.patch('/notifications/$id/read', {}, token: _token);
-      if (!mounted) return;
-      setState(() {
-        final idx = _notifications.indexWhere((n) => n.id == id);
-        if (idx != -1) _notifications[idx].lue = true;
-      });
-    } catch (_) {}
+    final provider = context.read<NotificationProvider>();
+    await provider.markAsRead(_token, id);
   }
 
   Future<void> _markAllRead() async {
-    try {
-      await _api.patch('/notifications/read-all', {}, token: _token);
-      if (!mounted) return;
-      setState(() {
-        for (final n in _notifications) {
-          n.lue = true;
-        }
-      });
-    } catch (_) {}
+    final provider = context.read<NotificationProvider>();
+    await provider.markAllAsRead(_token);
   }
 
   // ── Grouping helpers ──────────────────────────────────────────────────────
 
-  Map<String, List<NotificationModel>> _grouped() {
+  Map<String, List<NotificationModel>> _grouped(List<NotificationModel> notifications) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final yesterdayStart = todayStart.subtract(const Duration(days: 1));
@@ -84,7 +52,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       'HIER': [],
       'PLUS ANCIEN': [],
     };
-    for (final n in _notifications) {
+    for (final n in notifications) {
       if (!n.dateEnvoi.isBefore(todayStart)) {
         groups["AUJOURD'HUI"]!.add(n);
       } else if (!n.dateEnvoi.isBefore(yesterdayStart)) {
@@ -109,13 +77,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Top action bar — "Tout marquer comme lu"
-        if (_notifications.any((n) => !n.lue))
-          _buildMarkAllBar(),
-        Expanded(child: _buildBody()),
-      ],
+    return Consumer<NotificationProvider>(
+      builder: (context, provider, _) {
+        return Column(
+          children: [
+            // Top action bar — "Tout marquer comme lu"
+            if (provider.notifications.any((n) => !n.lue))
+              _buildMarkAllBar(),
+            Expanded(child: _buildBody(provider)),
+          ],
+        );
+      },
     );
   }
 
@@ -146,14 +118,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildBody() {
-    if (_isLoading) {
+  Widget _buildBody(NotificationProvider provider) {
+    if (provider.isLoading && provider.notifications.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFF2D5016)),
       );
     }
 
-    if (_error != null) {
+    if (provider.error != null && provider.notifications.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -173,7 +145,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                _error!,
+                provider.error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, color: Color(0xFF999999)),
               ),
@@ -193,9 +165,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    if (_notifications.isEmpty) return _buildEmpty();
+    if (provider.notifications.isEmpty) return _buildEmpty();
 
-    final grouped = _grouped();
+    final grouped = _grouped(provider.notifications);
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -345,6 +317,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 color: Color(0xFF2D5016),
                                 fontWeight: FontWeight.bold,
                                 decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFF2D5016),
                               ),
                             ),
                           ),

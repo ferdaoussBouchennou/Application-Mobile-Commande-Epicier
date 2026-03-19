@@ -10,6 +10,8 @@ import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../screens/auth/welcome_screen.dart';
 
+import '../../../../providers/notification_provider.dart';
+
 class MapScreen extends StatefulWidget {
   static const String routeName = '/client';
   const MapScreen({super.key});
@@ -20,6 +22,18 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthProvider>();
+      if (auth.isLoggedIn && auth.token != null) {
+        context.read<CartProvider>().fetchCart(auth.token);
+        context.read<NotificationProvider>().fetchNotifications(auth.token);
+      }
+    });
+  }
 
   static const List<String> _titles = [
     'MyHanut',

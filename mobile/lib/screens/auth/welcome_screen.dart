@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../../presentation/screens/admin/admin_validation_screen.dart';
+import '../../../presentation/screens/grocer/grocer_main_screen.dart';
+import '../../../presentation/screens/grocer/setup/grocer_setup_screen.dart';
 import '../../../presentation/screens/auth/login_screen.dart';
 import '../../../presentation/screens/auth/register_screen.dart';
 import '../../../presentation/screens/client/map_screen/map_screen.dart';
@@ -12,6 +17,38 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    // Show splash/loading while AuthProvider is initializing (session restoration)
+    if (!auth.initialized) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF6F0),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF2D5016)))
+      );
+    }
+
+    // After initialization, if logged in, redirect
+    if (auth.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final role = auth.user?['role'];
+        if (role == 'ADMIN') {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => AdminValidationScreen()));
+        } else if (role == 'EPICIER') {
+          if (auth.needsSetup) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GrocerSetupScreen()));
+          } else {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GrocerMainScreen()));
+          }
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, MapScreen.routeName, (r) => false);
+        }
+      });
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF6F0),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF2D5016)))
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
       body: SafeArea(
@@ -63,7 +100,7 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () => _goTo(context, LoginScreen()),
+                    onPressed: () => _goTo(context, const LoginScreen()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2D5016),
                       foregroundColor: Colors.white,
@@ -86,7 +123,7 @@ class WelcomeScreen extends StatelessWidget {
                   width: double.infinity,
                   height: 52,
                   child: OutlinedButton(
-                    onPressed: () => _goTo(context, RegisterScreen()),
+                    onPressed: () => _goTo(context, const RegisterScreen()),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF2D1A0E),
                       side: const BorderSide(
