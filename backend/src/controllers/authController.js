@@ -298,6 +298,7 @@ const authController = {
           prenom: user.prenom,
           email: user.email,
           role: user.role,
+          telephone: user.telephone,
         },
         store: storeInfo
       });
@@ -469,6 +470,7 @@ const authController = {
           prenom: user.prenom,
           email: user.email,
           role: user.role,
+          telephone: user.telephone,
         },
         store: storeInfo
       });
@@ -585,7 +587,7 @@ const authController = {
       res.status(200).json({
         message: 'Connexion Facebook réussie',
         token,
-        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role, telephone: user.telephone },
         store: storeInfo
       });
     } catch (error) {
@@ -702,7 +704,7 @@ const authController = {
       res.status(200).json({
         message: 'Connexion Instagram réussie',
         token,
-        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role, telephone: user.telephone },
         store: storeInfo
       });
     } catch (error) {
