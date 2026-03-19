@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/product.dart';
 import '../../../data/models/category.dart' as model;
 import '../../../data/services/api_service.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../providers/auth_provider.dart';
 import 'admin_product_form_screen.dart';
 
 class AdminStoreCatalogueScreen extends StatefulWidget {
@@ -41,7 +43,10 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final List<dynamic> data = await _apiService.get('/admin/categories');
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
+      debugPrint('AdminStoreCatalogueScreen DEBUG: FETCH CATEGORIES token=$token, isLoggedIn=${auth.isLoggedIn}');
+      final List<dynamic> data = await _apiService.get('/admin/categories', token: token);
       if (mounted) {
         setState(() {
           _categories = data.map((json) => model.Category.fromJson(json)).toList();
@@ -49,11 +54,15 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching categories: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur catégories: $e')));
     }
   }
 
   Future<void> _fetchProducts() async {
     try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
+      debugPrint('AdminStoreCatalogueScreen DEBUG: FETCH PRODUCTS token=$token, isLoggedIn=${auth.isLoggedIn}');
       String url = '/admin/stores/${widget.storeOwner.store?['id']}/products';
       String query = '';
       if (_searchController.text.isNotEmpty) {
@@ -66,7 +75,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
         url += '?${query.substring(0, query.length - 1)}';
       }
 
-      final List<dynamic> data = await _apiService.get(url);
+      final List<dynamic> data = await _apiService.get(url, token: token);
       if (mounted) {
         setState(() {
           _products = data.map((json) => Product.fromJson(json)).toList();
@@ -74,10 +83,12 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       }
     } catch (e) {
       debugPrint('Error fetching products: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur produits: $e')));
     }
   }
 
   Future<void> _deleteProduct(int productId) async {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -94,7 +105,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       try {
         await _apiService.patch('/admin/products/$productId/deactivate', {
           'epicier_id': widget.storeOwner.store?['id']
-        });
+        }, token: token);
         _fetchProducts();
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));

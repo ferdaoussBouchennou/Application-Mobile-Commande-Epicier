@@ -50,11 +50,15 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
 
   Future<void> _fetchStats() async {
     try {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
+      debugPrint('AdminValidationScreen DEBUG: FETCH STATS token=$token, isLoggedIn=${auth.isLoggedIn}');
+      
       String roleParam = '';
       if (_selectedRole == 'Client') roleParam = 'CLIENT';
       else if (_selectedRole == 'Épicier') roleParam = 'EPICIER';
 
-      final stats = await _apiService.get('/admin/stats?role=$roleParam');
+      final stats = await _apiService.get('/admin/stats?role=$roleParam', token: token);
       if (mounted) {
         setState(() {
           _pendingCount = stats['pending'];
@@ -79,8 +83,9 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
       else if (_selectedRole == 'Épicier') roleParam = 'EPICIER';
 
       final String search = _searchController.text.trim();
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
 
-      final List<dynamic> data = await _apiService.get('/admin/users?status=$status&role=$roleParam&search=$search');
+      final List<dynamic> data = await _apiService.get('/admin/users?status=$status&role=$roleParam&search=$search', token: token);
       if (mounted) {
         setState(() {
           _users = data.map((json) => UserModel.fromJson(json)).toList();
@@ -93,10 +98,11 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
 
   Future<void> _updateStatus(int userId, {String? status, bool? isActive}) async {
     try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
       await _apiService.patch('/admin/users/$userId/status', {
         if (status != null) 'statut_inscription': status,
         if (isActive != null) 'is_active': isActive,
-      });
+      }, token: token);
       _loadData(); // Reload everything
     } catch (e) {
       if (mounted) {
