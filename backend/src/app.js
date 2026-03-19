@@ -16,6 +16,7 @@ const productRoutes = require('./routes/productRoutes');
 const commandeRoutes = require('./routes/commandeRoutes');
 const avisRoutes = require('./routes/avisRoutes');
 const notificationsRoutes = require('./routes/notifications_routes');
+const reclamationRoutes = require('./routes/reclamationRoutes');
 
 
 const app = express();
@@ -49,6 +50,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/commandes', commandeRoutes);
 app.use('/api/avis', avisRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/reclamations', reclamationRoutes);
 
 
 // 404 Handler
