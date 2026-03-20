@@ -18,6 +18,12 @@ router.post('/categories', authMiddleware, requireAdmin, adminController.createC
 router.put('/categories/:id', authMiddleware, requireAdmin, adminController.updateCategory);
 router.delete('/categories/:id', authMiddleware, requireAdmin, adminController.deleteCategory);
 router.patch('/categories/:id/activate', authMiddleware, requireAdmin, adminController.activateCategory);
+router.post('/categories/upload-icon', (req, res, next) => {
+  uploadProductImage.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ message: err.message || 'Erreur upload' });
+    next();
+  });
+}, authMiddleware, requireAdmin, adminController.uploadCategoryIcon);
 
 // Gestion des produits par catégorie (admin)
 router.get('/stores', authMiddleware, requireAdmin, adminController.getStores);

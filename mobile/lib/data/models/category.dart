@@ -1,40 +1,39 @@
 class Category {
   final int id;
   final String nom;
-  final int? productCount;
-  /// Nombre de produits retirés (inactifs) dans cette catégorie pour l'épicier.
-  final int? retiredCount;
-  /// Nombre de produits actifs dans cette catégorie (admin).
-  final int? activeProductCount;
+  final String? description;
+  final String? imageUrl;
+  final int displayOrder;
+  final bool isActive;
+  final int productCount;
+  final int storeCount;
+  final int ruptureCount;
 
   Category({
     required this.id,
     required this.nom,
-    this.productCount,
-    this.retiredCount,
-    this.activeProductCount,
+    this.description,
+    this.imageUrl,
+    this.displayOrder = 0,
+    this.isActive = true,
+    this.productCount = 0,
+    this.storeCount = 0,
+    this.ruptureCount = 0,
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
     return Category(
       id: json['id'],
       nom: json['nom'],
-      productCount: json['productCount'] != null
-          ? int.tryParse(json['productCount'].toString())
-          : 0,
-      retiredCount: json['retiredCount'] != null
-          ? int.tryParse(json['retiredCount'].toString())
-          : 0,
-      activeProductCount: json['activeProductCount'] != null
-          ? int.tryParse(json['activeProductCount'].toString())
-          : null,
+      description: json['description'],
+      imageUrl: json['image_url'],
+      displayOrder: json['display_order'] ?? 0,
+      isActive: json['is_active'] ?? true,
+      productCount: json['productCount'] ?? 0,
+      storeCount: json['storeCount'] ?? 0,
+      ruptureCount: json['ruptureCount'] ?? 0,
     );
   }
-
-  /// Catégorie active (au moins un produit actif) pour l'admin.
-  bool get isActiveAdmin => (activeProductCount ?? 0) > 0;
-
-  /// Catégorie considérée comme "retirée" (plus de produits actifs, mais des produits inactifs).
-  bool get isRetired =>
-      (retiredCount ?? 0) > 0 && (productCount ?? 0) == 0;
+  bool get isRetired => !isActive;
+  int get retiredCount => 0; // Placeholder for legacy compatibility
 }

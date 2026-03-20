@@ -224,25 +224,31 @@ exports.registerEpicier = async (req, res) => {
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Category.findAll({
-      order: [['nom', 'ASC']],
-      attributes: ['id', 'nom']
+      order: [
+        ['display_order', 'ASC'],
+        ['nom', 'ASC']
+      ]
     });
     const list = await Promise.all(
       categories.map(async (c) => {
-        const count = await Product.count({ where: { categorie_id: c.id } });
-        const activeCount = await EpicierProduct.count({
+        const productCount = await Product.count({ where: { categorie_id: c.id } });
+        const storeCount = await EpicierProduct.count({
+          distinct: true,
+          col: 'epicier_id',
           include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
-          where: { is_active: true }
+        });
+        const ruptureCount = await EpicierProduct.count({
+          where: { rupture_stock: true },
+          include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
         });
         return {
-          id: c.id,
-          nom: c.nom,
-          productCount: count,
-          activeProductCount: activeCount
+          ...c.toJSON(),
+          productCount,
+          storeCount,
+          ruptureCount
         };
       })
     );
-    console.log(`getCategories admin: found ${list.length} categories`);
     res.json(list);
   } catch (error) {
     console.error('Error in getCategories admin:', error);
@@ -252,7 +258,7 @@ exports.getCategories = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
   try {
-    const { nom } = req.body;
+    const { nom, description, image_url, display_order } = req.body;
     if (!nom || typeof nom !== 'string' || !nom.trim()) {
       return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
     }
@@ -260,8 +266,13 @@ exports.createCategory = async (req, res) => {
     if (existing) {
       return res.status(400).json({ message: 'Une catégorie avec ce nom existe déjà.' });
     }
-    const category = await Category.create({ nom: nom.trim() });
-    res.status(201).json({ id: category.id, nom: category.nom });
+    const category = await Category.create({ 
+      nom: nom.trim(),
+      description: description?.trim(),
+      image_url: image_url?.trim(),
+      display_order: display_order || 0
+    });
+    res.status(201).json(category);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -270,21 +281,25 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom } = req.body;
-    if (!nom || typeof nom !== 'string' || !nom.trim()) {
-      return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
-    }
+    const { nom, description, image_url, display_order, is_active } = req.body;
     const category = await Category.findByPk(id);
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const existing = await Category.findOne({ where: { nom: nom.trim(), id: { [Op.ne]: id } } });
-    if (existing) {
-      return res.status(400).json({ message: 'Une autre catégorie avec ce nom existe déjà.' });
+    if (nom) {
+      const existing = await Category.findOne({ where: { nom: nom.trim(), id: { [Op.ne]: id } } });
+      if (existing) {
+        return res.status(400).json({ message: 'Une autre catégorie avec ce nom existe déjà.' });
+      }
+      category.nom = nom.trim();
     }
-    category.nom = nom.trim();
+    if (description !== undefined) category.description = description?.trim();
+    if (image_url !== undefined) category.image_url = image_url?.trim();
+    if (display_order !== undefined) category.display_order = display_order;
+    if (is_active !== undefined) category.is_active = is_active;
+    
     await category.save();
-    res.json({ id: category.id, nom: category.nom });
+    res.json(category);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -324,15 +339,28 @@ exports.activateCategory = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const productIds = await Product.findAll({ where: { categorie_id: id }, attributes: ['id'] }).then((rows) => rows.map((r) => r.id));
-    const [updatedCount] = productIds.length
-      ? await EpicierProduct.update({ is_active: true }, { where: { produit_id: productIds } })
-      : [0];
-    res.json({
-      message: `Catégorie réactivée : ${updatedCount} produit(s) remis au catalogue.`,
-      productCount: updatedCount
-    });
+    category.is_active = true;
+    await category.save();
+    res.json({ message: 'Catégorie réactivée.' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.uploadCategoryIcon = async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+    }
+    const dir = path.join(__dirname, '..', '..', 'uploads', 'categories');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const ext = path.extname(req.file.originalname) || '.png';
+    const filename = `cat-${Date.now()}${ext}`;
+    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+    const relativePath = `uploads/categories/${filename}`;
+    res.status(200).json({ image_url: relativePath });
+  } catch (error) {
+    console.error('Error uploadCategoryIcon:', error);
     res.status(500).json({ error: error.message });
   }
 };
