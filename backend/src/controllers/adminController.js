@@ -224,6 +224,7 @@ exports.registerEpicier = async (req, res) => {
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Category.findAll({
+      where: { is_active: true },
       order: [
         ['display_order', 'ASC'],
         ['nom', 'ASC']
@@ -319,6 +320,8 @@ exports.deleteCategory = async (req, res) => {
         { is_active: false },
         { where: { produit_id: productIds } }
       );
+      category.is_active = false;
+      await category.save();
       return res.json({
         message: `Catégorie désactivée : ${productCount} produit(s) ont été retirés du catalogue pour tous les épiciers.`,
         deactivated: true,
@@ -391,6 +394,7 @@ exports.getCategoryProducts = async (req, res) => {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
     const linkList = await EpicierProduct.findAll({
+      where: { is_active: true },
       include: [
         { model: Product, as: 'produit', where: { categorie_id: categoryId } },
         { model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] }
@@ -477,7 +481,7 @@ exports.getStoreProducts = async (req, res) => {
     }
 
     const epicierProducts = await EpicierProduct.findAll({
-      where: { epicier_id: storeId },
+      where: { epicier_id: storeId, is_active: true },
       include: [{
         model: Product,
         as: 'produit',
