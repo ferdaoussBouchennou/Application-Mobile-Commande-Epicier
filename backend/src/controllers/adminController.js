@@ -223,6 +223,7 @@ exports.registerEpicier = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
+    const { storeId } = req.query;
     const categories = await Category.findAll({
       where: { is_active: true },
       order: [
@@ -232,7 +233,16 @@ exports.getCategories = async (req, res) => {
     });
     const list = await Promise.all(
       categories.map(async (c) => {
-        const productCount = await Product.count({ where: { categorie_id: c.id } });
+        let productCount;
+        if (storeId) {
+          productCount = await EpicierProduct.count({
+            where: { epicier_id: storeId, is_active: true },
+            include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
+          });
+        } else {
+          productCount = await Product.count({ where: { categorie_id: c.id } });
+        }
+        
         const storeCount = await EpicierProduct.count({
           distinct: true,
           col: 'epicier_id',
