@@ -1,9 +1,8 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:http/http.dart' as http;
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/constants/api_constants.dart';
@@ -30,8 +29,8 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
   final _telephoneController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  File? _imageFile;
-  File? _docFile;
+  XFile? _imageFile;
+  PlatformFile? _docFile;
   final _picker = ImagePicker();
 
   @override
@@ -50,7 +49,7 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      setState(() => _imageFile = File(pickedFile.path));
+      setState(() => _imageFile = pickedFile);
     }
   }
 
@@ -58,9 +57,10 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'png'],
+      withData: true, // Important for Web
     );
     if (result != null) {
-      setState(() => _docFile = File(result.files.single.path!));
+      setState(() => _docFile = result.files.single);
     }
   }
 
@@ -70,41 +70,48 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
     setState(() => _isLoading = true);
     try {
       final token = context.read<AuthProvider>().token;
-      final uri = Uri.parse('${ApiConstants.baseUrl}/admin/register-epicier');
-      var request = http.MultipartRequest('POST', uri);
       
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
+      final Map<String, dynamic> fields = {
+        'nom': _nomController.text.trim(),
+        'prenom': _prenomController.text.trim(),
+        'email': _emailController.text.trim(),
+        'mdp': _mdpController.text,
+        'nom_boutique': _nomBoutiqueController.text.trim(),
+        'adresse': _adresseController.text.trim(),
+        'telephone': _telephoneController.text.trim(),
+        'description_boutique': _descriptionController.text.trim(),
+      };
 
-      request.fields['nom'] = _nomController.text;
-      request.fields['prenom'] = _prenomController.text;
-      request.fields['email'] = _emailController.text;
-      request.fields['mdp'] = _mdpController.text;
-      request.fields['nom_boutique'] = _nomBoutiqueController.text;
-      request.fields['adresse'] = _adresseController.text;
-      request.fields['telephone'] = _telephoneController.text;
-      request.fields['description_boutique'] = _descriptionController.text;
+      final Map<String, List<int>> files = {};
+      final Map<String, String> filenames = {};
 
       if (_imageFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('image_boutique', _imageFile!.path));
+        final bytes = await _imageFile!.readAsBytes();
+        files['image_boutique'] = bytes;
+        filenames['image_boutique'] = _imageFile!.name;
       }
+
       if (_docFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('document_verification', _docFile!.path));
+        final bytes = _docFile!.bytes;
+        if (bytes != null) {
+          files['document_verification'] = bytes;
+          filenames['document_verification'] = _docFile!.name;
+        }
       }
 
-      var response = await request.send();
-      var responseData = await http.Response.fromStream(response);
+      await _apiService.postMultipart(
+        '/admin/register-epicier',
+        fields,
+        token: token,
+        files: files,
+        filenames: filenames,
+      );
 
-      if (response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Épicier créé avec succès !')),
-          );
-          Navigator.pop(context, true);
-        }
-      } else {
-        throw Exception(responseData.body);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Épicier créé avec succès !')),
+        );
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -291,7 +298,11 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
     );
   }
 
-  Widget _buildFilePicker({required String label, required File? file, required VoidCallback onTap, required IconData icon}) {
+  Widget _buildFilePicker({required String label, required dynamic file, required VoidCallback onTap, required IconData icon}) {
+    String? fileName;
+    if (file is XFile) fileName = file.name;
+    if (file is PlatformFile) fileName = file.name;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -299,17 +310,17 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFFFDF6F0),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: file != null ? const Color(0xFF2D5016) : Colors.grey.shade300, width: 1, style: BorderStyle.solid),
+          border: Border.all(color: fileName != null ? const Color(0xFF2D5016) : Colors.grey.shade300, width: 1, style: BorderStyle.solid),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: (file != null ? const Color(0xFF2D5016) : const Color(0xFFF26444)).withOpacity(0.1),
+                color: (fileName != null ? const Color(0xFF2D5016) : const Color(0xFFF26444)).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: file != null ? const Color(0xFF2D5016) : const Color(0xFFF26444), size: 22),
+              child: Icon(icon, color: fileName != null ? const Color(0xFF2D5016) : const Color(0xFFF26444), size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -319,14 +330,14 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
                   Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 2),
                   Text(
-                    file != null ? file.path.split('/').last : 'Aucun fichier sélectionné',
+                    fileName ?? 'Aucun fichier sélectionné',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            if (file != null) const Icon(Icons.check_circle, color: Color(0xFF2D5016), size: 20),
+            if (fileName != null) const Icon(Icons.check_circle, color: Color(0xFF2D5016), size: 20),
           ],
         ),
       ),

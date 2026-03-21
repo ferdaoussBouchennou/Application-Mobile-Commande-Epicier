@@ -70,6 +70,21 @@ class _ClaimSubmissionScreenState extends State<ClaimSubmissionScreen> {
     try {
       final auth = context.read<AuthProvider>();
       
+      final Map<String, List<int>> files = {};
+      final Map<String, String> filenames = {};
+
+      if (kIsWeb) {
+        if (_webImage != null) {
+          files['photo'] = _webImage!;
+          filenames['photo'] = _webFilename ?? 'claim.jpg';
+        }
+      } else {
+        if (_image != null) {
+          files['photo'] = await _image!.readAsBytes();
+          filenames['photo'] = _image!.path.split('/').last;
+        }
+      }
+
       await _api.postMultipart(
         '/reclamations',
         {
@@ -78,10 +93,8 @@ class _ClaimSubmissionScreenState extends State<ClaimSubmissionScreen> {
           'description': _descriptionController.text,
         },
         token: auth.token,
-        file: kIsWeb ? null : _image,
-        bytes: kIsWeb ? _webImage : null,
-        filename: kIsWeb ? _webFilename : null,
-        fileField: 'photo',
+        files: files.isNotEmpty ? files : null,
+        filenames: filenames.isNotEmpty ? filenames : null,
       );
 
       if (mounted) {

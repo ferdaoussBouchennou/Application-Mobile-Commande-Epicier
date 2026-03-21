@@ -227,34 +227,24 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> fields, {
     String? token,
-    File? file,
-    Uint8List? bytes,
-    String? filename,
-    String fileField = 'photo',
+    Map<String, List<int>>? files, // Map of fieldName -> bytes
+    Map<String, String>? filenames, // Map of fieldName -> filename
   }) async {
     try {
       final uri = Uri.parse('$_baseUrl$endpoint');
       final request = http.MultipartRequest('POST', uri);
       
-      // Headers
       if (token != null) request.headers['Authorization'] = 'Bearer $token';
 
-      // Fields
       fields.forEach((key, value) {
         if (value != null) request.fields[key] = value.toString();
       });
 
-      // File (Mobile/Desktop)
-      if (file != null) {
-        request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
-      } 
-      // Bytes (Web)
-      else if (bytes != null) {
-        request.files.add(http.MultipartFile.fromBytes(
-          fileField,
-          bytes,
-          filename: filename ?? 'upload.jpg',
-        ));
+      if (files != null) {
+        files.forEach((field, bytes) {
+          final name = filenames?[field] ?? 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          request.files.add(http.MultipartFile.fromBytes(field, bytes, filename: name));
+        });
       }
 
       final streamed = await request.send();
@@ -262,6 +252,39 @@ class ApiService {
       return _handleResponse(response);
     } catch (e) {
       Logger.error('POST MULTIPART $endpoint → $e');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> putMultipart(
+    String endpoint,
+    Map<String, dynamic> fields, {
+    String? token,
+    Map<String, List<int>>? files,
+    Map<String, String>? filenames,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final request = http.MultipartRequest('PUT', uri);
+      
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+      fields.forEach((key, value) {
+        if (value != null) request.fields[key] = value.toString();
+      });
+
+      if (files != null) {
+        files.forEach((field, bytes) {
+          final name = filenames?[field] ?? 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          request.files.add(http.MultipartFile.fromBytes(field, bytes, filename: name));
+        });
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      return _handleResponse(response);
+    } catch (e) {
+      Logger.error('PUT MULTIPART $endpoint → $e');
       rethrow;
     }
   }

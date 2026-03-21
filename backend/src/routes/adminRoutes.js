@@ -7,6 +7,10 @@ const uploadProductImage = require('../middlewares/uploadProductImage');
 router.get('/stats', adminController.getStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
+router.put('/users/:id/details', authMiddleware, requireAdmin, uploadProductImage.fields([
+  { name: 'document_verification', maxCount: 1 }
+]), adminController.updateUserDetails);
+router.put('/stores/:id/details', authMiddleware, requireAdmin, adminController.updateStoreDetails);
 router.post('/register-epicier', uploadProductImage.fields([
   { name: 'image_boutique', maxCount: 1 },
   { name: 'document_verification', maxCount: 1 }

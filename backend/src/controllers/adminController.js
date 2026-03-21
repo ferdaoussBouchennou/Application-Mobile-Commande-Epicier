@@ -155,6 +155,57 @@ exports.updateUserStatus = async (req, res) => {
   }
 };
 
+exports.updateUserDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom, prenom, email } = req.body;
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    if (nom) user.nom = nom.trim();
+    if (prenom) user.prenom = prenom.trim();
+    if (email) {
+      const existing = await User.findOne({ where: { email, id: { [Op.ne]: id } } });
+      if (existing) return res.status(400).json({ error: 'Email déjà utilisé' });
+      user.email = email.trim();
+    }
+
+    // Gestion du document de vérification si uploadé
+    if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+      const file = req.files.document_verification[0];
+      const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+      const dir = path.join(__dirname, '../../uploads/documents');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, filename), file.buffer);
+      user.doc_verf = `uploads/documents/${filename}`;
+    }
+
+    await user.save();
+    res.json({ message: 'Utilisateur mis à jour', user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateStoreDetails = async (req, res) => {
+  try {
+    const { id } = req.params; // storeId
+    const { nom_boutique, telephone, adresse, description } = req.body;
+    const store = await Store.findByPk(id);
+    if (!store) return res.status(404).json({ error: 'Boutique non trouvée' });
+
+    if (nom_boutique) store.nom_boutique = nom_boutique.trim();
+    if (telephone) store.telephone = telephone.trim();
+    if (adresse) store.adresse = adresse.trim();
+    if (description !== undefined) store.description = description?.trim();
+    
+    await store.save();
+    res.json({ message: 'Boutique mise à jour', store });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.registerEpicier = async (req, res) => {
   try {
     const { nom, prenom, email, mdp, adresse, telephone, nom_boutique, description_boutique } = req.body;
