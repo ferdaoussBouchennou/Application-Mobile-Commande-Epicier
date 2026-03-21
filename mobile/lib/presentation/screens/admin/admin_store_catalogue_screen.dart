@@ -7,6 +7,8 @@ import '../../../data/services/api_service.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../providers/auth_provider.dart';
 import 'admin_product_form_screen.dart';
+import 'admin_category_form_screen.dart';
+import '../../../screens/auth/welcome_screen.dart';
 
 class AdminStoreCatalogueScreen extends StatefulWidget {
   final UserModel storeOwner;
@@ -24,6 +26,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
   List<Product> _products = [];
   List<model.Category> _categories = [];
   int? _selectedCategoryId;
+  bool _showCategories = true;
   bool _isLoading = true;
 
   @override
@@ -125,7 +128,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator(color: Color(0xFF2D5016)))
                 : RefreshIndicator(
-                    onRefresh: _fetchProducts,
+                    onRefresh: _showCategories ? _fetchCategories : _fetchProducts,
                     color: const Color(0xFF2D5016),
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -134,11 +137,15 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildCategoryFilters(),
-                            const SizedBox(height: 20),
-                            _buildTitleRow(),
-                            const SizedBox(height: 12),
-                            _buildProductList(),
+                            if (_showCategories) ...[
+                              _buildCategoryGrid(),
+                            ] else ...[
+                              _buildCategoryFilters(),
+                              const SizedBox(height: 20),
+                              _buildTitleRow(),
+                              const SizedBox(height: 12),
+                              _buildProductList(),
+                            ],
                             const SizedBox(height: 40),
                           ],
                         ),
@@ -173,30 +180,56 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      if (!_showCategories) {
+                        setState(() {
+                          _showCategories = true;
+                          _selectedCategoryId = null;
+                        });
+                      } else {
+                        Navigator.pop(context);
+                      }
+                    },
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        storeName,
+                        _showCategories ? 'Catalogue' : (_categories.firstWhere((c) => c.id == _selectedCategoryId, orElse: () => model.Category(id: 0, nom: 'Produits', productCount: 0, storeCount: 0, ruptureCount: 0)).nom),
                         style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
                       ),
                       Text(
-                        '${widget.storeOwner.produitsCount} produits · ${widget.storeOwner.ruptureCount} en rupture',
+                        _showCategories ? storeName : storeName,
                         style: const TextStyle(color: Colors.white70, fontSize: 13),
                       ),
                     ],
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF26444),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF26444),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                    onPressed: () {
+                      context.read<AuthProvider>().logout();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => WelcomeScreen()),
+                        (route) => false,
+                      );
+                    },
+                    tooltip: 'Déconnexion',
+                  ),
+                ],
               ),
             ],
           ),
@@ -222,6 +255,158 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Catégories',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
+            ),
+            InkWell(
+              onTap: () => _navigateToCategoryForm(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.add, size: 18, color: Color(0xFFF26444)),
+                    SizedBox(width: 4),
+                    Text('Ajouter', style: TextStyle(color: Color(0xFFF26444), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_categories.isEmpty)
+          const Center(child: Padding(padding: EdgeInsets.only(top: 100), child: Text('Aucune catégorie.')))
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.85,
+              crossAxisSpacing: 15,
+              mainAxisSpacing: 15,
+            ),
+            itemCount: _categories.length,
+            itemBuilder: (context, index) {
+              final cat = _categories[index];
+              return _buildCategoryCard(cat);
+            },
+          ),
+      ],
+    );
+  }
+
+  Future<void> _navigateToCategoryForm({model.Category? category}) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AdminCategoryFormScreen(category: category)),
+    );
+    if (result == true) _loadData();
+  }
+
+  Widget _buildCategoryCard(model.Category cat) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      ),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedCategoryId = cat.id;
+            _showCategories = false;
+            _fetchProducts();
+          });
+        },
+        onLongPress: () => _navigateToCategoryForm(category: cat),
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDF6F0),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: cat.imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(15),
+                          child: Image.network(ApiConstants.formatImageUrl(cat.imageUrl), fit: BoxFit.cover),
+                        )
+                      : const Icon(Icons.category_outlined, size: 30, color: Color(0xFF2D5016)),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    cat.nom,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2D1A0E)),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${cat.productCount} produits',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: InkWell(
+                onTap: () async {
+                  final bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Supprimer'),
+                      content: const Text('Voulez-vous vraiment supprimer cette catégorie ?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer', style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    try {
+                      final token = Provider.of<AuthProvider>(context, listen: false).token;
+                      await _apiService.delete('/admin/categories/${cat.id}', token: token);
+                      _loadData();
+                    } catch (e) {
+                      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -278,7 +463,10 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
           onTap: () async {
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => AdminProductFormScreen(storeOwner: widget.storeOwner)),
+              MaterialPageRoute(builder: (_) => AdminProductFormScreen(
+                storeOwner: widget.storeOwner,
+                initialCategoryId: _selectedCategoryId,
+              )),
             );
             if (result == true) _fetchProducts();
           },

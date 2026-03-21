@@ -223,6 +223,19 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                     onPressed: () {},
                     visualDensity: VisualDensity.compact,
                   ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                    onPressed: () {
+                      context.read<AuthProvider>().logout();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                        (route) => false,
+                      );
+                    },
+                    tooltip: 'Déconnexion',
+                  ),
                 ],
               ),
             ],

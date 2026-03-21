@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/models/product.dart';
@@ -12,8 +12,9 @@ import '../../../providers/auth_provider.dart';
 class AdminProductFormScreen extends StatefulWidget {
   final UserModel storeOwner;
   final Product? product;
+  final int? initialCategoryId;
 
-  const AdminProductFormScreen({super.key, required this.storeOwner, this.product});
+  const AdminProductFormScreen({super.key, required this.storeOwner, this.product, this.initialCategoryId});
 
   @override
   State<AdminProductFormScreen> createState() => _AdminProductFormScreenState();
@@ -34,7 +35,8 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   bool _isVisible = true;
   List<model.Category> _categories = [];
   bool _isSubmitting = false;
-  File? _imageFile;
+  Uint8List? _imageBytes;
+  XFile? _pickedFile;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -46,7 +48,7 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     _unitController = TextEditingController(text: '1 Litre'); // Example default
     _unitTypeController = TextEditingController(text: 'Bouteille'); // Example default
     _descriptionController = TextEditingController(text: widget.product?.description);
-    _selectedCategoryId = widget.product?.categoryId;
+    _selectedCategoryId = widget.product?.categoryId ?? widget.initialCategoryId;
     _isVisible = widget.product?.isRetiredMine == false;
     _fetchCategories();
   }
@@ -71,7 +73,11 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() => _imageFile = File(image.path));
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _pickedFile = image;
+        _imageBytes = bytes;
+      });
     }
   }
 
@@ -94,12 +100,12 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
 
       if (widget.product == null) {
         // Upload image first if picked
-        if (_imageFile != null) {
+        if (_imageBytes != null) {
           final res = await _apiService.uploadProductImageAdmin(
             token: token,
             categorieId: _selectedCategoryId!,
-            bytes: await _imageFile!.readAsBytes(),
-            filename: 'product_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            bytes: _imageBytes!,
+            filename: _pickedFile?.name ?? 'product_${DateTime.now().millisecondsSinceEpoch}.jpg',
             productName: _nameController.text,
           );
           data['image_principale'] = res;
@@ -107,12 +113,12 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
         await _apiService.post('/admin/products', data, token: token);
       } else {
         // Update product
-        if (_imageFile != null) {
+        if (_imageBytes != null) {
           final res = await _apiService.uploadProductImageAdmin(
             token: token,
             categorieId: _selectedCategoryId!,
-            bytes: await _imageFile!.readAsBytes(),
-            filename: 'product_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            bytes: _imageBytes!,
+            filename: _pickedFile?.name ?? 'product_${DateTime.now().millisecondsSinceEpoch}.jpg',
             productName: _nameController.text,
           );
           data['image_principale'] = res;
@@ -213,13 +219,13 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
                 color: const Color(0xFFFDF6F0),
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: const Color(0xFFF5EDDA), style: BorderStyle.solid),
-                image: _imageFile != null 
-                  ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                image: _imageBytes != null 
+                  ? DecorationImage(image: MemoryImage(_imageBytes!), fit: BoxFit.cover)
                   : widget.product?.imagePrincipale != null
                     ? DecorationImage(image: NetworkImage(ApiConstants.formatImageUrl(widget.product!.imagePrincipale)), fit: BoxFit.cover)
                     : null,
               ),
-              child: _imageFile == null && widget.product?.imagePrincipale == null
+              child: _imageBytes == null && widget.product?.imagePrincipale == null
                 ? const Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
