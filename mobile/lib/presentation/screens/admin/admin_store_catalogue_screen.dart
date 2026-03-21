@@ -49,7 +49,8 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final token = auth.token;
       debugPrint('AdminStoreCatalogueScreen DEBUG: FETCH CATEGORIES token=$token, isLoggedIn=${auth.isLoggedIn}');
-      final List<dynamic> data = await _apiService.get('/admin/categories', token: token);
+      final storeId = widget.storeOwner.store?['id'];
+      final List<dynamic> data = await _apiService.get('/admin/categories?storeId=$storeId', token: token);
       if (mounted) {
         setState(() {
           _categories = data.map((json) => model.Category.fromJson(json)).toList();

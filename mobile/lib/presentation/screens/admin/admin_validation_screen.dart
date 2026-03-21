@@ -428,24 +428,41 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.blue.withOpacity(0.1),
-            child: const Icon(Icons.person, color: Colors.blue),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.blue.withOpacity(0.1),
+                child: const Icon(Icons.person, color: Colors.blue),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(email, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  ],
+                ),
+              ),
+              _buildStatusBadge(user),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(email, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-              ],
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Spacer(),
+              _buildActionBtn(
+                user.isActive ? 'Désactiver le compte' : 'Activer le compte', 
+                user.isActive ? const Color(0xFFFFEBEE) : const Color(0xFF2D5016),
+                user.isActive ? Icons.remove_circle_outline : Icons.lock_open,
+                textColor: user.isActive ? Colors.red : Colors.white,
+                onTap: () => _updateStatus(user.id, isActive: !user.isActive),
+              ),
+            ],
           ),
-          _buildStatusBadge(user),
         ],
       ),
     );
@@ -557,8 +574,14 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                 ).then((_) => _loadData());
               }),
               const SizedBox(width: 8),
-              _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E), onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user)));
+              _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E), onTap: () async {
+                final result = await Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user))
+                );
+                if (result == true) {
+                  _loadData();
+                }
               }),
               const SizedBox(width: 8),
               _buildActionBtn(
@@ -664,7 +687,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           children: [
             if (user.docVerf != null && user.docVerf!.isNotEmpty)
               Image.network(
-                user.docVerf!, // Need to handle relative paths if necessary
+                ApiConstants.formatImageUrl(user.docVerf),
                 errorBuilder: (_, __, ___) => const Icon(Icons.description, size: 100, color: Colors.grey),
               )
             else
