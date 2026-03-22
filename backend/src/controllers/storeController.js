@@ -121,6 +121,8 @@ const storeController = {
   getCreneaux: async (req, res) => {
     try {
       const { id: storeId } = req.params;
+      const { date: dateParam } = req.query; // Expecting 'YYYY-MM-DD'
+
       const store = await Store.findByPk(storeId, {
         include: [{ model: Availability, as: 'disponibilites' }]
       });
@@ -130,29 +132,41 @@ const storeController = {
 
       const jours = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
       const creneaux = [];
-      // Un seul jour (aujourd'hui) pour éviter d'afficher deux plages 8h–22h (aujourd'hui + demain)
-      const d = new Date();
+      
+      // Use provided date or today
+      const d = dateParam ? new Date(dateParam) : new Date();
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ message: 'Date invalide' });
+      }
+
       const jourName = jours[d.getDay()];
       const disp = store.disponibilites?.find((av) => av.jour === jourName);
+      
+      const dateStr = d.toISOString().slice(0, 10);
+      const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+
       if (disp) {
         const heureDebut = disp.heure_debut;
         const heureFin = disp.heure_fin;
+        
         const toMinutes = (t) => {
           if (typeof t === 'string') {
-            const [h, m] = t.split(':').map(Number);
-            return (h || 0) * 60 + (m || 0);
-          }
-          if (t && typeof t.getMinutes === 'function') {
-            return t.getHours() * 60 + t.getMinutes();
+            const parts = t.split(':');
+            return parseInt(parts[0], 10) * 60 + (parseInt(parts[1], 10) || 0);
           }
           return 0;
         };
+
         const endMin = toMinutes(heureFin);
-        const dateStr = d.toISOString().slice(0, 10);
-        // Ne proposer que les créneaux à partir de l'heure courante (pas les heures passées)
-        const nowMinutes = d.getHours() * 60 + d.getMinutes();
-        const firstSlotStartMin = Math.ceil(nowMinutes / 60) * 60; // début du prochain créneau (heure pleine)
-        let startMin = Math.max(toMinutes(heureDebut), firstSlotStartMin);
+        let startMin = toMinutes(heureDebut);
+
+        // If today, only show future slots
+        if (isToday) {
+          const now = new Date();
+          const nowMinutes = now.getHours() * 60 + now.getMinutes();
+          const nextFullHour = Math.ceil((nowMinutes + 15) / 60) * 60; // Start at least 15m from now
+          startMin = Math.max(startMin, nextFullHour);
+        }
 
         while (startMin + 60 <= endMin) {
           const h = Math.floor(startMin / 60);

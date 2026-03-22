@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const sequelize = require('../config/db');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const Category = require('../models/Category');
@@ -23,9 +24,27 @@ function sanitizeName(str) {
 
 exports.getStats = async (req, res) => {
   try {
-    const pendingCount = await Store.count({ where: { statut_inscription: 'EN_ATTENTE' } });
-    const activeCount = await User.count({ where: { is_active: true, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
-    const suspendedCount = await User.count({ where: { is_active: false, role: { [Op.in]: ['CLIENT', 'EPICIER'] } } });
+    const { role } = req.query;
+    let userWhere = { role: { [Op.ne]: 'ADMIN' } };
+    let storeWhere = {};
+
+    if (role) {
+      userWhere.role = role;
+      storeWhere['$utilisateur.role$'] = role;
+    }
+
+    const pendingCount = await Store.count({ 
+      where: { ...storeWhere, statut_inscription: 'EN_ATTENTE' },
+      include: role ? [{ model: User, as: 'utilisateur', where: { role } }] : []
+    });
+    
+    const activeCount = await User.count({ 
+      where: { ...userWhere, is_active: true } 
+    });
+    
+    const suspendedCount = await User.count({ 
+      where: { ...userWhere, is_active: false } 
+    });
 
     res.json({
       pending: pendingCount,
@@ -39,10 +58,18 @@ exports.getStats = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    const { role, status } = req.query;
+    const { role, status, search } = req.query;
     let where = { role: { [Op.ne]: 'ADMIN' } };
 
     if (role) where.role = role;
+
+    if (search) {
+      where[Op.or] = [
+        { nom: { [Op.like]: `%${search}%` } },
+        { prenom: { [Op.like]: `%${search}%` } },
+        { '$epicier.nom_boutique$': { [Op.like]: `%${search}%` } }
+      ];
+    }
 
     if (status === 'EN_ATTENTE') {
       where['$epicier.statut_inscription$'] = 'EN_ATTENTE';
@@ -57,8 +84,37 @@ exports.getUsers = async (req, res) => {
       include: [{
         model: Store,
         as: 'epicier',
-        required: false
+        required: false,
+        attributes: {
+          include: [
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM epicier_produits AS ep
+                WHERE ep.epicier_id = epicier.id AND ep.is_active = 1
+              )`),
+              'produits_count'
+            ],
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM commandes AS c
+                WHERE c.epicier_id = epicier.id
+              )`),
+              'commandes_count'
+            ],
+            [
+              sequelize.literal(`(
+                SELECT COUNT(*)
+                FROM epicier_produits AS ep
+                WHERE ep.epicier_id = epicier.id AND ep.rupture_stock = 1 AND ep.is_active = 1
+              )`),
+              'rupture_count'
+            ]
+          ]
+        }
       }],
+      subQuery: false, // Required for Op.or on included model attributes
       order: [['date_creation', 'DESC']]
     });
 
@@ -94,6 +150,57 @@ exports.updateUserStatus = async (req, res) => {
     });
 
     res.json({ message: 'Statut mis à jour avec succès', user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateUserDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nom, prenom, email } = req.body;
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+
+    if (nom) user.nom = nom.trim();
+    if (prenom) user.prenom = prenom.trim();
+    if (email) {
+      const existing = await User.findOne({ where: { email, id: { [Op.ne]: id } } });
+      if (existing) return res.status(400).json({ error: 'Email déjà utilisé' });
+      user.email = email.trim();
+    }
+
+    // Gestion du document de vérification si uploadé
+    if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+      const file = req.files.document_verification[0];
+      const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+      const dir = path.join(__dirname, '../../uploads/documents');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, filename), file.buffer);
+      user.doc_verf = `uploads/documents/${filename}`;
+    }
+
+    await user.save();
+    res.json({ message: 'Utilisateur mis à jour', user });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateStoreDetails = async (req, res) => {
+  try {
+    const { id } = req.params; // storeId
+    const { nom_boutique, telephone, adresse, description } = req.body;
+    const store = await Store.findByPk(id);
+    if (!store) return res.status(404).json({ error: 'Boutique non trouvée' });
+
+    if (nom_boutique) store.nom_boutique = nom_boutique.trim();
+    if (telephone) store.telephone = telephone.trim();
+    if (adresse) store.adresse = adresse.trim();
+    if (description !== undefined) store.description = description?.trim();
+    
+    await store.save();
+    res.json({ message: 'Boutique mise à jour', store });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -167,34 +274,53 @@ exports.registerEpicier = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
+    const { storeId } = req.query;
     const categories = await Category.findAll({
-      order: [['nom', 'ASC']],
-      attributes: ['id', 'nom']
+      where: { is_active: true },
+      order: [
+        ['display_order', 'ASC'],
+        ['nom', 'ASC']
+      ]
     });
     const list = await Promise.all(
       categories.map(async (c) => {
-        const count = await Product.count({ where: { categorie_id: c.id } });
-        const activeCount = await EpicierProduct.count({
+        let productCount;
+        if (storeId) {
+          productCount = await EpicierProduct.count({
+            where: { epicier_id: storeId, is_active: true },
+            include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
+          });
+        } else {
+          productCount = await Product.count({ where: { categorie_id: c.id } });
+        }
+        
+        const storeCount = await EpicierProduct.count({
+          distinct: true,
+          col: 'epicier_id',
           include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
-          where: { is_active: true }
+        });
+        const ruptureCount = await EpicierProduct.count({
+          where: { rupture_stock: true },
+          include: [{ model: Product, as: 'produit', where: { categorie_id: c.id }, attributes: [] }],
         });
         return {
-          id: c.id,
-          nom: c.nom,
-          productCount: count,
-          activeProductCount: activeCount
+          ...c.toJSON(),
+          productCount,
+          storeCount,
+          ruptureCount
         };
       })
     );
     res.json(list);
   } catch (error) {
+    console.error('Error in getCategories admin:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
 exports.createCategory = async (req, res) => {
   try {
-    const { nom } = req.body;
+    const { nom, description, image_url, display_order } = req.body;
     if (!nom || typeof nom !== 'string' || !nom.trim()) {
       return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
     }
@@ -202,8 +328,13 @@ exports.createCategory = async (req, res) => {
     if (existing) {
       return res.status(400).json({ message: 'Une catégorie avec ce nom existe déjà.' });
     }
-    const category = await Category.create({ nom: nom.trim() });
-    res.status(201).json({ id: category.id, nom: category.nom });
+    const category = await Category.create({ 
+      nom: nom.trim(),
+      description: description?.trim(),
+      image_url: image_url?.trim(),
+      display_order: display_order || 0
+    });
+    res.status(201).json(category);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -212,21 +343,25 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom } = req.body;
-    if (!nom || typeof nom !== 'string' || !nom.trim()) {
-      return res.status(400).json({ message: 'Le nom de la catégorie est requis.' });
-    }
+    const { nom, description, image_url, display_order, is_active } = req.body;
     const category = await Category.findByPk(id);
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const existing = await Category.findOne({ where: { nom: nom.trim(), id: { [Op.ne]: id } } });
-    if (existing) {
-      return res.status(400).json({ message: 'Une autre catégorie avec ce nom existe déjà.' });
+    if (nom) {
+      const existing = await Category.findOne({ where: { nom: nom.trim(), id: { [Op.ne]: id } } });
+      if (existing) {
+        return res.status(400).json({ message: 'Une autre catégorie avec ce nom existe déjà.' });
+      }
+      category.nom = nom.trim();
     }
-    category.nom = nom.trim();
+    if (description !== undefined) category.description = description?.trim();
+    if (image_url !== undefined) category.image_url = image_url?.trim();
+    if (display_order !== undefined) category.display_order = display_order;
+    if (is_active !== undefined) category.is_active = is_active;
+    
     await category.save();
-    res.json({ id: category.id, nom: category.nom });
+    res.json(category);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -246,6 +381,8 @@ exports.deleteCategory = async (req, res) => {
         { is_active: false },
         { where: { produit_id: productIds } }
       );
+      category.is_active = false;
+      await category.save();
       return res.json({
         message: `Catégorie désactivée : ${productCount} produit(s) ont été retirés du catalogue pour tous les épiciers.`,
         deactivated: true,
@@ -266,15 +403,28 @@ exports.activateCategory = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
-    const productIds = await Product.findAll({ where: { categorie_id: id }, attributes: ['id'] }).then((rows) => rows.map((r) => r.id));
-    const [updatedCount] = productIds.length
-      ? await EpicierProduct.update({ is_active: true }, { where: { produit_id: productIds } })
-      : [0];
-    res.json({
-      message: `Catégorie réactivée : ${updatedCount} produit(s) remis au catalogue.`,
-      productCount: updatedCount
-    });
+    category.is_active = true;
+    await category.save();
+    res.json({ message: 'Catégorie réactivée.' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.uploadCategoryIcon = async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+    }
+    const dir = path.join(__dirname, '..', '..', 'uploads', 'categories');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const ext = path.extname(req.file.originalname) || '.png';
+    const filename = `cat-${Date.now()}${ext}`;
+    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+    const relativePath = `uploads/categories/${filename}`;
+    res.status(200).json({ image_url: relativePath });
+  } catch (error) {
+    console.error('Error uploadCategoryIcon:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -305,6 +455,7 @@ exports.getCategoryProducts = async (req, res) => {
       return res.status(404).json({ message: 'Catégorie non trouvée.' });
     }
     const linkList = await EpicierProduct.findAll({
+      where: { is_active: true },
       include: [
         { model: Product, as: 'produit', where: { categorie_id: categoryId } },
         { model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] }
@@ -373,6 +524,51 @@ exports.createProduct = async (req, res) => {
       store_name: store.nom_boutique
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getStoreProducts = async (req, res) => {
+  try {
+    const { storeId } = req.params;
+    const { search, categoryId } = req.query;
+
+    let productWhere = {};
+    if (search) {
+      productWhere.nom = { [Op.like]: `%${search}%` };
+    }
+    if (categoryId) {
+      productWhere.categorie_id = categoryId;
+    }
+
+    const epicierProducts = await EpicierProduct.findAll({
+      where: { epicier_id: storeId, is_active: true },
+      include: [{
+        model: Product,
+        as: 'produit',
+        where: productWhere,
+        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }]
+      }],
+      order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']]
+    });
+
+    const products = epicierProducts.map(ep => ({
+      id: ep.produit.id,
+      nom: ep.produit.nom,
+      prix: parseFloat(ep.prix),
+      description: ep.produit.description,
+      categorie_id: ep.produit.categorie_id,
+      categorie_nom: ep.produit.categorie?.nom,
+      image_principale: ep.produit.image_principale,
+      is_active: !!ep.is_active,
+      rupture_stock: !!ep.rupture_stock,
+      stock: 24, // Placeholder for stock
+    }));
+
+    console.log(`Fetched ${products.length} products for storeId: ${storeId}`);
+    res.json(products);
+  } catch (error) {
+    console.error('Error getStoreProducts admin:', error);
     res.status(500).json({ error: error.message });
   }
 };

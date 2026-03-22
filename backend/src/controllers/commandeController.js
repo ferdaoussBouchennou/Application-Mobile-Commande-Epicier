@@ -3,19 +3,9 @@ const { QueryTypes } = require('sequelize');
 const Commande = require('../models/Commande');
 const { sendNotificationToEpicier } = require('../utils/notificationEpicier');
 const DetailCommande = require('../models/DetailCommande');
-const Panier = require('../models/Panier');
-const PanierProduit = require('../models/PanierProduit');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
 const Store = require('../models/Store');
-
-const getOrCreatePanier = async (clientId) => {
-  const [panier] = await Panier.findOrCreate({
-    where: { client_id: clientId },
-    defaults: { date_creation: new Date().toISOString().slice(0, 10) },
-  });
-  return panier;
-};
 
 const commandeController = {
   getMyCommandes: async (req, res) => {
@@ -134,61 +124,48 @@ const commandeController = {
   createFromPanier: async (req, res) => {
     try {
       const clientId = req.user.id;
-      const { epicier_id, date_recuperation } = req.body;
+      const { epicier_id, date_recuperation, items } = req.body; // items: [{ produit_id, quantite }]
 
-      if (!epicier_id || !date_recuperation) {
-        return res.status(400).json({ message: 'epicier_id et date_recuperation requis' });
+      if (!epicier_id || !date_recuperation || !items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: 'Données de commande incomplètes (epicier_id, date_recuperation, items requis)' });
       }
-
-      const panier = await getOrCreatePanier(clientId);
-      const panierItems = await PanierProduit.findAll({
-        where: { panier_id: panier.id },
-        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
-      });
 
       const itemsForEpicier = [];
-      for (const row of panierItems) {
-        const eid = row.epicier_id != null ? row.epicier_id : null;
-        const matchEpicier = eid != null ? Number(eid) === Number(epicier_id) : false;
-        if (!matchEpicier && eid !== null) continue;
+      for (const item of items) {
         const ep = await EpicierProduct.findOne({
-          where: eid != null
-            ? { produit_id: row.produit_id, epicier_id: eid }
-            : { produit_id: row.produit_id, epicier_id },
+          where: { produit_id: item.produit_id, epicier_id },
         });
         if (!ep) continue;
-        if (Number(ep.epicier_id) !== Number(epicier_id)) continue;
-        const prix = parseFloat(ep.prix ?? 0);
-        itemsForEpicier.push({ row, prix });
-      }
-      if (itemsForEpicier.length === 0) {
-        return res.status(400).json({ message: 'Aucun article de cet épicier dans le panier' });
-      }
 
-      let montantTotal = 0;
-      const details = itemsForEpicier.map(({ row, prix }) => {
-        const qty = row.quantite || 0;
+        const prix = parseFloat(ep.prix ?? 0);
+        const qty = item.quantite || 0;
         const totalLigne = Math.round(prix * qty * 100) / 100;
-        montantTotal += totalLigne;
-        return {
-          produit_id: row.produit_id,
+
+        itemsForEpicier.push({
+          produit_id: item.produit_id,
           quantite: qty,
           prix_unitaire: prix,
-          total_ligne: totalLigne,
-        };
-      });
-      montantTotal = Math.round(montantTotal * 100) / 100;
+          total_ligne: totalLigne
+        });
+      }
 
-      const dateRecup = new Date(date_recuperation);
+      if (itemsForEpicier.length === 0) {
+        return res.status(400).json({ message: 'Aucun article valide de cet épicier dans votre commande' });
+      }
+
+      const montantTotal = itemsForEpicier.reduce((sum, item) => sum + item.total_ligne, 0);
+
       const commande = await Commande.create({
         client_id: clientId,
         epicier_id: Number(epicier_id),
-        date_recuperation: dateRecup,
-        montant_total: montantTotal,
+        date_recuperation: new Date(date_recuperation),
+        montant_total: Math.round(montantTotal * 100) / 100,
+        statut: 'reçue',
+        date_commande: new Date()
       });
 
       await DetailCommande.bulkCreate(
-        details.map((d) => ({
+        itemsForEpicier.map((d) => ({
           commande_id: commande.id,
           produit_id: d.produit_id,
           quantite: d.quantite,
@@ -196,12 +173,6 @@ const commandeController = {
           total_ligne: d.total_ligne,
         }))
       );
-
-      for (const { row } of itemsForEpicier) {
-        await PanierProduit.destroy({
-          where: { panier_id: panier.id, produit_id: row.produit_id },
-        });
-      }
 
       sendNotificationToEpicier(
         Number(epicier_id),
@@ -212,10 +183,10 @@ const commandeController = {
       res.status(201).json({
         message: 'Commande créée avec succès',
         commande_id: commande.id,
-        montant_total: montantTotal,
+        montant_total: Math.round(montantTotal * 100) / 100,
       });
     } catch (error) {
-      console.error('Erreur createFromPanier:', error);
+      console.error('Erreur createCommande:', error);
       res.status(500).json({ message: 'Erreur lors de la création de la commande', error: error.message });
     }
   },

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/cart_item.dart';
 import '../data/services/api_service.dart';
 
@@ -6,103 +8,102 @@ class CartProvider with ChangeNotifier {
   final ApiService _api = ApiService();
 
   List<CartItem> _items = [];
-  double _total = 0.0;
   bool _loading = false;
   String? _error;
   int? _pendingTabIndex;
-
+  Map<String, dynamic>? _pendingAction;
 
   List<CartItem> get items => List.unmodifiable(_items);
-  double get total => _total;
+  double get total => _items.fold(0, (sum, i) => sum + i.lineTotal);
   bool get loading => _loading;
   String? get error => _error;
   int? get pendingTabIndex => _pendingTabIndex;
+  Map<String, dynamic>? get pendingAction => _pendingAction;
 
   int get itemCount => _items.fold(0, (sum, i) => sum + i.quantite);
   int get articleCount => _items.length;
 
-  Future<void> fetchCart(String? token) async {
-    if (token == null || token.isEmpty) {
-      _items = [];
-      _total = 0;
-      notifyListeners();
-      return;
-    }
-    _loading = true;
-    _error = null;
-    notifyListeners();
+  CartProvider() {
+    _loadFromPrefs();
+  }
+
+  Future<void> _loadFromPrefs() async {
     try {
-      final res = await _api.get('/panier', token: token);
-      _items = (res['articles'] as List?)
-          ?.map((e) => CartItem.fromJson(Map<String, dynamic>.from(e)))
-          .toList() ?? [];
-      _total = double.tryParse((res['total']?.toString()) ?? '0') ?? 0.0;
-    } catch (e) {
-      _error = e.toString();
-      // Keep previous items on error so we don't show empty after a failed refetch
-      if (_items.isEmpty) {
-        _total = 0;
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('local_cart');
+      if (jsonStr != null) {
+        final List<dynamic> list = json.decode(jsonStr);
+        _items = list.map((e) => CartItem.fromJson(Map<String, dynamic>.from(e))).toList();
+        notifyListeners();
       }
-    } finally {
-      _loading = false;
-      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading cart from prefs: $e');
     }
   }
 
-  Future<void> updateQuantity(String? token, int produitId, int quantite) async {
-    if (token == null) return;
+  Future<void> _saveToPrefs() async {
     try {
-      if (quantite <= 0) {
-        await removeItem(token, produitId);
-        return;
-      }
-      await _api.put('/panier/items/$produitId', {'quantite': quantite}, token: token);
-      final i = _items.indexWhere((e) => e.produitId == produitId);
-      if (i >= 0) {
-        _items[i].quantite = quantite;
-        _recomputeTotal();
-        notifyListeners();
-      } else {
-        await fetchCart(token);
-      }
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = json.encode(_items.map((e) => e.toJson()).toList());
+      await prefs.setString('local_cart', jsonStr);
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Error saving cart to prefs: $e');
+    }
+  }
+
+  // Still called by UI to "refresh" from local or trigger things
+  Future<void> fetchCart(String? token) async {
+    // Already loaded in constructor, but ensure UI gets notified
+    notifyListeners();
+  }
+
+  Future<void> updateQuantity(String? token, int produitId, int quantite) async {
+    if (quantite <= 0) {
+      await removeItem(token, produitId);
+      return;
+    }
+    final idx = _items.indexWhere((e) => e.produitId == produitId);
+    if (idx >= 0) {
+      _items[idx].quantite = quantite;
+      await _saveToPrefs();
       notifyListeners();
     }
   }
 
   Future<void> removeItem(String? token, int produitId) async {
-    if (token == null) return;
-    try {
-      await _api.delete('/panier/items/$produitId', token: token);
-      _items.removeWhere((e) => e.produitId == produitId);
-      _recomputeTotal();
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
+    _items.removeWhere((e) => e.produitId == produitId);
+    await _saveToPrefs();
+    notifyListeners();
   }
 
-  Future<void> addToCart(String? token, int produitId, {int quantite = 1, int? epicierId}) async {
-    if (token == null) return;
-    try {
-      final body = <String, dynamic>{'produit_id': produitId, 'quantite': quantite};
-      if (epicierId != null) body['epicier_id'] = epicierId;
-      await _api.post('/panier/items', body, token: token);
-      await fetchCart(token);
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
+  Future<void> addToCart({
+    required int produitId,
+    required String nom,
+    required double prix,
+    String? imagePrincipale,
+    int? epicierId,
+    int quantite = 1,
+  }) async {
+    final idx = _items.indexWhere((e) => e.produitId == produitId);
+    if (idx >= 0) {
+      _items[idx].quantite += quantite;
+    } else {
+      _items.add(CartItem(
+        produitId: produitId,
+        nom: nom,
+        prix: prix,
+        imagePrincipale: imagePrincipale,
+        epicierId: epicierId,
+        quantite: quantite,
+      ));
     }
+    await _saveToPrefs();
+    notifyListeners();
   }
 
   void _recomputeTotal() {
-    double sum = 0;
-    for (final i in _items) {
-      sum += i.prix * i.quantite;
-    }
-    _total = sum;
+    // Logic moved to 'total' getter
+    notifyListeners();
   }
 
   void clearError() {
@@ -110,10 +111,11 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fetch available pickup slots for a store. Returns { creneaux: [{ label, value }], nom_boutique }.
-  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId) async {
+  Future<Map<String, dynamic>?> fetchCreneaux(String? token, int storeId, {String? date}) async {
     try {
-      final res = await _api.get('/stores/$storeId/creneaux', token: token);
+      String url = '/stores/$storeId/creneaux';
+      if (date != null) url += '?date=$date';
+      final res = await _api.get(url, token: token);
       return Map<String, dynamic>.from(res as Map);
     } catch (e) {
       _error = e.toString();
@@ -122,15 +124,39 @@ class CartProvider with ChangeNotifier {
     }
   }
 
-  /// Create order from cart for the given epicier and pickup datetime. Returns success message or throws.
   Future<void> confirmOrder(String? token, int epicierId, String dateRecuperation) async {
     if (token == null) throw Exception('Non connecté');
+    
+    // Filter items for this epicier (some might have epicierId null if they were added generically, though not typical now)
+    final grocerItems = _items.where((i) => i.epicierId == epicierId || i.epicierId == null).toList();
+    
+    if (grocerItems.isEmpty) {
+      throw Exception('Aucun article de cet épicier dans votre panier');
+    }
+
     await _api.post(
       '/commandes',
-      {'epicier_id': epicierId, 'date_recuperation': dateRecuperation},
+      {
+        'epicier_id': epicierId,
+        'date_recuperation': dateRecuperation,
+        'items': grocerItems.map((i) => {
+          'produit_id': i.produitId,
+          'quantite': i.quantite,
+        }).toList(),
+      },
       token: token,
     );
-    await fetchCart(token);
+
+    // Remove these items from local cart
+    _items.removeWhere((i) => i.epicierId == epicierId || i.epicierId == null);
+    await _saveToPrefs();
+    notifyListeners();
+  }
+
+  void clearCart() {
+    _items = [];
+    _saveToPrefs();
+    notifyListeners();
   }
 
   void setPendingTabIndex(int index) {
@@ -140,6 +166,16 @@ class CartProvider with ChangeNotifier {
 
   void clearPendingTabIndex() {
     _pendingTabIndex = null;
+    notifyListeners();
+  }
+
+  void setPendingAction(Map<String, dynamic>? action) {
+    _pendingAction = action;
+    notifyListeners();
+  }
+
+  void clearPendingAction() {
+    _pendingAction = null;
     notifyListeners();
   }
 }

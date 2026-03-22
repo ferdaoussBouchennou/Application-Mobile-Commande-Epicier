@@ -5,10 +5,14 @@ import '../store_list_screen.dart';
 import '../cart_screen.dart';
 import '../client_orders_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../profile/profile_screen.dart';
 import 'home_map_tab.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../screens/auth/welcome_screen.dart';
+
+import '../../../../providers/order_provider.dart';
+import '../../../../providers/notification_provider.dart';
 
 class MapScreen extends StatefulWidget {
   static const String routeName = '/client';
@@ -21,12 +25,27 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   int _currentIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        final token = context.read<AuthProvider>().token;
+        if (token != null && token.isNotEmpty) {
+          context.read<NotificationProvider>().fetchNotifications(token);
+          context.read<OrderProvider>().startPolling(token);
+        }
+      }
+    });
+  }
+
   static const List<String> _titles = [
     'MyHanut',
     '', // StoreListScreen manages its own AppBar
     'Mon Panier',
     'Mes Commandes',
     'Notifications',
+    'Mon Profil',
   ];
 
   List<Widget> _buildPages() {
@@ -36,11 +55,17 @@ class _MapScreenState extends State<MapScreen> {
       // Page 1 : Épiciers (gère son propre AppBar)
       const StoreListScreen(),
       // Page 2 : Panier
-      CartScreen(onOrderConfirmed: () => setState(() => _currentIndex = 3)),
+      CartScreen(onOrderConfirmed: () {
+        final token = context.read<AuthProvider>().token;
+        context.read<OrderProvider>().fetchOrders(token);
+        setState(() => _currentIndex = 3);
+      }),
       // Page 3 : Commandes
       const ClientOrdersScreen(),
       // Page 4 : Notifications
       const NotificationsScreen(),
+      // Page 5 : Profil
+      const ProfileScreen(),
     ];
   }
 
@@ -48,7 +73,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final cartProvider = context.watch<CartProvider>();
     final pending = cartProvider.pendingTabIndex;
-    if (pending != null && pending >= 0 && pending < 5) {
+    if (pending != null && pending >= 0 && pending < 6) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         cartProvider.clearPendingTabIndex();
@@ -159,6 +184,7 @@ class _MapScreenState extends State<MapScreen> {
     );
 
     if (confirmed == true && mounted) {
+      context.read<OrderProvider>().stopPolling();
       context.read<AuthProvider>().logout();
       Navigator.pushAndRemoveUntil(
         context,

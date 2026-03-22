@@ -292,12 +292,12 @@ class _AdminCategoryProductsScreenState
         } else if (index == 2) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
+            MaterialPageRoute(builder: (_) => AdminOrdersScreen()),
           );
         } else if (index == 3) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
+            MaterialPageRoute(builder: (_) => AdminCategoriesScreen()),
           );
         }
       },

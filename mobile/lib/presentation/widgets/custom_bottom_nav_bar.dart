@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/notification_provider.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -12,6 +16,75 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
+    final cartItemCount = context.watch<CartProvider>().itemCount;
+    final unreadNotifCount = context.watch<NotificationProvider>().unreadCount;
+
+    // Build the list of items
+    final List<BottomNavigationBarItem> allItems = [
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home),
+        label: 'Accueil',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.storefront_outlined),
+        activeIcon: Icon(Icons.storefront),
+        label: 'Épiciers',
+      ),
+    ];
+
+    if (isLoggedIn) {
+      allItems.add(
+        BottomNavigationBarItem(
+          icon: Badge(
+            label: Text('$cartItemCount'),
+            isLabelVisible: cartItemCount > 0,
+            backgroundColor: const Color(0xFF2D5016),
+            child: const Icon(Icons.shopping_cart_outlined),
+          ),
+          activeIcon: Badge(
+            label: Text('$cartItemCount'),
+            isLabelVisible: cartItemCount > 0,
+            backgroundColor: const Color(0xFF2D5016),
+            child: const Icon(Icons.shopping_cart),
+          ),
+          label: 'Panier',
+        ),
+      );
+      allItems.add(
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.receipt_long_outlined),
+          activeIcon: Icon(Icons.receipt_long),
+          label: 'Commandes',
+        ),
+      );
+      allItems.add(
+        BottomNavigationBarItem(
+          icon: Badge(
+            label: Text('$unreadNotifCount'),
+            isLabelVisible: unreadNotifCount > 0,
+            backgroundColor: Colors.redAccent,
+            child: const Icon(Icons.notifications_none_outlined),
+          ),
+          activeIcon: Badge(
+            label: Text('$unreadNotifCount'),
+            isLabelVisible: unreadNotifCount > 0,
+            backgroundColor: Colors.redAccent,
+            child: const Icon(Icons.notifications),
+          ),
+          label: 'Notifs',
+        ),
+      );
+      allItems.add(
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
+          label: 'Profil',
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -24,7 +97,7 @@ class CustomBottomNavBar extends StatelessWidget {
         ],
       ),
       child: BottomNavigationBar(
-        currentIndex: currentIndex,
+        currentIndex: currentIndex < allItems.length ? currentIndex : 0,
         onTap: onTap,
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
@@ -33,33 +106,7 @@ class CustomBottomNavBar extends StatelessWidget {
         selectedFontSize: 12,
         unselectedFontSize: 12,
         elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.storefront_outlined),
-            activeIcon: Icon(Icons.storefront),
-            label: 'Épiciers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
-            activeIcon: Icon(Icons.shopping_cart),
-            label: 'Panier',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long),
-            label: 'Commandes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_none_outlined),
-            activeIcon: Icon(Icons.notifications),
-            label: 'Notifs',
-          ),
-        ],
+        items: allItems,
       ),
     );
   }
