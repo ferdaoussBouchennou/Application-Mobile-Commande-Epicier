@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const grocerController = require('../controllers/grocerController');
 const notificationEpicierController = require('../controllers/notificationEpicierController');
+const reclamationController = require('../controllers/reclamationController');
 const { authMiddleware, requireEpicier } = require('../middlewares/auth');
 const uploadProductImage = require('../middlewares/uploadProductImage');
 
@@ -46,6 +47,7 @@ router.get('/categories/:categoryId/inactive-products', authMiddleware, requireE
 router.post('/categories/:categoryId/restore', authMiddleware, requireEpicier, grocerController.restoreCategoryWithProducts);
 router.delete('/categories/:categoryId', authMiddleware, requireEpicier, grocerController.removeCategoryFromCatalogue);
 
+router.get('/reclamations/:id', authMiddleware, requireEpicier, reclamationController.getStoreReclamationById);
 router.get('/notifications', authMiddleware, requireEpicier, notificationEpicierController.getNotifications);
 router.get('/notifications/unread-count', authMiddleware, requireEpicier, notificationEpicierController.getUnreadCount);
 router.patch('/notifications/read-all', authMiddleware, requireEpicier, notificationEpicierController.markAllAsRead);
