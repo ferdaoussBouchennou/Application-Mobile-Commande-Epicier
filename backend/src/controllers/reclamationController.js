@@ -3,6 +3,7 @@ const fs = require("fs");
 const Reclamation = require("../models/Reclamation");
 const Order = require("../models/Order");
 const Commande = require("../models/Commande");
+const User = require("../models/User");
 const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
 
 /** Sanitise une chaîne pour en faire un nom de fichier. */
@@ -17,19 +18,21 @@ exports.createReclamation = async (req, res) => {
     const client_id = req.user.id;
     let photoPath = null;
 
-    // Optional: Check if order belongs to client and is livrée
+    let order = null;
     if (commande_id) {
-      const order = await Commande.findOne({
+      order = await Commande.findOne({
         where: { id: commande_id, client_id },
+        include: [{ model: User, as: "client", attributes: ["nom", "prenom"] }],
       });
       if (!order)
         return res
           .status(403)
           .json({ message: "Cette commande ne vous appartient pas." });
       if (order.statut !== "livrée")
-        return res
-          .status(400)
-          .json({ message: "Les réclamations sont réservées aux commandes récupérées (livrées)." });
+        return res.status(400).json({
+          message:
+            "Les réclamations sont réservées aux commandes récupérées (livrées).",
+        });
     }
 
     // Handle File Upload if present
@@ -53,6 +56,26 @@ exports.createReclamation = async (req, res) => {
       photo: photoPath,
       statut: "Ouverte",
     });
+
+    if (commande_id && order) {
+      const clientName = order.client
+        ? `${order.client.prenom || ""} ${order.client.nom || ""}`.trim() ||
+          null
+        : null;
+      const msg = [
+        `Nouvelle réclamation #${reclamation.id}`,
+        `Commande #${commande_id}`,
+        clientName ? `Client: ${clientName}` : null,
+        `Motif: ${(motif || "").slice(0, 80)}`,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      sendNotificationToEpicier(
+        order.epicier_id,
+        msg,
+        "Nouvelle réclamation",
+      ).catch(() => {});
+    }
 
     res.status(201).json(reclamation);
   } catch (error) {
@@ -86,10 +109,49 @@ exports.getStoreReclamations = async (req, res) => {
           where: { epicier_id: storeId },
           required: true,
         },
+        {
+          model: User,
+          as: "client",
+          attributes: ["id", "nom", "prenom", "email"],
+        },
       ],
       order: [["date_creation", "DESC"]],
     });
     res.json(reclamations);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getStoreReclamationById = async (req, res) => {
+  try {
+    const storeId = req.user.storeId;
+    if (!storeId) return res.status(403).json({ message: "Store ID manquant" });
+
+    const { id } = req.params;
+    const reclamation = await Reclamation.findByPk(id, {
+      include: [
+        {
+          model: Order,
+          as: "commande",
+          where: { epicier_id: storeId },
+          required: true,
+        },
+        {
+          model: User,
+          as: "client",
+          attributes: ["id", "nom", "prenom", "email"],
+        },
+      ],
+    });
+    if (!reclamation)
+      return res.status(404).json({ message: "Réclamation non trouvée" });
+
+    const rec = reclamation.toJSON();
+    rec.client_nom = rec.client
+      ? `${rec.client.prenom || ""} ${rec.client.nom || ""}`.trim()
+      : null;
+    res.json(rec);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -103,6 +165,11 @@ exports.updateReclamation = async (req, res) => {
     const rec = await Reclamation.findByPk(id);
     if (!rec)
       return res.status(404).json({ message: "Réclamation non trouvée" });
+
+    const closedStatuses = ["Résolu", "Résolue", "Remboursé"];
+    if (reponse_epicier !== undefined && closedStatuses.includes(rec.statut)) {
+      return res.status(400).json({ message: "Réclamation déjà résolue" });
+    }
 
     if (statut) rec.statut = statut;
     if (reponse_epicier !== undefined) rec.reponse_epicier = reponse_epicier;
@@ -128,14 +195,16 @@ exports.create = async (req, res) => {
     }
     const commande = await Commande.findOne({
       where: { id, client_id: clientId },
+      include: [{ model: User, as: "client", attributes: ["nom", "prenom"] }],
     });
     if (!commande) {
       return res.status(404).json({ message: "Commande introuvable" });
     }
     if (commande.statut !== "livrée") {
-      return res
-        .status(400)
-        .json({ message: "Les réclamations sont réservées aux commandes récupérées (livrées)." });
+      return res.status(400).json({
+        message:
+          "Les réclamations sont réservées aux commandes récupérées (livrées).",
+      });
     }
     const existing = await Reclamation.findOne({
       where: { commande_id: id, client_id: clientId },
@@ -153,9 +222,21 @@ exports.create = async (req, res) => {
       description: desc,
       statut: "Ouverte",
     });
+    const clientName = commande.client
+      ? `${(commande.client.prenom || "").trim()} ${(commande.client.nom || "").trim()}`.trim() ||
+        null
+      : null;
+    const msg = [
+      `Nouvelle réclamation #${reclamation.id}`,
+      `Commande #${id}`,
+      clientName ? `Client: ${clientName}` : null,
+      `Motif: ${description.trim().slice(0, 80)}${description.trim().length > 80 ? "..." : ""}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
     sendNotificationToEpicier(
       commande.epicier_id,
-      `Nouvelle réclamation pour la commande #${id} : "${description.trim().slice(0, 100)}${description.trim().length > 100 ? "..." : ""}"`,
+      msg,
       "Nouvelle réclamation",
     ).catch(() => {});
     res.status(201).json({
@@ -164,11 +245,9 @@ exports.create = async (req, res) => {
     });
   } catch (error) {
     console.error("Erreur create reclamation:", error);
-    res
-      .status(500)
-      .json({
-        message: "Erreur lors de l'enregistrement",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Erreur lors de l'enregistrement",
+      error: error.message,
+    });
   }
 };
