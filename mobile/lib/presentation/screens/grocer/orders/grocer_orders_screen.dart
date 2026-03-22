@@ -167,18 +167,9 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
         backgroundColor: GrocerTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.receipt_long_outlined, size: 22),
-            const SizedBox(width: 8),
-            const Text(
-              'Mes Commandes',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          ],
-        ),
-        centerTitle: true,
+        automaticallyImplyLeading: false,
+        toolbarHeight: 48,
+        title: const SizedBox.shrink(),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -194,18 +185,120 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: _statuts.map((statut) => _OrdersList(
-          token: token,
-          statut: statut,
-          fetchOrders: () => _fetchOrders(token, statut),
-          fetchDetail: (id) => _fetchOrderDetail(token, id),
-          acceptOrder: (id) => _acceptOrder(token, id),
-          refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
-          updateStatut: (id, s) => _updateStatut(token, id, s),
-          markRupture: (id, detailId) => _markRupture(token, id, detailId),
-          onAction: _onOrderAction,
-        )).toList(),
+        children: [
+          _OrdersList(
+            token: token,
+            statut: 'reçue',
+            fetchOrders: () => _fetchOrders(token, 'reçue'),
+            fetchDetail: (id) => _fetchOrderDetail(token, id),
+            acceptOrder: (id) => _acceptOrder(token, id),
+            refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+            updateStatut: (id, s) => _updateStatut(token, id, s),
+            markRupture: (id, detailId) => _markRupture(token, id, detailId),
+            onAction: _onOrderAction,
+          ),
+          _OrdersList(
+            token: token,
+            statut: 'prête',
+            fetchOrders: () => _fetchOrders(token, 'prête'),
+            fetchDetail: (id) => _fetchOrderDetail(token, id),
+            acceptOrder: (id) => _acceptOrder(token, id),
+            refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+            updateStatut: (id, s) => _updateStatut(token, id, s),
+            markRupture: (id, detailId) => _markRupture(token, id, detailId),
+            onAction: _onOrderAction,
+          ),
+          _HistoriqueWithFilter(
+            token: token,
+            fetchOrders: (statut) => _fetchOrders(token, statut),
+            fetchDetail: (id) => _fetchOrderDetail(token, id),
+            acceptOrder: (id) => _acceptOrder(token, id),
+            refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+            updateStatut: (id, s) => _updateStatut(token, id, s),
+            markRupture: (id, detailId) => _markRupture(token, id, detailId),
+            onAction: _onOrderAction,
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _HistoriqueWithFilter extends StatefulWidget {
+  final String? token;
+  final Future<List<GrocerOrder>> Function(String statut) fetchOrders;
+  final Future<GrocerOrderDetail?> Function(int) fetchDetail;
+  final Future<void> Function(int orderId) acceptOrder;
+  final Future<void> Function(int, String) refuseOrder;
+  final Future<void> Function(int, String) updateStatut;
+  final Future<void> Function(int, int) markRupture;
+  final VoidCallback onAction;
+
+  const _HistoriqueWithFilter({
+    required this.token,
+    required this.fetchOrders,
+    required this.fetchDetail,
+    required this.acceptOrder,
+    required this.refuseOrder,
+    required this.updateStatut,
+    required this.markRupture,
+    required this.onAction,
+  });
+
+  @override
+  State<_HistoriqueWithFilter> createState() => _HistoriqueWithFilterState();
+}
+
+class _HistoriqueWithFilterState extends State<_HistoriqueWithFilter> {
+  int _filterIndex = 0; // 0=tous, 1=refusee, 2=recuperer
+  static const List<String> _filterLabels = ['Tous', 'Refusée', 'Récupérées'];
+  static const List<String> _filterStatuts = ['historique', 'refusee', 'livrée'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            children: List.generate(_filterLabels.length, (i) {
+              final selected = _filterIndex == i;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(_filterLabels[i]),
+                  selected: selected,
+                  onSelected: (_) => setState(() {
+                    _filterIndex = i;
+                  }),
+                  backgroundColor: Colors.white,
+                  selectedColor: GrocerTheme.primary.withOpacity(0.2),
+                  checkmarkColor: GrocerTheme.primary,
+                  labelStyle: TextStyle(
+                    color: selected ? GrocerTheme.primary : GrocerTheme.textMuted,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        Expanded(
+          child: _OrdersList(
+            key: ValueKey(_filterStatuts[_filterIndex]),
+            token: widget.token,
+            statut: _filterStatuts[_filterIndex],
+            fetchOrders: () => widget.fetchOrders(_filterStatuts[_filterIndex]),
+            fetchDetail: widget.fetchDetail,
+            acceptOrder: widget.acceptOrder,
+            refuseOrder: widget.refuseOrder,
+            updateStatut: widget.updateStatut,
+            markRupture: widget.markRupture,
+            onAction: widget.onAction,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -222,6 +315,7 @@ class _OrdersList extends StatefulWidget {
   final VoidCallback onAction;
 
   const _OrdersList({
+    super.key,
     required this.token,
     required this.statut,
     required this.fetchOrders,
@@ -779,7 +873,7 @@ class _TicketSheetState extends State<_TicketSheet> {
                 ),
               ),
             ],
-            if (_hasRupture) ...[
+            if (_hasRupture && _detail.statut == 'reçue') ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
