@@ -85,8 +85,8 @@ async function _sendNotificationToClient(clientId, commandeId, action, message) 
       await sendNotification(details[0].fcm_token, 'Mise à jour commande', msg);
     }
     await sequelize.query(
-      'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, CURDATE(), 0)',
-      { replacements: { client_id: clientId, message: msg }, type: QueryTypes.INSERT }
+      'INSERT INTO notifications (utilisateur_id, message, date_envoi, lue) VALUES (:utilisateur_id, :message, NOW(), 0)',
+      { replacements: { utilisateur_id: clientId, message: msg }, type: QueryTypes.INSERT }
     );
   } catch (e) {
     console.error('Notification error:', e);
@@ -963,9 +963,13 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       const { id } = req.params;
-      const { message } = req.body || {};
+      const message = req.body?.message;
       if (!epicierId) {
         return res.status(403).json({ message: 'Store ID manquant' });
+      }
+      const motif = typeof message === 'string' ? message.trim() : '';
+      if (!motif) {
+        return res.status(400).json({ message: 'Le motif de refus est obligatoire.' });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
@@ -973,11 +977,11 @@ const grocerController = {
       if (!commande) {
         return res.status(404).json({ message: 'Commande introuvable' });
       }
-      if (commande.statut !== 'reçue') {
-        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être refusées.' });
+      if (commande.statut !== 'reçue' && commande.statut !== 'prête') {
+        return res.status(400).json({ message: 'Seules les commandes reçues ou prêtes peuvent être refusées.' });
       }
       commande.statut = 'refusee';
-      commande.message_refus = (message && String(message).trim()) || 'Commande refusée par l\'épicier.';
+      commande.message_refus = motif;
       commande.lu_epicier = 1;
       await commande.save();
       _sendNotificationToClient(commande.client_id, commande.id, 'refusée', commande.message_refus);
@@ -1038,9 +1042,9 @@ const grocerController = {
 
           // 1. Save to Database
           await sequelize.query(
-            'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, NOW(), 0)',
+            'INSERT INTO notifications (utilisateur_id, message, date_envoi, lue) VALUES (:utilisateur_id, :message, NOW(), 0)',
             {
-              replacements: { client_id: commande.client_id, message },
+              replacements: { utilisateur_id: commande.client_id, message },
               type: QueryTypes.INSERT
             }
           );

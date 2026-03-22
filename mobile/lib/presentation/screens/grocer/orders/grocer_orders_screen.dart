@@ -11,8 +11,17 @@ import '../grocer_theme.dart';
 /// Badge nouvelles commandes, acceptation/refus, bon de préparation, confirmation récupération.
 class GrocerOrdersScreen extends StatefulWidget {
   final void Function(int)? onNewOrdersCount;
+  final int? orderIdToOpen;
+  final VoidCallback? onOpenOrderHandled;
+  final void Function(VoidCallback fn)? onRegisterRefresh;
 
-  const GrocerOrdersScreen({super.key, this.onNewOrdersCount});
+  const GrocerOrdersScreen({
+    super.key,
+    this.onNewOrdersCount,
+    this.orderIdToOpen,
+    this.onOpenOrderHandled,
+    this.onRegisterRefresh,
+  });
 
   @override
   State<GrocerOrdersScreen> createState() => _GrocerOrdersScreenState();
@@ -37,6 +46,39 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     _tabController = TabController(length: 3, initialIndex: 0, vsync: this);
     _fetchNewCount();
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchNewCount());
+    widget.onRegisterRefresh?.call(_fetchNewCount);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openTicketIfNeeded());
+  }
+
+  @override
+  void didUpdateWidget(covariant GrocerOrdersScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.orderIdToOpen != oldWidget.orderIdToOpen && widget.orderIdToOpen != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openTicketIfNeeded());
+    }
+  }
+
+  Future<void> _openTicketIfNeeded() async {
+    final orderId = widget.orderIdToOpen;
+    if (orderId == null || !mounted) return;
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    widget.onOpenOrderHandled?.call();
+    final detail = await _fetchOrderDetail(token, orderId);
+    if (!mounted || detail == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _TicketSheet(
+        orderId: orderId,
+        initialDetail: detail,
+        fetchDetail: (id) => _fetchOrderDetail(token, id),
+        markRupture: (id, detailId) => _markRupture(token, id, detailId),
+        onAction: _onOrderAction,
+      ),
+    );
+    _onOrderAction();
   }
 
   @override
