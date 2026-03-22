@@ -83,10 +83,8 @@ const seedProducts = async () => {
       { nom: 'Kamoun (Cumin) 50g', prix: 10.00, description: 'Cumin moulu pur.', categorie: 'Épices', image: 'uploads/epices/cumin.jpg' }
     ];
 
-    await EpicierProduct.destroy({ where: {} });
-    await Product.destroy({ where: {} });
-    console.log('Anciens produits et liens épicier supprimés.');
-
+    // Do not destroy existing products to avoid foreign key errors. 
+    // findOrCreate will simply ignore duplicates.
     for (const pData of productsData) {
       const category = categories.find(c => c.nom === pData.categorie);
       const [product] = await Product.findOrCreate({

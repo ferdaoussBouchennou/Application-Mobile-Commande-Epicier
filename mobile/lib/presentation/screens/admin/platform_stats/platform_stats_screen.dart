@@ -301,7 +301,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
           barRods: [
             BarChartRodData(
               toY: total,
-              width: 16,
+              width: 26,
               borderRadius: BorderRadius.circular(4),
               rodStackItems: [
                 BarChartRodStackItem(0, delivered, const Color(0xFF2D5016)),
@@ -632,55 +632,75 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     }
 
     return Container(
-      height: 250,
-      padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 5),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: (days.length / 4).clamp(1, 30).toDouble(),
-                getTitlesWidget: (value, meta) {
-                  int index = value.toInt();
-                  if (index < 0 || index >= days.length) return const Text('');
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(_getFrenchDay(days[index], short: true), style: const TextStyle(fontSize: 9, color: Colors.grey)),
-                  );
-                },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Legend
+          Row(
+            children: [
+              Container(width: 12, height: 12, decoration: BoxDecoration(color: const Color(0xFF2D5016), shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+              const Text('Clients', style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500)),
+              const SizedBox(width: 16),
+              Container(width: 12, height: 12, decoration: BoxDecoration(color: const Color(0xFFC06C1E), shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+              const Text('Épiciers', style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 220,
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 5),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: (days.length / 4).clamp(1, 30).toDouble(),
+                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
+                        if (index < 0 || index >= days.length) return const Text('');
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(_getFrenchDay(days[index], short: true), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10)))),
+                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: clientSpots,
+                    isCurved: true,
+                    color: const Color(0xFF2D5016),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(show: true),
+                    belowBarData: BarAreaData(show: true, color: const Color(0xFF2D5016).withOpacity(0.05)),
+                  ),
+                  LineChartBarData(
+                    spots: epicierSpots,
+                    isCurved: true,
+                    color: const Color(0xFFC06C1E),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(show: true),
+                    belowBarData: BarAreaData(show: true, color: const Color(0xFFC06C1E).withOpacity(0.05)),
+                  ),
+                ],
               ),
             ),
-            leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: const TextStyle(fontSize: 10)))),
-            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
           ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: clientSpots,
-              isCurved: true,
-              color: const Color(0xFF2D5016),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: const Color(0xFF2D5016).withOpacity(0.05)),
-            ),
-            LineChartBarData(
-              spots: epicierSpots,
-              isCurved: true,
-              color: const Color(0xFFC06C1E),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: FlDotData(show: true),
-              belowBarData: BarAreaData(show: true, color: const Color(0xFFC06C1E).withOpacity(0.05)),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
