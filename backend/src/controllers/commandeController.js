@@ -13,7 +13,7 @@ const commandeController = {
       const clientId = req.user.id;
       const { statut: statutFilter, epicier_id: epicierFilter } = req.query;
       const where = { client_id: clientId };
-      if (statutFilter && ['reçue', 'prête', 'livrée'].includes(statutFilter)) {
+      if (statutFilter && ['reçue', 'prête', 'livrée', 'refusee'].includes(statutFilter)) {
         where.statut = statutFilter;
       }
       if (epicierFilter) {
@@ -94,12 +94,17 @@ const commandeController = {
         const m = d.getMinutes();
         creneau = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} – ${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       }
+      const hasRupture = details.some((d) => !!d.rupture);
+      const hasPendingAcceptance = details.some((d) => !!d.en_attente_acceptation_client);
       const lignes = details.map((d) => ({
+        detail_id: d.id,
         produit_id: d.produit_id,
         nom: d.Product?.nom ?? '',
         quantite: d.quantite,
         prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
         total_ligne: parseFloat(d.total_ligne ?? 0),
+        rupture: !!d.rupture,
+        en_attente_acceptation_client: !!d.en_attente_acceptation_client,
       }));
       res.status(200).json({
         id: commande.id,
@@ -112,7 +117,11 @@ const commandeController = {
         creneau,
         montant_total: parseFloat(commande.montant_total ?? 0),
         statut: commande.statut,
+        message_refus: commande.message_refus ?? null,
         article_count: lignes.reduce((s, l) => s + l.quantite, 0),
+        client_accepte_modification: !!commande.client_accepte_modification,
+        has_rupture: hasRupture,
+        has_pending_acceptance: hasPendingAcceptance,
         lignes,
       });
     } catch (error) {
@@ -223,6 +232,107 @@ const commandeController = {
     } catch (error) {
       console.error('Erreur accepterProduitRemisEnStock:', error);
       res.status(500).json({ message: 'Erreur lors de l\'acceptation du produit', error: error.message });
+    }
+  },
+
+  accepterModifications: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const { id } = req.params;
+      const commande = await Commande.findOne({
+        where: { id, client_id: clientId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      if (commande.statut !== 'reçue' && commande.statut !== 'prête') {
+        return res.status(400).json({ message: 'Cette commande n\'est plus modifiable.' });
+      }
+      const hasRupture = await DetailCommande.findOne({
+        where: { commande_id: id, rupture: 1 },
+      });
+      if (!hasRupture) {
+        return res.status(400).json({ message: 'Aucune rupture à accepter.' });
+      }
+      commande.client_accepte_modification = 1;
+      await commande.save();
+      sendNotificationToEpicier(
+        commande.epicier_id,
+        `Le client a accepté les modifications (ruptures) de la commande #${id}. Vous pouvez accepter la commande.`,
+        'Client a accepté'
+      ).catch(() => {});
+      res.status(200).json({ message: 'Modifications acceptées.', client_accepte_modification: true });
+    } catch (error) {
+      console.error('Erreur accepterModifications:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'acceptation', error: error.message });
+    }
+  },
+
+  annulerCommande: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const { id } = req.params;
+      const { message: motif } = req.body || {};
+      const commande = await Commande.findOne({
+        where: { id, client_id: clientId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      if (commande.statut !== 'reçue' && commande.statut !== 'prête') {
+        return res.status(400).json({ message: 'Seules les commandes reçues ou prêtes peuvent être annulées.' });
+      }
+      commande.statut = 'refusee';
+      if (motif && typeof motif === 'string' && motif.trim()) {
+        commande.message_refus = motif.trim();
+      }
+      await commande.save();
+      let notifMsg = `Le client a annulé la commande #${id}.`;
+      if (commande.message_refus) {
+        notifMsg += ` Motif : "${String(commande.message_refus).slice(0, 80)}${commande.message_refus.length > 80 ? '...' : ''}"`;
+      }
+      sendNotificationToEpicier(commande.epicier_id, notifMsg, 'Commande annulée').catch(() => {});
+      res.status(200).json({ message: 'Commande annulée.', statut: commande.statut });
+    } catch (error) {
+      console.error('Erreur annulerCommande:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'annulation', error: error.message });
+    }
+  },
+
+  refuserModifications: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const { id } = req.params;
+      const { message: messageRefus } = req.body || {};
+      const commande = await Commande.findOne({
+        where: { id, client_id: clientId },
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      if (commande.statut !== 'reçue' && commande.statut !== 'prête') {
+        return res.status(400).json({ message: 'Cette commande n\'est plus modifiable.' });
+      }
+      const hasRupture = await DetailCommande.findOne({
+        where: { commande_id: id, rupture: 1 },
+      });
+      if (!hasRupture) {
+        return res.status(400).json({ message: 'Aucune rupture. Utilisez une réclamation si besoin.' });
+      }
+      commande.statut = 'refusee';
+      if (messageRefus && typeof messageRefus === 'string' && messageRefus.trim()) {
+        commande.message_refus = messageRefus.trim();
+      }
+      await commande.save();
+      let notifMsg = `Le client a refusé la commande #${id} suite aux ruptures de stock.`;
+      if (commande.message_refus) {
+        notifMsg += ` Motif : "${String(commande.message_refus).slice(0, 80)}${commande.message_refus.length > 80 ? '...' : ''}"`;
+      }
+      sendNotificationToEpicier(commande.epicier_id, notifMsg, 'Commande refusée').catch(() => {});
+      res.status(200).json({ message: 'Commande refusée.', statut: commande.statut });
+    } catch (error) {
+      console.error('Erreur refuserModifications:', error);
+      res.status(500).json({ message: 'Erreur lors du refus', error: error.message });
     }
   },
 
