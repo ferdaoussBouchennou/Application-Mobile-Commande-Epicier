@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../providers/store_provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../data/services/api_service.dart';
+import '../../widgets/rate_store_sheet.dart';
 import './store_catalog/store_catalog_screen.dart';
 
 class StoreAvisItem {
@@ -203,9 +204,36 @@ class _StoreDetailsScreenState extends State<StoreDetailsScreen> {
                       else
                         const Text("Horaires non disponibles."),
                       const SizedBox(height: 32),
-                      const Text(
-                        "Avis des clients",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Avis des clients",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E)),
+                          ),
+                          TextButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => RateStoreSheet(
+                                  epicierId: store.id,
+                                  nomBoutique: store.nomBoutique.isNotEmpty ? store.nomBoutique : 'Épicerie',
+                                  onSubmitted: () {
+                                    _loadAvis();
+                                    context.read<StoreProvider>().fetchStoreDetails(widget.storeId);
+                                  },
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.rate_review_outlined, size: 18),
+                            label: const Text('Laisser un avis'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF2D5016),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       if (_avisLoading)
