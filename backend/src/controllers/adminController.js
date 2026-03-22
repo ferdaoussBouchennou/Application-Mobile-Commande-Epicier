@@ -635,6 +635,40 @@ exports.deactivateProduct = async (req, res) => {
   }
 };
 
+exports.deactivateStoreCategory = async (req, res) => {
+  try {
+    const { storeId, categoryId } = req.params;
+    const sId = parseInt(storeId, 10);
+    const cId = parseInt(categoryId, 10);
+    
+    if (Number.isNaN(sId) || Number.isNaN(cId)) {
+      return res.status(400).json({ message: 'Identifiants de magasin ou de catégorie invalides.' });
+    }
+
+    // Trouver tous les produits de cette catégorie
+    const productIds = await Product.findAll({ 
+      where: { categorie_id: cId }, 
+      attributes: ['id'] 
+    }).then(rows => rows.map(r => r.id));
+
+    if (productIds.length > 0) {
+      // Désactiver le lien épicier-produit pour ce magasin uniquement
+      await EpicierProduct.update(
+        { is_active: false },
+        { where: { epicier_id: sId, produit_id: productIds } }
+      );
+    }
+
+    res.json({ 
+      message: 'La catégorie et ses produits ont été retirés de ce catalogue (désactivés).',
+      deactivatedCount: productIds.length
+    });
+  } catch (error) {
+    console.error('Error deactivateStoreCategory:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.activateProduct = async (req, res) => {
   try {
     const produitId = parseInt(req.params.id, 10);

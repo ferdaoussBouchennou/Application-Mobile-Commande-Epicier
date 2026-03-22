@@ -479,7 +479,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             }
 
                             try {
-                              final success = await authProvider.loginWithGoogle(epicierData: epicierData);
+                              final success = await authProvider.loginWithGoogle(
+                                epicierData: epicierData,
+                                docBytes: _docFile?.bytes,
+                                docFilename: _docFile?.name,
+                              );
                               if (success && mounted) {
                                 // Redirection dynamique basée sur le rôle retourné par le backend
                                 final role = authProvider.user?['role'] as String?;
@@ -553,7 +557,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             }
 
                             try {
-                              final success = await authProvider.loginWithFacebook(epicierData: epicierData);
+                              final success = await authProvider.loginWithFacebook(
+                                epicierData: epicierData,
+                                docBytes: _docFile?.bytes,
+                                docFilename: _docFile?.name,
+                              );
                               if (success && mounted) {
                                 final role = authProvider.user?['role'] as String?;
                                 if (role == 'ADMIN') {
@@ -598,7 +606,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             }
 
                             try {
-                              final success = await authProvider.loginWithInstagram(epicierData: epicierData);
+                              final success = await authProvider.loginWithInstagram(
+                                epicierData: epicierData,
+                                docBytes: _docFile?.bytes,
+                                docFilename: _docFile?.name,
+                              );
                               if (success && mounted) {
                                 final role = authProvider.user?['role'] as String?;
                                 if (role == 'ADMIN') {

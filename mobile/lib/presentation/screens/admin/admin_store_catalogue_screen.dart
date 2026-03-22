@@ -164,7 +164,6 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                             if (_showCategories) ...[
                               _buildCategoryGrid(),
                             ] else ...[
-                              _buildCategoryFilters(),
                               const SizedBox(height: 20),
                               _buildTitleRow(),
                               const SizedBox(height: 12),
@@ -571,18 +570,19 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                   final bool? confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Supprimer'),
-                      content: const Text('Voulez-vous vraiment supprimer cette catégorie ?'),
+                      title: const Text('Retirer la catégorie'),
+                      content: const Text('Voulez-vous retirer tous les produits de cette catégorie de CE catalogue ?\n\nLes produits seront désactivés pour cet épicier uniquement, la catégorie restera disponible pour les autres.'),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer', style: TextStyle(color: Colors.red))),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirmer', style: TextStyle(color: Colors.red))),
                       ],
                     ),
                   );
                   if (confirm == true) {
                     try {
                       final token = Provider.of<AuthProvider>(context, listen: false).token;
-                      await _apiService.delete('/admin/categories/${cat.id}', token: token);
+                      final storeId = widget.storeOwner.store?['id'];
+                      await _apiService.delete('/admin/stores/$storeId/categories/${cat.id}', token: token);
                       _loadData();
                     } catch (e) {
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
@@ -598,46 +598,6 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryFilters() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildFilterChip('Tous', null),
-          ..._categories.map((c) => _buildFilterChip(c.nom, c.id)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, int? id) {
-    bool isSelected = _selectedCategoryId == id;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (val) {
-          setState(() {
-            _selectedCategoryId = id;
-            _fetchProducts();
-          });
-        },
-        backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF2D5016),
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade200),
-        ),
-        showCheckmark: false,
       ),
     );
   }
