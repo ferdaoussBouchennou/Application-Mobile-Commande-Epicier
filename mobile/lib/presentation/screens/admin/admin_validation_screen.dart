@@ -33,6 +33,8 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
   int _suspendedCount = 0;
   
   List<UserModel> _users = [];
+  int _currentPage = 0;
+  static const int _usersPerPage = 5;
 
   @override
   void initState() {
@@ -261,7 +263,10 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (val) => _fetchUsers(),
+        onChanged: (val) {
+          setState(() => _currentPage = 0);
+          _fetchUsers();
+        },
         decoration: InputDecoration(
           hintText: _selectedRole == 'Client' ? 'Rechercher un client...' : 'Rechercher une épicerie...',
           hintStyle: TextStyle(color: Colors.grey.shade400),
@@ -296,6 +301,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
         onTap: () {
           setState(() {
             _selectedRole = label;
+            _currentPage = 0;
             _loadData();
           });
         },
@@ -373,7 +379,10 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
               label: Text(label),
               selected: isSelected,
               onSelected: (val) {
-                setState(() => _selectedFilter = f);
+                setState(() {
+                  _selectedFilter = f;
+                  _currentPage = 0;
+                });
                 _fetchUsers();
               },
               backgroundColor: Colors.white,
@@ -403,8 +412,38 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
         child: Text('Aucun utilisateur trouvé.'),
       );
     }
+    final int totalPages = (_users.length / _usersPerPage).ceil();
+    final int start = _currentPage * _usersPerPage;
+    final int end = (start + _usersPerPage < _users.length) 
+        ? start + _usersPerPage 
+        : _users.length;
+    final List<UserModel> paginatedUsers = _users.sublist(start, end);
+
     return Column(
-      children: _users.map<Widget>((user) => _buildUserCard(user)).toList(),
+      children: [
+        ...paginatedUsers.map<Widget>((user) => _buildUserCard(user)).toList(),
+        if (totalPages > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back_ios, size: 18, color: _currentPage > 0 ? const Color(0xFF2D5016) : Colors.grey),
+                  onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+                ),
+                Text(
+                  'Page ${_currentPage + 1} sur $totalPages',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2D5016)),
+                ),
+                IconButton(
+                  icon: Icon(Icons.arrow_forward_ios, size: 18, color: _currentPage < totalPages - 1 ? const Color(0xFF2D5016) : Colors.grey),
+                  onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage++) : null,
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

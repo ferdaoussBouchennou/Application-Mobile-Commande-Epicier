@@ -794,10 +794,11 @@ exports.getOrderStats = async (req, res) => {
 exports.getRecentOrders = async (req, res) => {
   try {
     const orders = await Order.findAll({
-      limit: 10,
+      limit: 50,
       order: [['date_commande', 'DESC']],
       include: [
-        { model: User, as: 'client', attributes: ['nom', 'prenom'] }
+        { model: User, as: 'client', attributes: ['nom', 'prenom'] },
+        { model: Store, as: 'epicier', attributes: ['nom_boutique'] }
       ]
     });
     res.json(orders);

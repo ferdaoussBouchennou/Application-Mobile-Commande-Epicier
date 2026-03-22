@@ -22,6 +22,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   
   Map<String, dynamic> _stats = {'totalToday': 0, 'ongoing': 0};
   List<dynamic> _recentOrders = [];
+  int _currentPage = 0;
+  static const int _ordersPerPage = 7;
 
   @override
   void initState() {
@@ -201,30 +203,8 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
 
   Widget _buildRecentOrdersHeader() {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Commandes récentes',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'serif',
-          ),
-        ),
-        Row(
-          children: [
-             Text(
-              'Tout voir',
-              style: TextStyle(color: Color(0xFFF26444), fontWeight: FontWeight.bold),
-            ),
-            Icon(Icons.arrow_forward, color: Color(0xFFF26444), size: 16),
-          ],
-        ),
-      ],
-    );
+    return const SizedBox.shrink();
   }
-
   Widget _buildRecentOrdersTable() {
     if (_recentOrders.isEmpty) {
       return const Center(child: Padding(
@@ -232,6 +212,13 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         child: Text('Aucune commande récente'),
       ));
     }
+
+    final int totalPages = (_recentOrders.length / _ordersPerPage).ceil();
+    final int start = _currentPage * _ordersPerPage;
+    final int end = (start + _ordersPerPage < _recentOrders.length) 
+        ? start + _ordersPerPage 
+        : _recentOrders.length;
+    final List<dynamic> paginatedOrders = _recentOrders.sublist(start, end);
 
     return Container(
       decoration: BoxDecoration(
@@ -269,19 +256,21 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Table(
               columnWidths: const {
-                0: FlexColumnWidth(2.5),
-                1: FlexColumnWidth(1.5),
-                2: FlexColumnWidth(1.8),
+                0: FlexColumnWidth(2.0),
+                1: FlexColumnWidth(1.8),
+                2: FlexColumnWidth(1.2),
+                3: FlexColumnWidth(1.5),
               },
               children: [
                 const TableRow(
                   children: [
-                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('CLIENT', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
-                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('MONTANT', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
-                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('STATUT', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold))),
+                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('CLIENT', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold))),
+                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('BOUTIQUE', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold))),
+                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('MONTANT', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold))),
+                    Padding(padding: EdgeInsets.only(bottom: 12), child: Text('STATUT', style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold))),
                   ],
                 ),
-                ..._recentOrders.map((o) {
+                ...paginatedOrders.map((o) {
                   Color statusColor = Colors.grey;
                   String statusLabel = o['statut'] ?? 'Inconnu';
                   
@@ -295,6 +284,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
                   return _buildTableRow(
                     '${o['client']?['prenom'] ?? ''} ${o['client']?['nom'] ?? ''}'.trim(),
+                    o['epicier']?['nom_boutique'] ?? 'N/A',
                     '${o['montant_total'] ?? '0'} DH',
                     statusLabel,
                     statusColor,
@@ -303,20 +293,42 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               ],
             ),
           ),
+          if (totalPages > 1)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_ios, size: 16, color: _currentPage > 0 ? const Color(0xFF2D5016) : Colors.grey),
+                    onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+                  ),
+                  Text(
+                    'Page ${_currentPage + 1} sur $totalPages',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.arrow_forward_ios, size: 16, color: _currentPage < totalPages - 1 ? const Color(0xFF2D5016) : Colors.grey),
+                    onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage++) : null,
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 
-  TableRow _buildTableRow(String name, String amount, String status, Color color) {
+  TableRow _buildTableRow(String name, String store, String amount, String status, Color color) {
     return TableRow(
       children: [
-        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(store, style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12, color: Colors.grey.shade700))),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             decoration: BoxDecoration(
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(8),
@@ -324,7 +336,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             child: Text(
               status,
               textAlign: TextAlign.center,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ),
         ),
