@@ -104,8 +104,8 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                 Expanded(
                   child: _buildSummaryCard(
                     'Clients inscrits',
-                    summary['clients']['total'].toString(),
-                    '+${summary['clients']['growth']}',
+                    _toInt(summary['clients']['total']).toString(),
+                    '+${_toInt(summary['clients']['growth'])}',
                     Icons.people,
                     const Color(0xFFC06C1E),
                     isGrowthPositive: true,
@@ -120,7 +120,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                 Expanded(
                   child: _buildSummaryCard(
                     'Commandes / jour',
-                    summary['ordersPerDay'].toString(),
+                    _toInt(summary['ordersPerDay']).toString(),
                     '+12%', // Static for now
                     Icons.shopping_bag,
                     const Color(0xFFE67E22),
@@ -130,7 +130,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                 Expanded(
                   child: _buildSummaryCard(
                     'Litiges ouverts',
-                    summary['disputes'].toString(),
+                    _toInt(summary['disputes']).toString(),
                     '-3 vs hier', // Static for now
                     Icons.gavel,
                     const Color(0xFF3498DB),
@@ -244,7 +244,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     for (var item in trend) {
       final day = item['day'];
       final status = item['statut'];
-      final count = item['count'];
+      final count = _toInt(item['count']);
       if (!dayMap.containsKey(day)) dayMap[day] = {};
       dayMap[day]![status] = count;
     }
@@ -254,9 +254,9 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
 
     for (int i = 0; i < days.length; i++) {
       final dayData = dayMap[days[i]]!;
-      final delivered = (dayData['livrée'] ?? 0).toDouble();
-      final ongoing = ((dayData['reçue'] ?? 0) + (dayData['prête'] ?? 0)).toDouble();
-      final cancelled = (dayData['refusee'] ?? 0).toDouble();
+      final delivered = _toDouble(dayData['livrée']);
+      final ongoing = _toDouble(dayData['reçue']) + _toDouble(dayData['prête']);
+      final cancelled = _toDouble(dayData['refusee']) + _toDouble(dayData['refusée']);
 
       groups.add(
         BarChartGroupData(
@@ -347,7 +347,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
   Widget _buildStatusDonutChart() {
     final dist = _data!['statusDist'] as List;
     int total = 0;
-    for (var item in dist) total += (item['count'] as int);
+    for (var item in dist) total += _toInt(item['count']);
 
     final List<PieChartSectionData> sections = [];
     final Map<String, Color> statusColors = {
@@ -359,7 +359,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
 
     for (var item in dist) {
       final status = item['statut'];
-      final count = item['count'] as int;
+      final count = _toInt(item['count']);
       final percentage = total > 0 ? (count / total * 100).round() : 0;
       
       sections.add(
@@ -393,7 +393,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: statusColors.entries.map((e) {
-              final count = dist.firstWhere((item) => item['statut'] == e.key, orElse: () => {'count': 0})['count'];
+              final count = _toInt(dist.firstWhere((item) => item['statut'] == e.key, orElse: () => {'count': 0})['count']);
               final percentage = total > 0 ? (count / total * 100).round() : 0;
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
@@ -418,7 +418,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     final categories = _data!['topCategories'] as List;
     double maxQty = 0;
     for (var c in categories) {
-      if ((c['total_qty'] as num).toDouble() > maxQty) maxQty = (c['total_qty'] as num).toDouble();
+      if (_toDouble(c['total_qty']) > maxQty) maxQty = _toDouble(c['total_qty']);
     }
 
     return Container(
@@ -426,7 +426,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: categories.map((c) {
-          final qty = (c['total_qty'] as num).toDouble();
+          final qty = _toDouble(c['total_qty']);
           final percentage = maxQty > 0 ? qty / maxQty : 0.0;
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -484,14 +484,14 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                 Expanded(
                   child: Text(s['epicier']['nom_boutique'] ?? 'N/A', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                 ),
-                Text('${s['orderCount']} cmd.', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                Text('${_toInt(s['orderCount'])} cmd.', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                 const SizedBox(width: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: Colors.yellow.shade100, borderRadius: BorderRadius.circular(8)),
                   child: Text(
-                    (s['epicier']['rating'] ?? 0.0).toStringAsFixed(1),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF1C40F)),
+                    _toDouble(s['epicier']['rating'] ?? 0.0).toStringAsFixed(1),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFF1C40F)),
                   ),
                 ),
               ],
@@ -508,7 +508,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     for (var item in trend) {
       final day = item['day'];
       final role = item['role'];
-      final count = item['count'];
+      final count = _toInt(item['count']);
       if (!dayMap.containsKey(day)) dayMap[day] = {};
       dayMap[day]![role] = count;
     }
@@ -519,8 +519,8 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
 
     for (int i = 0; i < days.length; i++) {
         final dayData = dayMap[days[i]]!;
-        clientSpots.add(FlSpot(i.toDouble(), (dayData['CLIENT'] ?? 0).toDouble()));
-        epicierSpots.add(FlSpot(i.toDouble(), (dayData['EPICIER'] ?? 0).toDouble()));
+        clientSpots.add(FlSpot(i.toDouble(), _toDouble(dayData['CLIENT'])));
+        epicierSpots.add(FlSpot(i.toDouble(), _toDouble(dayData['EPICIER'])));
     }
 
     if (days.isEmpty) {
@@ -584,6 +584,20 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
         ),
       ),
     );
+  }
+
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
   }
 }
 

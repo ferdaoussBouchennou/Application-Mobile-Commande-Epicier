@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
+import '../../../screens/auth/welcome_screen.dart';
 import 'admin_validation_screen.dart';
 import 'admin_disputes_screen.dart';
 import 'admin_categories_screen.dart';
@@ -81,23 +82,17 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16.0),
         child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStatsRow(),
-                          const SizedBox(height: 30),
-                          _buildRecentOrdersHeader(),
-                          const SizedBox(height: 12),
-                          _buildRecentOrdersTable(),
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
-            ),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatsRow(),
+            const SizedBox(height: 30),
+            _buildRecentOrdersHeader(),
+            const SizedBox(height: 12),
+            _buildRecentOrdersTable(),
+            const SizedBox(height: 40),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -178,7 +173,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                       context.read<AuthProvider>().logout();
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                        MaterialPageRoute(builder: (_) => WelcomeScreen()),
                         (route) => false,
                       );
                     },

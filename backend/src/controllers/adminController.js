@@ -901,11 +901,26 @@ exports.getDashboardStats = async (req, res) => {
         disputes: disputesOpen,
         ordersPerDay: Math.round((await Order.count({ where: { date_commande: { [Op.gte]: sevenDaysAgo } } })) / 7)
       },
-      orderTrend,
-      statusDist,
-      topCategories,
-      topStores,
-      regTrend
+      orderTrend: orderTrend.map(t => ({ 
+        ...t.toJSON(), 
+        count: Number(t.get('count')) 
+      })),
+      statusDist: statusDist.map(s => ({ 
+        ...s.toJSON(), 
+        count: Number(s.get('count')) 
+      })),
+      topCategories: topCategories.map(c => ({ 
+        ...c, 
+        total_qty: Number(c.total_qty) 
+      })),
+      topStores: topStores.map(ts => ({ 
+        ...ts.toJSON(), 
+        orderCount: Number(ts.get('orderCount')) 
+      })),
+      regTrend: regTrend.map(r => ({ 
+        ...r.toJSON(), 
+        count: Number(r.get('count')) 
+      }))
     });
   } catch (error) {
     console.error('Error getDashboardStats:', error);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'register_screen.dart';
 import '../client/map_screen/map_screen.dart';
 import '../admin/admin_validation_screen.dart';
+import '../admin/platform_stats/platform_stats_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../grocer/grocer_main_screen.dart';
@@ -68,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (role == 'ADMIN') {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => AdminValidationScreen()),
+        MaterialPageRoute(builder: (_) => const PlatformStatsScreen()),
       );
     } else if (role == 'EPICIER') {
       if (auth.needsSetup) {
