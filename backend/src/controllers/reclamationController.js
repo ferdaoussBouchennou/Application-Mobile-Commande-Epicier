@@ -2,6 +2,8 @@ const path = require("path");
 const fs = require("fs");
 const Reclamation = require("../models/Reclamation");
 const Order = require("../models/Order");
+const Commande = require("../models/Commande");
+const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
 
 /** Sanitise une chaîne pour en faire un nom de fichier. */
 function sanitizeName(str) {
@@ -15,15 +17,19 @@ exports.createReclamation = async (req, res) => {
     const client_id = req.user.id;
     let photoPath = null;
 
-    // Optional: Check if order belongs to client
+    // Optional: Check if order belongs to client and is livrée
     if (commande_id) {
-      const order = await Order.findOne({
+      const order = await Commande.findOne({
         where: { id: commande_id, client_id },
       });
       if (!order)
         return res
           .status(403)
           .json({ message: "Cette commande ne vous appartient pas." });
+      if (order.statut !== "livrée")
+        return res
+          .status(400)
+          .json({ message: "Les réclamations sont réservées aux commandes récupérées (livrées)." });
     }
 
     // Handle File Upload if present
@@ -107,9 +113,6 @@ exports.updateReclamation = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-const Reclamation = require("../models/Reclamation");
-const Commande = require("../models/Commande");
-const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
 
 exports.create = async (req, res) => {
   try {
@@ -129,6 +132,11 @@ exports.create = async (req, res) => {
     if (!commande) {
       return res.status(404).json({ message: "Commande introuvable" });
     }
+    if (commande.statut !== "livrée") {
+      return res
+        .status(400)
+        .json({ message: "Les réclamations sont réservées aux commandes récupérées (livrées)." });
+    }
     const existing = await Reclamation.findOne({
       where: { commande_id: id, client_id: clientId },
     });
@@ -137,11 +145,13 @@ exports.create = async (req, res) => {
         .status(400)
         .json({ message: "Une réclamation existe déjà pour cette commande" });
     }
+    const desc = description.trim();
     const reclamation = await Reclamation.create({
       client_id: clientId,
       commande_id: id,
-      description: description.trim(),
-      statut: "Litige ouvert",
+      motif: desc.slice(0, 100) || "Réclamation commande",
+      description: desc,
+      statut: "Ouverte",
     });
     sendNotificationToEpicier(
       commande.epicier_id,
