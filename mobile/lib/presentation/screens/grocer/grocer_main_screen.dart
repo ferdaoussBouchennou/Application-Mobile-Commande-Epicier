@@ -8,6 +8,7 @@ import 'dashboard/grocer_dashboard_screen.dart';
 import 'catalogue/grocer_catalogue_screen.dart';
 import 'orders/grocer_orders_screen.dart';
 import 'notifications/grocer_notifications_screen.dart';
+import 'reclamations/grocer_reclamations_list_screen.dart';
 
 /// Écran principal de l'espace Épicier — même design que MapScreen (parcourir sans compte).
 class GrocerMainScreen extends StatefulWidget {
@@ -25,7 +26,8 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
   VoidCallback? _catalogueRefresh;
   VoidCallback? _notificationsRefresh;
   VoidCallback? _ordersRefresh;
-  final GlobalKey<NavigatorState> _catalogueNavKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _catalogueNavKey =
+      GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -52,6 +54,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
         onOpenOrderHandled: () => setState(() => _orderIdToOpen = null),
         onRegisterRefresh: (fn) => _ordersRefresh = fn,
       ),
+      const GrocerReclamationsListScreen(),
       GrocerNotificationsScreen(
         onNavigateToOrders: () => setState(() => _currentIndex = 2),
         onNavigateToOrder: (orderId) {
@@ -60,7 +63,8 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
             _orderIdToOpen = orderId;
           });
         },
-        onUnreadCount: (count) => setState(() => _unreadNotificationsCount = count),
+        onUnreadCount: (count) =>
+            setState(() => _unreadNotificationsCount = count),
         onRegisterRefresh: (fn) => _notificationsRefresh = fn,
       ),
     ];
@@ -73,7 +77,10 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       final token = auth.token;
       if (token == null || !mounted) return;
       try {
-        final data = await ApiService().get('/epicier/notifications/unread-count', token: token);
+        final data = await ApiService().get(
+          '/epicier/notifications/unread-count',
+          token: token,
+        );
         final count = (data as Map<String, dynamic>?)?['count'] as int? ?? 0;
         if (mounted) setState(() => _unreadNotificationsCount = count);
       } catch (_) {}
@@ -82,9 +89,30 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
 
   List<_NavItem> get _navItems => [
     const _NavItem(Icons.home_outlined, Icons.home, 'Accueil', null),
-    const _NavItem(Icons.inventory_2_outlined, Icons.inventory_2, 'Catalogue', null),
-    _NavItem(Icons.receipt_long_outlined, Icons.receipt_long, 'Commandes', _newOrdersCount),
-    _NavItem(Icons.notifications_outlined, Icons.notifications, 'Notifications', _unreadNotificationsCount > 0 ? _unreadNotificationsCount : null),
+    const _NavItem(
+      Icons.inventory_2_outlined,
+      Icons.inventory_2,
+      'Catalogue',
+      null,
+    ),
+    _NavItem(
+      Icons.receipt_long_outlined,
+      Icons.receipt_long,
+      'Commandes',
+      _newOrdersCount,
+    ),
+    const _NavItem(
+      Icons.report_problem_outlined,
+      Icons.report_problem,
+      'Réclamations',
+      null,
+    ),
+    _NavItem(
+      Icons.notifications_outlined,
+      Icons.notifications,
+      'Notifications',
+      _unreadNotificationsCount > 0 ? _unreadNotificationsCount : null,
+    ),
   ];
 
   @override
@@ -101,27 +129,33 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12.0,
+              vertical: 8.0,
+            ),
             child: TextButton.icon(
               onPressed: () => _confirmLogout(context),
               icon: const Icon(Icons.logout, color: Colors.white, size: 20),
               label: const Text(
                 'Déconnexion',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
               style: TextButton.styleFrom(
                 backgroundColor: Colors.white.withOpacity(0.15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               ),
             ),
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _buildScreens(),
-      ),
+      body: IndexedStack(index: _currentIndex, children: _buildScreens()),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -146,7 +180,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
             _catalogueNavKey.currentState?.popUntil((route) => route.isFirst);
             _catalogueRefresh?.call();
           }
-          if (index == 3) {
+          if (index == 4) {
             _notificationsRefresh?.call();
           }
         },
@@ -161,7 +195,9 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
           return BottomNavigationBarItem(
             icon: item.badgeCount != null && item.badgeCount! > 0
                 ? Badge(
-                    label: Text('${item.badgeCount! > 99 ? '99+' : item.badgeCount}'),
+                    label: Text(
+                      '${item.badgeCount! > 99 ? '99+' : item.badgeCount}',
+                    ),
                     child: Icon(item.icon),
                   )
                 : Icon(item.icon),
@@ -178,7 +214,10 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Déconnexion',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: const Text('Voulez-vous vraiment vous déconnecter ?'),
         actions: [
           TextButton(
@@ -190,7 +229,9 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: GrocerTheme.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Se déconnecter'),
           ),
