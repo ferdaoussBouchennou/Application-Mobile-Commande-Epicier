@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : dim. 22 mars 2026 à 00:59
+-- Généré le : dim. 22 mars 2026 à 15:52
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -33,7 +33,6 @@ CREATE TABLE `avis` (
   `commentaire` text DEFAULT NULL,
   `client_id` int(11) NOT NULL,
   `epicier_id` int(11) NOT NULL,
-  `commande_id` int(11) DEFAULT NULL,
   `date_avis` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -41,10 +40,10 @@ CREATE TABLE `avis` (
 -- Déchargement des données de la table `avis`
 --
 
-INSERT INTO `avis` (`id`, `note`, `commentaire`, `client_id`, `epicier_id`, `commande_id`, `date_avis`) VALUES
-(1, 5, 'Très bon accueil et produits frais.', 2, 1, 2, '2026-03-08 17:00:00'),
-(2, 4, 'RAS, livraison correcte.', 2, 1, 3, '2026-03-07 12:00:00'),
-(3, 4, 'Epicerie de confiance.', 2, 1, 5, '2026-03-05 15:00:00');
+INSERT INTO `avis` (`id`, `note`, `commentaire`, `client_id`, `epicier_id`, `date_avis`) VALUES
+(1, 5, 'Très bon accueil et produits frais.', 2, 1, '2026-03-08 17:00:00'),
+(2, 4, 'Boutique très propre, je recommande.', 33, 1, '2026-03-10 14:00:00'),
+(3, 4, 'Epicerie de confiance.', 43, 1, '2026-03-12 10:00:00');
 
 -- --------------------------------------------------------
 
@@ -75,8 +74,7 @@ INSERT INTO `categories` (`id`, `nom`, `description`, `image_url`, `display_orde
 (7, 'Boissons', NULL, NULL, 0, 1),
 (8, 'Épices', NULL, NULL, 0, 1),
 (9, 'Boulangerie', NULL, NULL, 0, 1),
-(11, 'Pâtes et riz', NULL, NULL, 0, 1),
-(15, 'test', 'xi haja', NULL, 2, 0);
+(11, 'Pâtes et riz', NULL, NULL, 0, 1);
 
 -- --------------------------------------------------------
 
@@ -301,10 +299,8 @@ INSERT INTO `epiciers` (`id`, `utilisateur_id`, `nom_boutique`, `adresse`, `tele
 (8, 11, 'Chez Leila', 'Route de la Plage, Hammamet', '0555778899', 'Fruits de mer et alimentation générale.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/hanut7.jpg', 4.0, 'COMPLETE', 35.5655000, -5.3788000),
 (9, 12, 'Karim Market', 'Boulevard de l\'Environnement, Sousse', '0555001122', 'Le meilleur couscous et produits locaux.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 3.0, 'COMPLETE', 35.5788000, -5.3522000),
 (10, 13, 'Mondher Express', 'Cité des Jeunes, Bizerte', '0555334455', 'Rapide, efficace et toujours avec le sourire.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 4.5, 'COMPLETE', 35.5844000, -5.3755000),
-(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', '', 1, '2026-03-09 19:54:35', 'uploads/epiciers/hanut1.jpg', 2.5, 'COMPLETE', 35.5611000, -5.3455000),
-(21, 42, 'Epicerie de Ferdaouss', 'Tétouan', '0612345678', NULL, 1, '2026-03-19 13:47:08', 'uploads/stores/store_21_1773928127462.webp', 0.0, 'COMPLETE', 35.5646704, -5.3632953),
-(22, 47, 'Epicerie de ziko', 'Adresse à configurer', '0626687788', 'xi haja', 1, '2026-03-20 00:19:03', NULL, 0.0, 'COMPLETE', NULL, NULL),
-(23, 48, 'issamShop', 'dddddddddddddddd', '0626262626', '.......', 1, '2026-03-21 19:45:38', 'uploads/shops/shop-1774122338621.png', 0.0, 'ACCEPTE', NULL, NULL);
+(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 19:54:35', 'uploads/epiciers/hanut1.jpg', 2.5, 'COMPLETE', 35.5611000, -5.3455000),
+(21, 42, 'Epicerie de Ferdaouss', 'Tétouan', '0612345678', NULL, 1, '2026-03-19 13:47:08', 'uploads/stores/store_21_1773928127462.webp', 0.0, 'COMPLETE', 35.5646704, -5.3632953);
 
 -- --------------------------------------------------------
 
@@ -597,14 +593,9 @@ INSERT INTO `epicier_produits` (`epicier_id`, `produit_id`, `prix`, `rupture_sto
 (11, 22, 22.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
 (11, 23, 15.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
 (11, 24, 10.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
-(11, 37, 5000.00, 0, 1, '2026-03-20 18:05:23', '2026-03-20 18:05:23'),
-(11, 38, 100.00, 0, 0, '2026-03-21 01:50:23', '2026-03-21 01:56:23'),
-(21, 1, 19.50, 0, 0, '2026-03-19 13:49:13', '2026-03-19 23:53:33'),
-(21, 2, 86.00, 0, 1, '2026-03-19 13:49:13', '2026-03-19 22:56:40'),
-(21, 3, 120.00, 0, 1, '2026-03-19 13:49:13', '2026-03-19 22:56:33'),
-(21, 36, 50.00, 0, 0, '2026-03-19 23:53:08', '2026-03-19 23:53:20'),
-(22, 11, 15.00, 0, 1, '2026-03-20 00:21:40', '2026-03-20 00:21:40'),
-(22, 13, 16.00, 0, 1, '2026-03-20 00:21:39', '2026-03-20 00:21:39');
+(21, 1, 19.50, 0, 1, '2026-03-19 13:49:13', '2026-03-19 13:49:13'),
+(21, 2, 85.00, 0, 1, '2026-03-19 13:49:13', '2026-03-19 13:49:13'),
+(21, 3, 120.00, 0, 1, '2026-03-19 13:49:13', '2026-03-19 14:28:55');
 
 -- --------------------------------------------------------
 
@@ -626,41 +617,8 @@ CREATE TABLE `notifications` (
 
 INSERT INTO `notifications` (`id`, `message`, `date_envoi`, `client_id`, `lue`) VALUES
 (1, 'Votre commande #2 a été livrée. Merci de votre confiance !', '2026-03-08', 2, 1),
-(2, 'Votre commande #1 est en préparation.', '2026-03-09', 2, 0),
-(3, 'Votre commande #4 est prête à être récupérée.', '2026-03-06', 2, 0);
-
--- --------------------------------------------------------
-
---
--- Structure de la table `paniers`
---
-
-CREATE TABLE `paniers` (
-  `id` int(11) NOT NULL,
-  `client_id` int(11) NOT NULL,
-  `date_creation` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Déchargement des données de la table `paniers`
---
-
-INSERT INTO `paniers` (`id`, `client_id`, `date_creation`) VALUES
-(10, 33, '2026-03-17'),
-(17, 43, '2026-03-19');
-
--- --------------------------------------------------------
-
---
--- Structure de la table `panier_produits`
---
-
-CREATE TABLE `panier_produits` (
-  `panier_id` int(11) NOT NULL,
-  `produit_id` int(11) NOT NULL,
-  `epicier_id` int(11) DEFAULT NULL,
-  `quantite` int(11) NOT NULL DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+(2, 'Votre commande #1 est en préparation.', '2026-03-09', 2, 1),
+(3, 'Votre commande #4 est prête à être récupérée.', '2026-03-06', 2, 1);
 
 -- --------------------------------------------------------
 
@@ -713,10 +671,7 @@ INSERT INTO `produits` (`id`, `nom`, `description`, `categorie_id`, `image_princ
 (29, 'Arroz cigala long', 'Riz long grain.', 11, 'uploads/Pates_et_riz/Arroz_cigala_long.png', '2026-03-12 01:14:39', '2026-03-12 15:20:51', 0.00),
 (30, 'Pâtes courtes 500g Dalia', 'Pâtes courtes 500g.', 11, 'uploads/Pates_et_riz/Pates_courtes_500g-Dalia.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25', 0.00),
 (31, 'Farfalle 500g Kenz', 'Pâtes farfalle 500g.', 11, 'uploads/Pates_et_riz/farfalle_500g_kenz.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25', 0.00),
-(32, 'Eau Minérale Ain Soltane 5L', NULL, 7, 'uploads/Boissons/Eau_Minerale_Ain_Soltane_5L.jpg', '2026-03-12 01:53:39', '2026-03-12 01:53:39', 0.00),
-(36, 'chi jaja', 'lbn dl3bar', 7, 'uploads/Boissons/chi_jaja.jpeg', '2026-03-19 23:53:08', '2026-03-19 23:53:08', 0.00),
-(37, 'l3ssl', 'ghaali bzzf', 7, 'uploads/Boissons/l3ssl.jpeg', '2026-03-20 18:05:23', '2026-03-20 18:05:23', 0.00),
-(38, 'test1', '.............', 15, 'uploads/test/test1.png', '2026-03-21 01:50:23', '2026-03-21 01:50:23', 0.00);
+(32, 'Eau Minérale Ain Soltane 5L', NULL, 7, 'uploads/Boissons/Eau_Minerale_Ain_Soltane_5L.jpg', '2026-03-12 01:53:39', '2026-03-12 01:53:39', 0.00);
 
 -- --------------------------------------------------------
 
@@ -742,7 +697,7 @@ CREATE TABLE `reclamations` (
 
 INSERT INTO `reclamations` (`id`, `description`, `statut`, `client_id`, `commande_id`, `date_creation`, `motif`, `photo`, `reponse_epicier`) VALUES
 (1, 'Un produit de la commande #3 était légèrement abîmé. Demande d\'échange.', 'Résolu', 2, 3, '2026-03-07', '', NULL, NULL),
-(2, 'Retard de livraison sur la commande #2.', 'En médiation', 2, 2, '2026-03-08', '', NULL, NULL);
+(2, 'Retard de livraison sur la commande #2.', 'Litige ouvert', 2, 2, '2026-03-08', '', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -775,24 +730,21 @@ CREATE TABLE `utilisateurs` (
 --
 
 INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `id_facebook`, `id_instagram`, `role`, `doc_verf`, `is_active`, `date_creation`, `fcm_token`, `email_verified`, `otp_code`, `otp_expires_at`, `telephone`) VALUES
-(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57', NULL, 0, NULL, NULL, NULL),
-(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26', NULL, 0, NULL, NULL, NULL),
-(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51', NULL, 0, NULL, NULL, NULL),
-(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42', NULL, 0, NULL, NULL, NULL),
-(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 0, NULL, NULL, NULL),
-(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 0, NULL, NULL, NULL),
-(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774121527656.png', 1, '2026-03-09 14:34:37', NULL, 0, NULL, NULL, NULL),
-(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, 0, NULL, NULL, NULL),
-(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL, NULL),
-(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL, NULL),
-(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL, NULL),
-(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774121583102.png', 1, '2026-03-09 19:54:34', NULL, 0, NULL, NULL, NULL),
+(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57', NULL, 1, NULL, NULL, NULL),
+(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26', NULL, 1, NULL, NULL, NULL),
+(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51', NULL, 1, NULL, NULL, NULL),
+(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42', NULL, 1, NULL, NULL, NULL),
+(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 1, NULL, NULL, NULL),
+(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 1, NULL, NULL, NULL),
+(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, 1, NULL, NULL, NULL),
+(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, 1, NULL, NULL, NULL),
+(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 1, NULL, NULL, NULL),
+(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 1, NULL, NULL, NULL),
+(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 1, NULL, NULL, NULL),
+(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'IMG-20260308-WA0037.', 1, '2026-03-09 19:54:34', NULL, 1, NULL, NULL, NULL),
 (33, 'bou', 'ferdaouss', 'ferdaous@gmail.com', '$2b$10$c4zVCTOdWZ7x733dkxXs5utN9sa/FSPYR6HPEOL.T3gJs/qqsC7h.', '106221859492863677746', NULL, NULL, 'CLIENT', NULL, 1, '2026-03-17 16:38:10', NULL, 1, NULL, NULL, NULL),
 (42, 'Bouchennou', 'Ferdaouss', 'ferdaousbo12@gmail.com', '$2b$10$0ADrbN9LNXPkTAddhOf2WOhKHZK5BdIhLMDjV1bUEejaDNdgsJoN.', NULL, NULL, NULL, 'EPICIER', '1e43b912-b9dd-4415-9', 1, '2026-03-19 13:47:08', NULL, 1, NULL, NULL, NULL),
-(43, 'Bouchennou', 'Ferdaous', 'ferdaouss@gmail.com', '$2b$10$/YLTEoLWVXajMHgJTfONbONDmJcDbgnwzEw9NpMLkpSWhCpTNsBIi', '116936960074879664236', NULL, NULL, 'CLIENT', NULL, 1, '2026-03-19 13:55:14', NULL, 1, NULL, NULL, '0612345678'),
-(46, 'ziko', 'zaki', 'allouchezaki45@gmail.com', '$2b$10$vuMLv95V8uv5/NQPHi.JSe/Y3/xiD/qhP5pEpy6JPDPHOepkkHWMO', NULL, NULL, NULL, 'ADMIN', NULL, 1, '2026-03-19 21:48:13', NULL, 1, NULL, NULL, '0626687780'),
-(47, 'zaki', 'ziko', 'zelallouche@gmail.com', '$2b$10$XwN.giCoGos.Yq5bq/ZFzePybY7xiDWdMLxLnndeJmnY2bllsTXKq', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774108438898.png', 1, '2026-03-20 00:19:03', NULL, 1, NULL, NULL, NULL),
-(48, 'issama', 'allouche', 'issa@gmail.com', '$2b$10$Sm9NoEuqerDnCQKFYx4ym.f8Xb4dqdI7JerCeXABR29KOYuthUxAa', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774122338623.png', 1, '2026-03-21 19:45:38', NULL, 0, NULL, NULL, NULL);
+(43, 'Bouchennou', 'Ferdaous', 'ferdaouss@gmail.com', '$2b$10$/YLTEoLWVXajMHgJTfONbONDmJcDbgnwzEw9NpMLkpSWhCpTNsBIi', '116936960074879664236', NULL, NULL, 'CLIENT', NULL, 1, '2026-03-19 13:55:14', NULL, 1, NULL, NULL, '0612345678');
 
 --
 -- Index pour les tables déchargées
@@ -971,7 +923,7 @@ ALTER TABLE `avis`
 -- AUTO_INCREMENT pour la table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT pour la table `commandes`
@@ -995,7 +947,7 @@ ALTER TABLE `disponibilites`
 -- AUTO_INCREMENT pour la table `epiciers`
 --
 ALTER TABLE `epiciers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT pour la table `notifications`
@@ -1013,7 +965,7 @@ ALTER TABLE `paniers`
 -- AUTO_INCREMENT pour la table `produits`
 --
 ALTER TABLE `produits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT pour la table `reclamations`
@@ -1025,7 +977,7 @@ ALTER TABLE `reclamations`
 -- AUTO_INCREMENT pour la table `utilisateurs`
 --
 ALTER TABLE `utilisateurs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- Contraintes pour les tables déchargées

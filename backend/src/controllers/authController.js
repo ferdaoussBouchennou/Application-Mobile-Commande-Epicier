@@ -4,6 +4,8 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const { generateOTP, sendOTP } = require('../utils/emailService');
+const path = require('path');
+const fs = require('fs');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -67,6 +69,21 @@ const authController = {
       if (existingUser) {
         console.log(`Échec inscription épicier: l'email ${email} existe déjà.`);
         return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
+      }
+
+      // Gestion du document de vérification si uploadé via multer
+      if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+        const file = req.files.document_verification[0];
+        const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, '../../uploads/documents');
+        
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        doc_verf = `uploads/documents/${filename}`;
+        console.log(`Document enregistré pour inscription standard: ${doc_verf}`);
       }
 
       const otp = generateOTP();
@@ -388,9 +405,22 @@ const authController = {
 
       if (!user) {
         if (role === 'EPICIER') {
-          if (!doc_verf) {
+          // Gestion du document de vérification
+          let final_doc_verf = doc_verf; // Value from req.body
+          if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+            const file = req.files.document_verification[0];
+            const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+            const dir = path.join(__dirname, '../../uploads/documents');
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, filename), file.buffer);
+            final_doc_verf = `uploads/documents/${filename}`;
+            console.log(`Document enregistré pour inscription Google: ${final_doc_verf}`);
+          }
+
+          if (!final_doc_verf) {
             return res.status(400).json({ message: "Le document de vérification est obligatoire pour s'inscrire en tant qu'épicier." });
           }
+
           user = await User.create({
             nom: family_name || name || 'Inconnu',
             prenom: given_name || '',
@@ -398,7 +428,7 @@ const authController = {
             mdp: await bcrypt.hash(Math.random().toString(36), 10),
             id_google: googleId,
             role: 'EPICIER',
-            doc_verf,
+            doc_verf: final_doc_verf,
             is_active: true,
             email_verified: true, // Google already verified the email
           });
@@ -521,9 +551,22 @@ const authController = {
 
       if (!user) {
         if (role === 'EPICIER') {
-          if (!doc_verf) {
+          // Gestion du document de vérification
+          let final_doc_verf = doc_verf; // Value from req.body
+          if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+            const file = req.files.document_verification[0];
+            const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+            const dir = path.join(__dirname, '../../uploads/documents');
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, filename), file.buffer);
+            final_doc_verf = `uploads/documents/${filename}`;
+            console.log(`Document enregistré pour inscription Facebook: ${final_doc_verf}`);
+          }
+
+          if (!final_doc_verf) {
             return res.status(400).json({ message: "Le document de vérification est obligatoire." });
           }
+
           user = await User.create({
             nom: last_name || name || 'Inconnu',
             prenom: first_name || '',
@@ -531,7 +574,7 @@ const authController = {
             mdp: await bcrypt.hash(Math.random().toString(36), 10),
             id_facebook: facebookId,
             role: 'EPICIER',
-            doc_verf,
+            doc_verf: final_doc_verf,
             is_active: true,
             email_verified: true,
           });
@@ -648,23 +691,33 @@ const authController = {
       if (!user) {
         // Validation spécifique Épicier pour les nouveaux comptes
         if (role === 'EPICIER') {
-          if (!doc_verf) return res.status(400).json({ message: "DOCUMENT_REQUIRED: Un document est requis." });
+          // Gestion du document de vérification
+          let final_doc_verf = doc_verf; // Value from req.body
+          if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+            const file = req.files.document_verification[0];
+            const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+            const dir = path.join(__dirname, '../../uploads/documents');
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(path.join(dir, filename), file.buffer);
+            final_doc_verf = `uploads/documents/${filename}`;
+            console.log(`Document enregistré pour inscription Instagram: ${final_doc_verf}`);
+          }
+
+          if (!final_doc_verf) return res.status(400).json({ message: "DOCUMENT_REQUIRED: Un document est requis." });
           if (!nom_boutique) return res.status(400).json({ message: "STORE_NAME_REQUIRED: Le nom de boutique est requis." });
-        }
 
-        user = await User.create({
-          nom,
-          prenom,
-          email,
-          mdp: await bcrypt.hash(Math.random().toString(36), 10),
-          id_instagram: metaId, // On stocke l'ID Meta dans le champ instagram
-          role: role || 'CLIENT',
-          doc_verf: role === 'EPICIER' ? doc_verf : null,
-          is_active: true,
-          email_verified: true,
-        });
+          user = await User.create({
+            nom,
+            prenom,
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_instagram: metaId,
+            role: 'EPICIER',
+            doc_verf: final_doc_verf,
+            is_active: true,
+            email_verified: true,
+          });
 
-        if (role === 'EPICIER') {
           const { Store } = require('../models'); 
           newStore = await Store.create({
             utilisateur_id: user.id,
@@ -673,6 +726,17 @@ const authController = {
             adresse: adresse || '',
             telephone: telephone || '',
             statut_inscription: 'EN_ATTENTE'
+          });
+        } else {
+          user = await User.create({
+            nom,
+            prenom,
+            email,
+            mdp: await bcrypt.hash(Math.random().toString(36), 10),
+            id_instagram: metaId,
+            role: 'CLIENT',
+            is_active: true,
+            email_verified: true,
           });
         }
         isNewUser = true;

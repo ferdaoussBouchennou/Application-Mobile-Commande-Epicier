@@ -2,15 +2,17 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { authMiddleware } = require('../middlewares/auth');
-
+const uploadProductImage = require('../middlewares/uploadProductImage');
 
 // Routes d'authentification (publiques)
 router.post('/register/client', authController.registerClient);
-router.post('/register/epicier', authController.registerEpicier);
+router.post('/register/epicier', uploadProductImage.fields([
+  { name: 'document_verification', maxCount: 1 }
+]), authController.registerEpicier);
 router.post('/login', authController.login);
-router.post('/google', authController.googleLogin);
-router.post('/facebook', authController.facebookLogin);
-router.post('/instagram', authController.instagramLogin);
+router.post('/google', uploadProductImage.fields([{ name: 'document_verification', maxCount: 1 }]), authController.googleLogin);
+router.post('/facebook', uploadProductImage.fields([{ name: 'document_verification', maxCount: 1 }]), authController.facebookLogin);
+router.post('/instagram', uploadProductImage.fields([{ name: 'document_verification', maxCount: 1 }]), authController.instagramLogin);
 
 // Vérification d'email et OTP
 router.post('/verify-email', authController.verifyEmail);

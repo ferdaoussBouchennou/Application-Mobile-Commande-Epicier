@@ -256,6 +256,11 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getDashboardStats(String token) async {
+    final response = await get('/admin/dashboard/stats', token: token);
+    return response as Map<String, dynamic>;
+  }
+
   Future<dynamic> putMultipart(
     String endpoint,
     Map<String, dynamic> fields, {

@@ -8,7 +8,6 @@ import '../../../providers/cart_provider.dart';
 import '../../../providers/order_provider.dart';
 import 'reclamations/claim_submission_screen.dart';
 import 'reclamations/client_reclamations_screen.dart';
-import '../../widgets/rate_order_sheet.dart';
 
 /// Liste des commandes du client (onglet Commandes).
 class ClientOrdersScreen extends StatefulWidget {
@@ -588,18 +587,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     }
   }
 
-  void _showRateOrder(ClientOrder order) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => RateOrderSheet(
-        orderId: order.id,
-        nomBoutique: order.nomBoutique.isNotEmpty ? order.nomBoutique : 'Épicerie',
-        onSubmitted: () {},
-      ),
-    );
-  }
+  // Rating button removed, rating is now done on the store page.
 
   @override
   Widget build(BuildContext context) {
@@ -881,20 +869,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                                       ),
                                     )
                                   else if (isLivree) ...[
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => _showRateOrder(o),
-                                        icon: const Icon(Icons.star_outline_rounded, size: 18),
-                                        label: const Text('Noter'),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: _primary,
-                                          side: const BorderSide(color: _primary),
-                                          padding: const EdgeInsets.symmetric(vertical: 12),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
+                                    // "Noter" button has been removed from here. Rating is now done on the store page.
                                     Expanded(
                                       child: FilledButton.icon(
                                         onPressed: () => _orderAgain(o),

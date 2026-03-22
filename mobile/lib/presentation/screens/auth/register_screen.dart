@@ -26,7 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   // Champs spécifiques Epicier
   final _phoneController = TextEditingController();
-  String? _docFileName;
+  PlatformFile? _docFile;
   
   bool _obscureText = true;
 
@@ -44,10 +44,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      withData: true,
     );
     if (result != null) {
       setState(() {
-        _docFileName = result.files.single.name;
+        _docFile = result.files.single;
       });
     }
   }
@@ -75,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     if (_isEpicier) {
-      if (_docFileName == null) {
+      if (_docFile == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Veuillez joindre un document de vérification')),
         );
@@ -104,8 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'mdp': mdp,
           'adresse': 'Adresse à configurer', // Placeholder pour l'instant
           'telephone': phone,
-          'doc_verf': _docFileName != null ? (_docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName) : 'doc_test',
-        });
+        }, docBytes: _docFile?.bytes, docFilename: _docFile?.name);
       } else {
         success = await provider.registerClient({
           'nom': nom,
@@ -366,7 +366,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text('Document de vérification', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E))),
-                                Text(_docFileName ?? 'Kbis, Registre de commerce...', style: TextStyle(fontSize: 12, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis),
+                                Text(_docFile?.name ?? 'Kbis, Registre de commerce...', style: TextStyle(fontSize: 12, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis),
                               ],
                             ),
                           ),
@@ -465,7 +465,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             
                             Map<String, dynamic>? epicierData;
                             if (_isEpicier) {
-                              if (_docFileName == null) {
+                              if (_docFile == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Veuillez joindre un document de vérification avant de continuer avec Google')),
                                 );
@@ -474,13 +474,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               
                               epicierData = {
                                 'role': 'EPICIER',
-                                'doc_verf': _docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName,
                                 'telephone': _phoneController.text.trim(),
                               };
                             }
 
                             try {
-                              final success = await authProvider.loginWithGoogle(epicierData: epicierData);
+                              final success = await authProvider.loginWithGoogle(
+                                epicierData: epicierData,
+                                docBytes: _docFile?.bytes,
+                                docFilename: _docFile?.name,
+                              );
                               if (success && mounted) {
                                 // Redirection dynamique basée sur le rôle retourné par le backend
                                 final role = authProvider.user?['role'] as String?;
@@ -541,7 +544,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             
                             Map<String, dynamic>? epicierData;
                             if (_isEpicier) {
-                              if (_docFileName == null) {
+                              if (_docFile == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Veuillez joindre un document de vérification avant de continuer avec Facebook')),
                                 );
@@ -549,13 +552,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                               epicierData = {
                                 'role': 'EPICIER',
-                                'doc_verf': _docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName,
                                 'telephone': _phoneController.text.trim(),
                               };
                             }
 
                             try {
-                              final success = await authProvider.loginWithFacebook(epicierData: epicierData);
+                              final success = await authProvider.loginWithFacebook(
+                                epicierData: epicierData,
+                                docBytes: _docFile?.bytes,
+                                docFilename: _docFile?.name,
+                              );
                               if (success && mounted) {
                                 final role = authProvider.user?['role'] as String?;
                                 if (role == 'ADMIN') {
@@ -587,7 +593,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             
                             Map<String, dynamic>? epicierData;
                             if (_isEpicier) {
-                              if (_docFileName == null) {
+                              if (_docFile == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Veuillez joindre un document de vérification avant de continuer avec Instagram')),
                                 );
@@ -595,13 +601,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                               epicierData = {
                                 'role': 'EPICIER',
-                                'doc_verf': _docFileName!.length > 20 ? _docFileName!.substring(0, 20) : _docFileName,
                                 'telephone': _phoneController.text.trim(),
                               };
                             }
 
                             try {
-                              final success = await authProvider.loginWithInstagram(epicierData: epicierData);
+                              final success = await authProvider.loginWithInstagram(
+                                epicierData: epicierData,
+                                docBytes: _docFile?.bytes,
+                                docFilename: _docFile?.name,
+                              );
                               if (success && mounted) {
                                 final role = authProvider.user?['role'] as String?;
                                 if (role == 'ADMIN') {
