@@ -4,6 +4,8 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const { generateOTP, sendOTP } = require('../utils/emailService');
+const path = require('path');
+const fs = require('fs');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -67,6 +69,17 @@ const authController = {
       if (existingUser) {
         console.log(`Échec inscription épicier: l'email ${email} existe déjà.`);
         return res.status(400).json({ message: 'EMAIL_EXISTS: Cet email est déjà utilisé.' });
+      }
+
+      // doc_verf est déjà extrait de req.body plus haut
+      // Gestion du document de vérification si uploadé via multer
+      if (req.files && req.files.document_verification && req.files.document_verification[0]) {
+        const file = req.files.document_verification[0];
+        const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, '../../uploads/documents');
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        doc_verf = `uploads/documents/${filename}`;
       }
 
       const otp = generateOTP();

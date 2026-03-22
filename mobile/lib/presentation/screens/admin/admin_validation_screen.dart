@@ -149,22 +149,6 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                                   _selectedRole == 'Client' ? 'Clients' : 'Épiceries',
                                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
                                 ),
-                                if (_selectedRole == 'Épicier') 
-                                  TextButton.icon(
-                                    onPressed: () async {
-                                      final result = await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (_) => const AddEpicierScreen()),
-                                      );
-                                      if (result == true) _loadData();
-                                    },
-                                    icon: const Icon(Icons.add, size: 18, color: Color(0xFFF26444)),
-                                    label: const Text('Ajouter', style: TextStyle(color: Color(0xFFF26444))),
-                                    style: TextButton.styleFrom(
-                                      backgroundColor: const Color(0xFFF26444).withOpacity(0.1),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                  ),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -179,6 +163,18 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           ],
         ),
       ),
+      floatingActionButton: _selectedRole == 'Épicier' ? FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF2D5016),
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddEpicierScreen()),
+          );
+          if (result == true) _loadData();
+        },
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Ajouter', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ) : null,
       bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
     );
   }
@@ -567,32 +563,52 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           const SizedBox(height: 16),
           // Actions row
           Row(
-            children: [
-              _buildActionBtn('Catalogue', const Color(0xFF2D5016), Icons.category_outlined, onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => AdminStoreCatalogueScreen(storeOwner: user)),
-                ).then((_) => _loadData());
-              }),
-              const SizedBox(width: 8),
-              _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E), onTap: () async {
-                final result = await Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user))
-                );
-                if (result == true) {
-                  _loadData();
-                }
-              }),
-              const SizedBox(width: 8),
-              _buildActionBtn(
-                user.isActive ? 'Désact.' : 'Activer', 
-                user.isActive ? const Color(0xFFFFEBEE) : const Color(0xFF2D5016),
-                user.isActive ? Icons.remove_circle_outline : Icons.lock_open,
-                textColor: user.isActive ? Colors.red : Colors.white,
-                onTap: () => _updateStatus(user.id, isActive: !user.isActive),
-              ),
-            ],
+            children: user.statutInscription == 'EN_ATTENTE'
+              ? [
+                  _buildActionBtn('Profil', const Color(0xFFF5EDDA), Icons.person_search_outlined, textColor: const Color(0xFF2D1A0E), onTap: () async {
+                    final result = await Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user))
+                    );
+                    if (result == true) {
+                      _loadData();
+                    }
+                  }),
+                  const SizedBox(width: 8),
+                  _buildActionBtn('Accepter', const Color(0xFFE8F5E9), Icons.check_circle_outline, textColor: const Color(0xFF4CBB5E), onTap: () {
+                    _updateStatus(user.id, isActive: true, status: 'ACCEPTE');
+                  }),
+                  const SizedBox(width: 8),
+                  _buildActionBtn('Refuser', const Color(0xFFFFEBEE), Icons.cancel_outlined, textColor: Colors.red, onTap: () {
+                    _updateStatus(user.id, isActive: false, status: 'REFUSE');
+                  }),
+                ]
+              : [
+                  _buildActionBtn('Catalogue', const Color(0xFF2D5016), Icons.category_outlined, onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => AdminStoreCatalogueScreen(storeOwner: user)),
+                    ).then((_) => _loadData());
+                  }),
+                  const SizedBox(width: 8),
+                  _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E), onTap: () async {
+                    final result = await Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user))
+                    );
+                    if (result == true) {
+                      _loadData();
+                    }
+                  }),
+                  const SizedBox(width: 8),
+                  _buildActionBtn(
+                    user.isActive ? 'Désact.' : 'Activer', 
+                    user.isActive ? const Color(0xFFFFEBEE) : const Color(0xFF2D5016),
+                    user.isActive ? Icons.remove_circle_outline : Icons.lock_open,
+                    textColor: user.isActive ? Colors.red : Colors.white,
+                    onTap: () => _updateStatus(user.id, isActive: !user.isActive),
+                  ),
+                ],
           ),
         ],
       ),

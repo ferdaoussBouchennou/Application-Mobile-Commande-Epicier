@@ -8,9 +8,10 @@ const ALLOWED_MIMES = [
   'image/png',
   'image/gif',
   'image/webp',
+  'application/pdf',
 ];
 
-const ALLOWED_EXT = ['.jpg', '.jpeg', '.jpe', '.png', '.gif', '.webp'];
+const ALLOWED_EXT = ['.jpg', '.jpeg', '.jpe', '.png', '.gif', '.webp', '.pdf'];
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -24,7 +25,7 @@ const upload = multer({
     if (mimeOk || (extOk && (mimetype === '' || mimetype === 'application/octet-stream'))) {
       cb(null, true);
     } else {
-      cb(new Error('Type de fichier non autorisé. Utilisez JPEG, PNG, GIF ou WebP.'), false);
+      cb(new Error('Type de fichier non autorisé. Utilisez JPEG, PNG, GIF, WebP ou PDF.'), false);
     }
   },
 });
