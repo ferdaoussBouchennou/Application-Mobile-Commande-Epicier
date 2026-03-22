@@ -12,24 +12,24 @@ const List<String> _ratingLabels = [
   'Parfait !',
 ];
 
-/// Bottom sheet: rate order (note + optional comment). One review per order; can modify.
-class RateOrderSheet extends StatefulWidget {
-  final int orderId;
+/// Bottom sheet: rate store (note + optional comment). One review per store; can modify.
+class RateStoreSheet extends StatefulWidget {
+  final int epicierId;
   final String nomBoutique;
   final VoidCallback? onSubmitted;
 
-  const RateOrderSheet({
+  const RateStoreSheet({
     super.key,
-    required this.orderId,
+    required this.epicierId,
     required this.nomBoutique,
     this.onSubmitted,
   });
 
   @override
-  State<RateOrderSheet> createState() => _RateOrderSheetState();
+  State<RateStoreSheet> createState() => _RateStoreSheetState();
 }
 
-class _RateOrderSheetState extends State<RateOrderSheet> {
+class _RateStoreSheetState extends State<RateStoreSheet> {
   static const Color _primary = Color(0xFF2D5016);
   static const Color _bgBeige = Color(0xFFFDF6F0);
   static const Color _starActive = Color(0xFFE8B923);
@@ -65,7 +65,7 @@ class _RateOrderSheetState extends State<RateOrderSheet> {
       _error = null;
     });
     try {
-      final res = await _api.get('/avis/commande/${widget.orderId}', token: token);
+      final res = await _api.get('/avis/store/${widget.epicierId}', token: token);
       if (!mounted) return;
       final avis = res is Map ? res['avis'] : null;
       if (avis is Map) {
@@ -98,7 +98,7 @@ class _RateOrderSheetState extends State<RateOrderSheet> {
       await _api.post(
         '/avis',
         {
-          'commande_id': widget.orderId,
+          'epicier_id': widget.epicierId,
           'note': _rating,
           'commentaire': _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
         },
@@ -166,7 +166,7 @@ class _RateOrderSheetState extends State<RateOrderSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                '${widget.nomBoutique} · Commande #CMD-${widget.orderId}',
+                widget.nomBoutique,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               ),

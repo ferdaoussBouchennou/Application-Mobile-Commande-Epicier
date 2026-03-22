@@ -99,17 +99,9 @@ const storeController = {
         return res.status(404).json({ message: 'Épicier introuvable' });
       }
 
-      let rating = 0;
-      try {
-        const rows = await sequelize.query(
-          'SELECT COALESCE(AVG(note), 0) AS note_moyenne FROM avis WHERE epicier_id = :id',
-          { replacements: { id }, type: QueryTypes.SELECT }
-        );
-        rating = Number(Number((rows && rows[0] && rows[0].note_moyenne) || 0).toFixed(1));
-      } catch (_) { }
       const storeJson = store.toJSON();
-      storeJson.rating = rating;
-
+      // Le rating est déjà inclus dans storeJson via la base de données
+      
       res.status(200).json(storeJson);
     } catch (error) {
       console.error('Erreur getStoreById:', error);
@@ -193,11 +185,9 @@ const storeController = {
       if (!store) {
         return res.status(404).json({ message: 'Épicier introuvable' });
       }
-      const rows = await sequelize.query(
-        'SELECT COALESCE(AVG(note), 0) AS note_moyenne FROM avis WHERE epicier_id = :storeId',
-        { replacements: { storeId }, type: QueryTypes.SELECT }
-      );
-      const note_moyenne = Number(Number((rows && rows[0] && rows[0].note_moyenne) || 0).toFixed(1));
+      
+      const note_moyenne = Number(Number(store.rating || 0).toFixed(1));
+      
       const avisList = await Avis.findAll({
         where: { epicier_id: storeId },
         include: [{ model: User, as: 'client', attributes: ['nom', 'prenom'] }],

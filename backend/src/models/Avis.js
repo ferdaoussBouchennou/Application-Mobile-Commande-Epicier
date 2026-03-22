@@ -10,12 +10,7 @@ const Avis = sequelize.define('Avis', {
     autoIncrement: true,
     primaryKey: true,
   },
-  commande_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    unique: true,
-    references: { model: 'commandes', key: 'id' },
-  },
+
   client_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -49,7 +44,6 @@ User.hasMany(Avis, { foreignKey: 'client_id' });
 Avis.belongsTo(User, { foreignKey: 'client_id', as: 'client' });
 Store.hasMany(Avis, { foreignKey: 'epicier_id' });
 Avis.belongsTo(Store, { foreignKey: 'epicier_id' });
-Commande.hasOne(Avis, { foreignKey: 'commande_id' });
-Avis.belongsTo(Commande, { foreignKey: 'commande_id' });
+
 
 module.exports = Avis;
