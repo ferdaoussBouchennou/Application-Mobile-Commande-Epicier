@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const grocerController = require('../controllers/grocerController');
+const notificationEpicierController = require('../controllers/notificationEpicierController');
 const { authMiddleware, requireEpicier } = require('../middlewares/auth');
 const uploadProductImage = require('../middlewares/uploadProductImage');
 
@@ -44,5 +45,10 @@ router.delete('/products/:id', authMiddleware, requireEpicier, grocerController.
 router.get('/categories/:categoryId/inactive-products', authMiddleware, requireEpicier, grocerController.getInactiveProductsForCategory);
 router.post('/categories/:categoryId/restore', authMiddleware, requireEpicier, grocerController.restoreCategoryWithProducts);
 router.delete('/categories/:categoryId', authMiddleware, requireEpicier, grocerController.removeCategoryFromCatalogue);
+
+router.get('/notifications', authMiddleware, requireEpicier, notificationEpicierController.getNotifications);
+router.get('/notifications/unread-count', authMiddleware, requireEpicier, notificationEpicierController.getUnreadCount);
+router.patch('/notifications/read-all', authMiddleware, requireEpicier, notificationEpicierController.markAllAsRead);
+router.patch('/notifications/:id/read', authMiddleware, requireEpicier, notificationEpicierController.markAsRead);
 
 module.exports = router;
