@@ -35,10 +35,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
   String? _error;
   int _selectedTabIndex = 0; // 0 = Non lues, 1 = Historique
   late TabController _tabController;
-  int _page = 1;
+  int _currentPage = 1;
   int _totalCount = 0;
-  bool _hasMore = true;
-  bool _loadingMore = false;
+  int _totalPages = 1;
   Timer? _timeUpdateTimer;
   static const int _pageSize = 20;
 
@@ -69,11 +68,10 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
   Future<void> _load({bool reset = false}) async {
     if (!mounted) return;
     if (reset) {
-      _page = 1;
-      _hasMore = true;
+      _currentPage = 1;
     }
     setState(() {
-      _isLoading = reset || _page == 1;
+      _isLoading = true;
       _error = null;
       if (reset) _notifications = [];
     });
@@ -82,7 +80,7 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
       final lueParam = _showUnreadOnly ? '&lue=0' : '&lue=1';
       final data =
           await _api.get(
-                '/epicier/notifications?page=1&limit=$_pageSize$lueParam',
+                '/epicier/notifications?page=$_currentPage&limit=$_pageSize$lueParam',
                 token: token,
               )
               as Map<String, dynamic>;
@@ -95,16 +93,28 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
               .toList() ??
           [];
       final pagination = data['pagination'] as Map<String, dynamic>?;
-      final hasMore = pagination?['hasMore'] as bool? ?? false;
       final total = pagination?['total'] as int? ?? 0;
+      final limit = (pagination?['limit'] as int?) ?? _pageSize;
+      final totalPages = total > 0 ? (total + limit - 1) ~/ limit : 1;
 
       if (!mounted) return;
+
+      if (total > 0 && _currentPage > totalPages) {
+        setState(() => _currentPage = totalPages);
+        await _load();
+        return;
+      }
+      if (items.isEmpty && total > 0 && _currentPage > 1) {
+        setState(() => _currentPage = 1);
+        await _load();
+        return;
+      }
+
       setState(() {
         _notifications = items;
         _isLoading = false;
-        _page = 1;
-        _hasMore = hasMore;
         _totalCount = total;
+        _totalPages = totalPages;
       });
       _fetchUnreadCount();
     } catch (e) {
@@ -116,42 +126,22 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_loadingMore || !_hasMore || _notifications.isEmpty) return;
-    _loadingMore = true;
-    final nextPage = _page + 1;
-    try {
-      final token = _token;
-      final lueParam = _showUnreadOnly ? '&lue=0' : '&lue=1';
-      final data =
-          await _api.get(
-                '/epicier/notifications?page=$nextPage&limit=$_pageSize$lueParam',
-                token: token,
-              )
-              as Map<String, dynamic>;
-      final items =
-          (data['items'] as List<dynamic>?)
-              ?.map(
-                (j) =>
-                    GrocerNotificationModel.fromJson(j as Map<String, dynamic>),
-              )
-              .toList() ??
-          [];
-      final pagination = data['pagination'] as Map<String, dynamic>?;
-      final hasMore = pagination?['hasMore'] as bool? ?? false;
-      final total = pagination?['total'] as int? ?? _totalCount;
+  Future<void> _goToPreviousPage() async {
+    if (_currentPage <= 1 || _isLoading) return;
+    setState(() {
+      _currentPage--;
+      _notifications = [];
+    });
+    await _load();
+  }
 
-      if (!mounted) return;
-      setState(() {
-        _notifications = [..._notifications, ...items];
-        _page = nextPage;
-        _hasMore = hasMore;
-        _totalCount = total;
-        _loadingMore = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loadingMore = false);
-    }
+  Future<void> _goToNextPage() async {
+    if (_currentPage >= _totalPages || _isLoading) return;
+    setState(() {
+      _currentPage++;
+      _notifications = [];
+    });
+    await _load();
   }
 
   Future<void> _fetchUnreadCount() async {
@@ -227,15 +217,56 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  String _buildPaginationLabel() {
-    final total = _totalCount > 0 ? _totalCount : _notifications.length;
-    final totalPages = (_pageSize > 0 && total > 0)
-        ? ((total + _pageSize - 1) / _pageSize).ceil()
-        : 1;
-    if (totalPages <= 1) {
-      return '${_notifications.length} notification${_notifications.length > 1 ? 's' : ''}';
+  String _buildPaginationSummary() {
+    final n = _notifications.length;
+    final total = _totalCount;
+    if (total <= 0) {
+      return n == 0
+          ? 'Aucune notification'
+          : '$n notification${n > 1 ? 's' : ''}';
     }
-    return 'Page $_page sur $totalPages • ${_notifications.length} affichées';
+    if (_totalPages <= 1) {
+      return '$n sur $total';
+    }
+    return 'Page $_currentPage sur $_totalPages · $n sur $total';
+  }
+
+  Widget _buildPaginationBar() {
+    final canPrev = _currentPage > 1 && !_isLoading;
+    final canNext = _currentPage < _totalPages && !_isLoading;
+    final showArrows = _totalPages > 1;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (showArrows)
+          IconButton(
+            tooltip: 'Page précédente',
+            onPressed: canPrev ? _goToPreviousPage : null,
+            icon: const Icon(Icons.chevron_left),
+            color: GrocerTheme.primary,
+            iconSize: 32,
+          ),
+        Flexible(
+          child: Text(
+            _buildPaginationSummary(),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: GrocerTheme.textMuted,
+            ),
+          ),
+        ),
+        if (showArrows)
+          IconButton(
+            tooltip: 'Page suivante',
+            onPressed: canNext ? _goToNextPage : null,
+            icon: const Icon(Icons.chevron_right),
+            color: GrocerTheme.primary,
+            iconSize: 32,
+          ),
+      ],
+    );
   }
 
   void _gotoOrder(GrocerNotificationModel n) {
@@ -375,64 +406,25 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
     final grouped = _grouped();
 
     return RefreshIndicator(
-      onRefresh: () => _load(reset: true),
+      onRefresh: () => _load(reset: false),
       color: GrocerTheme.primary,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (n) {
-          if (n is ScrollEndNotification &&
-              n.metrics.pixels >= n.metrics.maxScrollExtent - 100) {
-            _loadMore();
-          }
-          return false;
-        },
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            ...grouped.entries
-                .where((e) => e.value.isNotEmpty)
-                .expand(
-                  (e) => [
-                    _buildSectionHeader(e.key),
-                    ...e.value.map((n) => _buildCard(n)),
-                  ],
-                ),
-            if (_loadingMore)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(
-                  child: CircularProgressIndicator(color: GrocerTheme.primary),
-                ),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 32),
+        children: [
+          ...grouped.entries
+              .where((e) => e.value.isNotEmpty)
+              .expand(
+                (e) => [
+                  _buildSectionHeader(e.key),
+                  ...e.value.map((n) => _buildCard(n)),
+                ],
               ),
-            if (_hasMore && !_loadingMore && _notifications.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: FilledButton.icon(
-                    onPressed: _loadMore,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Charger plus'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: GrocerTheme.primary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            if (_totalCount > 0 || _notifications.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: Center(
-                  child: Text(
-                    _buildPaginationLabel(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: GrocerTheme.textMuted,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+          if (_totalCount > 0 || _notifications.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 16, 8, 24),
+              child: _buildPaginationBar(),
+            ),
+        ],
       ),
     );
   }
