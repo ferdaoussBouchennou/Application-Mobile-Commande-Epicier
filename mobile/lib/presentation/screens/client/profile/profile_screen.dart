@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../providers/auth_provider.dart';
+import '../../../../providers/order_provider.dart';
+import '../../../../screens/auth/welcome_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -214,6 +216,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: const Icon(Icons.lock_outline, color: Color(0xFF2D5016)),
                   label: const Text('Changer le mot de passe', style: TextStyle(color: Color(0xFF2D5016))),
                 ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () => _confirmLogout(context),
+                  icon: const Icon(Icons.logout, color: Colors.red),
+                  label: const Text('Se déconnecter', style: TextStyle(color: Colors.red)),
+                ),
               ] else ...[
                 Row(
                   children: [
@@ -299,5 +307,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Voulez-vous vraiment vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2D5016),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      context.read<OrderProvider>().stopPolling();
+      context.read<AuthProvider>().logout();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        (route) => false,
+      );
+    }
   }
 }
