@@ -6,7 +6,7 @@ import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
 import 'catalogue/grocer_catalogue_screen.dart';
 import 'orders/grocer_orders_screen.dart';
-import 'stats/grocer_stats_placeholder_screen.dart';
+import 'notifications/grocer_notifications_screen.dart';
 
 /// Écran principal de l'espace Épicier — même design que MapScreen (parcourir sans compte).
 class GrocerMainScreen extends StatefulWidget {
@@ -19,7 +19,9 @@ class GrocerMainScreen extends StatefulWidget {
 class _GrocerMainScreenState extends State<GrocerMainScreen> {
   int _currentIndex = 0;
   int _newOrdersCount = 0;
+  int _unreadNotificationsCount = 0;
   VoidCallback? _catalogueRefresh;
+  VoidCallback? _notificationsRefresh;
   final GlobalKey<NavigatorState> _catalogueNavKey = GlobalKey<NavigatorState>();
 
   late List<Widget> _screens;
@@ -42,7 +44,11 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       GrocerOrdersScreen(
         onNewOrdersCount: (count) => setState(() => _newOrdersCount = count),
       ),
-      const GrocerStatsPlaceholderScreen(),
+      GrocerNotificationsScreen(
+        onNavigateToOrders: () => setState(() => _currentIndex = 2),
+        onUnreadCount: (count) => setState(() => _unreadNotificationsCount = count),
+        onRegisterRefresh: (fn) => _notificationsRefresh = fn,
+      ),
     ];
   }
 
@@ -50,7 +56,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
     const _NavItem(Icons.home_outlined, Icons.home, 'Accueil', null),
     const _NavItem(Icons.inventory_2_outlined, Icons.inventory_2, 'Catalogue', null),
     _NavItem(Icons.receipt_long_outlined, Icons.receipt_long, 'Commandes', _newOrdersCount),
-    const _NavItem(Icons.bar_chart_outlined, Icons.bar_chart, 'Stats', null),
+    _NavItem(Icons.notifications_outlined, Icons.notifications, 'Notifications', _unreadNotificationsCount > 0 ? _unreadNotificationsCount : null),
   ];
 
   @override
@@ -111,6 +117,9 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
           if (index == 1) {
             _catalogueNavKey.currentState?.popUntil((route) => route.isFirst);
             _catalogueRefresh?.call();
+          }
+          if (index == 3) {
+            _notificationsRefresh?.call();
           }
         },
         type: BottomNavigationBarType.fixed,
