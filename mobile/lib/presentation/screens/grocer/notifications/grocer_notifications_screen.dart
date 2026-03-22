@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -10,11 +11,13 @@ class GrocerNotificationsScreen extends StatefulWidget {
   const GrocerNotificationsScreen({
     super.key,
     this.onNavigateToOrders,
+    this.onNavigateToOrder,
     this.onUnreadCount,
     this.onRegisterRefresh,
   });
 
   final VoidCallback? onNavigateToOrders;
+  final void Function(int orderId)? onNavigateToOrder;
   final void Function(int count)? onUnreadCount;
   final void Function(VoidCallback fn)? onRegisterRefresh;
 
@@ -22,40 +25,76 @@ class GrocerNotificationsScreen extends StatefulWidget {
   State<GrocerNotificationsScreen> createState() => _GrocerNotificationsScreenState();
 }
 
-class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
+class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
+    with SingleTickerProviderStateMixin {
   final ApiService _api = ApiService();
   List<GrocerNotificationModel> _notifications = [];
   bool _isLoading = true;
   String? _error;
+  int _selectedTabIndex = 0; // 0 = Non lues, 1 = Historique
+  late TabController _tabController;
+  int _page = 1;
+  bool _hasMore = true;
+  bool _loadingMore = false;
+  Timer? _timeUpdateTimer;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
       widget.onRegisterRefresh?.call(_load);
     });
+    _timeUpdateTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && _notifications.isNotEmpty) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timeUpdateTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
   }
 
   String? get _token => context.read<AuthProvider>().token;
 
-  Future<void> _load() async {
+  bool get _showUnreadOnly => _selectedTabIndex == 0;
+
+  Future<void> _load({bool reset = false}) async {
     if (!mounted) return;
+    if (reset) {
+      _page = 1;
+      _hasMore = true;
+    }
     setState(() {
-      _isLoading = true;
+      _isLoading = reset || _page == 1;
       _error = null;
+      if (reset) _notifications = [];
     });
     try {
       final token = _token;
-      final data = await _api.get('/epicier/notifications', token: token);
-      final list = (data as List)
-          .map((j) => GrocerNotificationModel.fromJson(j as Map<String, dynamic>))
-          .toList();
+      final lueParam = _showUnreadOnly ? '&lue=0' : '&lue=1';
+      final data = await _api.get(
+        '/epicier/notifications?page=1&limit=20$lueParam',
+        token: token,
+      ) as Map<String, dynamic>;
+      final items = (data['items'] as List<dynamic>?)
+              ?.map((j) => GrocerNotificationModel.fromJson(j as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final pagination = data['pagination'] as Map<String, dynamic>?;
+      final hasMore = pagination?['hasMore'] as bool? ?? false;
+
       if (!mounted) return;
       setState(() {
-        _notifications = list;
+        _notifications = items;
         _isLoading = false;
+        _page = 1;
+        _hasMore = hasMore;
       });
+      _fetchUnreadCount();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -65,15 +104,58 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
     }
   }
 
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _notifications.isEmpty) return;
+    _loadingMore = true;
+    final nextPage = _page + 1;
+    try {
+      final token = _token;
+      final lueParam = _showUnreadOnly ? '&lue=0' : '&lue=1';
+      final data = await _api.get(
+        '/epicier/notifications?page=$nextPage&limit=20$lueParam',
+        token: token,
+      ) as Map<String, dynamic>;
+      final items = (data['items'] as List<dynamic>?)
+              ?.map((j) => GrocerNotificationModel.fromJson(j as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final pagination = data['pagination'] as Map<String, dynamic>?;
+      final hasMore = pagination?['hasMore'] as bool? ?? false;
+
+      if (!mounted) return;
+      setState(() {
+        _notifications = [..._notifications, ...items];
+        _page = nextPage;
+        _hasMore = hasMore;
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    try {
+      final data = await _api.get('/epicier/notifications/unread-count', token: _token);
+      final count = (data as Map<String, dynamic>?)?['count'] as int? ?? 0;
+      if (mounted) widget.onUnreadCount?.call(count);
+    } catch (_) {}
+  }
+
   Future<void> _markRead(int id) async {
     try {
       await _api.patch('/epicier/notifications/$id/read', {}, token: _token);
       if (!mounted) return;
       setState(() {
         final idx = _notifications.indexWhere((n) => n.id == id);
-        if (idx != -1) _notifications[idx].lue = true;
-        widget.onUnreadCount?.call(_notifications.where((n) => !n.lue).length);
+        if (idx != -1) {
+          _notifications[idx].lue = true;
+          if (_showUnreadOnly) {
+            _notifications.removeAt(idx);
+          }
+        }
       });
+      _fetchUnreadCount();
     } catch (_) {}
   }
 
@@ -82,11 +164,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
       await _api.patch('/epicier/notifications/read-all', {}, token: _token);
       if (!mounted) return;
       setState(() {
-        for (final n in _notifications) {
-          n.lue = true;
-        }
-        widget.onUnreadCount?.call(0);
+        if (_showUnreadOnly) _notifications = [];
       });
+      _fetchUnreadCount();
     } catch (_) {}
   }
 
@@ -112,23 +192,46 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
   }
 
   String _relativeTime(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'À l\'instant';
-    if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'Il y a ${diff.inHours} h';
-    if (diff.inDays < 7) return 'Il y a ${diff.inDays} j';
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.isNegative || diff.inSeconds < 60) return 'à l\'instant';
+    final minutes = diff.inMinutes;
+    final hours = diff.inHours;
+    final days = diff.inDays;
+    if (minutes < 60) return 'il y a $minutes min';
+    if (hours < 24) return 'il y a $hours h';
+    if (days < 7) return 'il y a $days j';
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
-  void _gotoOrders() {
-    widget.onNavigateToOrders?.call();
+  void _gotoOrder(GrocerNotificationModel n) {
+    final orderId = n.commandeId;
+    if (orderId != null) {
+      widget.onNavigateToOrder?.call(orderId);
+    } else {
+      widget.onNavigateToOrders?.call();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (_notifications.any((n) => !n.lue)) _buildMarkAllBar(),
+        TabBar(
+          controller: _tabController,
+          onTap: (i) {
+            setState(() => _selectedTabIndex = i);
+            _load(reset: true);
+          },
+          indicatorColor: GrocerTheme.primary,
+          labelColor: GrocerTheme.primary,
+          unselectedLabelColor: GrocerTheme.textMuted,
+          tabs: const [
+            Tab(text: 'Non lues'),
+            Tab(text: 'Historique'),
+          ],
+        ),
+        if (_showUnreadOnly && _notifications.any((n) => !n.lue)) _buildMarkAllBar(),
         Expanded(child: _buildBody()),
       ],
     );
@@ -144,7 +247,7 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Vous avez des notifications non lues',
+              'Marquer tout comme lu',
               style: TextStyle(fontSize: 13, color: GrocerTheme.textDark),
             ),
           ),
@@ -162,13 +265,13 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
+    if (_isLoading && _notifications.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: GrocerTheme.primary),
       );
     }
 
-    if (_error != null) {
+    if (_error != null && _notifications.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -194,7 +297,7 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: _load,
+                onPressed: () => _load(reset: true),
                 icon: const Icon(Icons.refresh),
                 label: const Text('Réessayer'),
                 style: ElevatedButton.styleFrom(
@@ -213,18 +316,41 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
     final grouped = _grouped();
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => _load(reset: true),
       color: GrocerTheme.primary,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 32),
-        children: [
-          ...grouped.entries
-              .where((e) => e.value.isNotEmpty)
-              .expand((e) => [
-                    _buildSectionHeader(e.key),
-                    ...e.value.map(_buildCard),
-                  ]),
-        ],
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (n is ScrollEndNotification && n.metrics.pixels >= n.metrics.maxScrollExtent - 100) {
+            _loadMore();
+          }
+          return false;
+        },
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 32),
+          children: [
+            ...grouped.entries
+                .where((e) => e.value.isNotEmpty)
+                .expand((e) => [
+                      _buildSectionHeader(e.key),
+                      ...e.value.map((n) => _buildCard(n)),
+                    ]),
+            if (_loadingMore)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator(color: GrocerTheme.primary)),
+              ),
+            if (_hasMore && !_loadingMore && _notifications.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: TextButton(
+                    onPressed: _loadMore,
+                    child: const Text('Charger plus'),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -261,8 +387,8 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
       ),
       child: GestureDetector(
         onTap: () {
-          _markRead(n.id);
-          if (n.isOrderRelated) _gotoOrders();
+          if (!n.lue) _markRead(n.id);
+          if (n.isOrderRelated) _gotoOrder(n);
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -311,16 +437,26 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
                             ),
                           ),
                         ),
-                        if (!n.lue)
+                        if (!n.lue) ...[
+                          TextButton(
+                            onPressed: () => _markRead(n.id),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              foregroundColor: GrocerTheme.primary,
+                            ),
+                            child: const Text('Marquer lu', style: TextStyle(fontSize: 11)),
+                          ),
                           Container(
                             width: 9,
                             height: 9,
-                            margin: const EdgeInsets.only(left: 6),
+                            margin: const EdgeInsets.only(left: 4),
                             decoration: const BoxDecoration(
                               color: GrocerTheme.trendNegative,
                               shape: BoxShape.circle,
                             ),
                           ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 5),
@@ -351,11 +487,11 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
                           const SizedBox(width: 12),
                           GestureDetector(
                             onTap: () {
-                              _markRead(n.id);
-                              _gotoOrders();
+                              if (!n.lue) _markRead(n.id);
+                              _gotoOrder(n);
                             },
                             child: const Text(
-                              '→ Voir les commandes',
+                              '→ Voir commande',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: GrocerTheme.primary,
@@ -403,9 +539,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          const Text(
-            'Aucune notification',
-            style: TextStyle(
+          Text(
+            _showUnreadOnly ? 'Aucune notification non lue' : 'Aucune notification dans l\'historique',
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: GrocerTheme.textDark,
@@ -415,7 +551,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 48),
             child: Text(
-              'Vous serez alerté ici pour les nouvelles commandes, avis, réclamations et réponses de vos clients (acceptation/refus de produits).',
+              _showUnreadOnly
+                  ? 'Vos nouvelles commandes, avis et réclamations apparaîtront ici.'
+                  : 'Les notifications lues sont affichées ici.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,

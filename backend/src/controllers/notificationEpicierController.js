@@ -3,15 +3,37 @@ const sequelize = require('../config/db');
 
 exports.getNotifications = async (req, res) => {
   try {
-    const epicierId = req.user.storeId;
-    if (!epicierId) {
-      return res.status(403).json({ message: 'Store ID manquant' });
+    const utilisateurId = req.user.id;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(10, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const lueParam = req.query.lue;
+    const onlyUnread = lueParam === '0' || lueParam === 'false';
+    const onlyRead = lueParam === '1' || lueParam === 'true';
+
+    let whereClause = 'WHERE utilisateur_id = :utilisateurId';
+    const replacements = { utilisateurId };
+    if (onlyUnread) {
+      whereClause += ' AND lue = 0';
+    } else if (onlyRead) {
+      whereClause += ' AND lue = 1';
     }
+
     const notifications = await sequelize.query(
-      'SELECT id, epicier_id, message, lue, created_at as date_envoi FROM notifications_epicier WHERE epicier_id = :epicierId ORDER BY created_at DESC',
-      { replacements: { epicierId }, type: QueryTypes.SELECT }
+      `SELECT id, utilisateur_id, message, lue, date_envoi FROM notifications ${whereClause} ORDER BY date_envoi DESC LIMIT :limit OFFSET :offset`,
+      { replacements: { ...replacements, limit, offset }, type: QueryTypes.SELECT }
     );
-    res.json(notifications);
+
+    const [countRows] = await sequelize.query(
+      `SELECT COUNT(*) as total FROM notifications ${whereClause}`,
+      { replacements, type: QueryTypes.SELECT }
+    );
+    const total = countRows?.[0]?.total ?? 0;
+
+    res.json({
+      items: notifications,
+      pagination: { page, limit, total: Number(total), hasMore: offset + notifications.length < total },
+    });
   } catch (err) {
     console.error('getNotifications epicier:', err);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -21,13 +43,10 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const epicierId = req.user.storeId;
-    if (!epicierId) {
-      return res.status(403).json({ message: 'Store ID manquant' });
-    }
+    const utilisateurId = req.user.id;
     await sequelize.query(
-      'UPDATE notifications_epicier SET lue = 1 WHERE id = :id AND epicier_id = :epicierId',
-      { replacements: { id, epicierId }, type: QueryTypes.UPDATE }
+      'UPDATE notifications SET lue = 1 WHERE id = :id AND utilisateur_id = :utilisateurId',
+      { replacements: { id, utilisateurId }, type: QueryTypes.UPDATE }
     );
     res.json({ success: true });
   } catch (err) {
@@ -38,13 +57,10 @@ exports.markAsRead = async (req, res) => {
 
 exports.markAllAsRead = async (req, res) => {
   try {
-    const epicierId = req.user.storeId;
-    if (!epicierId) {
-      return res.status(403).json({ message: 'Store ID manquant' });
-    }
+    const utilisateurId = req.user.id;
     await sequelize.query(
-      'UPDATE notifications_epicier SET lue = 1 WHERE epicier_id = :epicierId',
-      { replacements: { epicierId }, type: QueryTypes.UPDATE }
+      'UPDATE notifications SET lue = 1 WHERE utilisateur_id = :utilisateurId',
+      { replacements: { utilisateurId }, type: QueryTypes.UPDATE }
     );
     res.json({ success: true });
   } catch (err) {
@@ -55,13 +71,10 @@ exports.markAllAsRead = async (req, res) => {
 
 exports.getUnreadCount = async (req, res) => {
   try {
-    const epicierId = req.user.storeId;
-    if (!epicierId) {
-      return res.status(403).json({ message: 'Store ID manquant' });
-    }
+    const utilisateurId = req.user.id;
     const [row] = await sequelize.query(
-      'SELECT COUNT(*) as count FROM notifications_epicier WHERE epicier_id = :epicierId AND lue = 0',
-      { replacements: { epicierId }, type: QueryTypes.SELECT }
+      'SELECT COUNT(*) as count FROM notifications WHERE utilisateur_id = :utilisateurId AND lue = 0',
+      { replacements: { utilisateurId }, type: QueryTypes.SELECT }
     );
     res.json({ count: row?.count ?? 0 });
   } catch (err) {
