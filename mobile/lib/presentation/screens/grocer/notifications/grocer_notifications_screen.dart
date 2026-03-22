@@ -6,6 +6,7 @@ import '../../../../data/models/grocer_notification_model.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../providers/auth_provider.dart';
 import '../grocer_theme.dart';
+import '../reclamations/grocer_reclamation_detail_screen.dart';
 
 class GrocerNotificationsScreen extends StatefulWidget {
   const GrocerNotificationsScreen({
@@ -22,7 +23,8 @@ class GrocerNotificationsScreen extends StatefulWidget {
   final void Function(VoidCallback fn)? onRegisterRefresh;
 
   @override
-  State<GrocerNotificationsScreen> createState() => _GrocerNotificationsScreenState();
+  State<GrocerNotificationsScreen> createState() =>
+      _GrocerNotificationsScreenState();
 }
 
 class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
@@ -34,9 +36,11 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
   int _selectedTabIndex = 0; // 0 = Non lues, 1 = Historique
   late TabController _tabController;
   int _page = 1;
+  int _totalCount = 0;
   bool _hasMore = true;
   bool _loadingMore = false;
   Timer? _timeUpdateTimer;
+  static const int _pageSize = 20;
 
   @override
   void initState() {
@@ -76,16 +80,23 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
     try {
       final token = _token;
       final lueParam = _showUnreadOnly ? '&lue=0' : '&lue=1';
-      final data = await _api.get(
-        '/epicier/notifications?page=1&limit=20$lueParam',
-        token: token,
-      ) as Map<String, dynamic>;
-      final items = (data['items'] as List<dynamic>?)
-              ?.map((j) => GrocerNotificationModel.fromJson(j as Map<String, dynamic>))
+      final data =
+          await _api.get(
+                '/epicier/notifications?page=1&limit=$_pageSize$lueParam',
+                token: token,
+              )
+              as Map<String, dynamic>;
+      final items =
+          (data['items'] as List<dynamic>?)
+              ?.map(
+                (j) =>
+                    GrocerNotificationModel.fromJson(j as Map<String, dynamic>),
+              )
               .toList() ??
           [];
       final pagination = data['pagination'] as Map<String, dynamic>?;
       final hasMore = pagination?['hasMore'] as bool? ?? false;
+      final total = pagination?['total'] as int? ?? 0;
 
       if (!mounted) return;
       setState(() {
@@ -93,6 +104,7 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
         _isLoading = false;
         _page = 1;
         _hasMore = hasMore;
+        _totalCount = total;
       });
       _fetchUnreadCount();
     } catch (e) {
@@ -111,22 +123,30 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
     try {
       final token = _token;
       final lueParam = _showUnreadOnly ? '&lue=0' : '&lue=1';
-      final data = await _api.get(
-        '/epicier/notifications?page=$nextPage&limit=20$lueParam',
-        token: token,
-      ) as Map<String, dynamic>;
-      final items = (data['items'] as List<dynamic>?)
-              ?.map((j) => GrocerNotificationModel.fromJson(j as Map<String, dynamic>))
+      final data =
+          await _api.get(
+                '/epicier/notifications?page=$nextPage&limit=$_pageSize$lueParam',
+                token: token,
+              )
+              as Map<String, dynamic>;
+      final items =
+          (data['items'] as List<dynamic>?)
+              ?.map(
+                (j) =>
+                    GrocerNotificationModel.fromJson(j as Map<String, dynamic>),
+              )
               .toList() ??
           [];
       final pagination = data['pagination'] as Map<String, dynamic>?;
       final hasMore = pagination?['hasMore'] as bool? ?? false;
+      final total = pagination?['total'] as int? ?? _totalCount;
 
       if (!mounted) return;
       setState(() {
         _notifications = [..._notifications, ...items];
         _page = nextPage;
         _hasMore = hasMore;
+        _totalCount = total;
         _loadingMore = false;
       });
     } catch (_) {
@@ -136,7 +156,10 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
 
   Future<void> _fetchUnreadCount() async {
     try {
-      final data = await _api.get('/epicier/notifications/unread-count', token: _token);
+      final data = await _api.get(
+        '/epicier/notifications/unread-count',
+        token: _token,
+      );
       final count = (data as Map<String, dynamic>?)?['count'] as int? ?? 0;
       if (mounted) widget.onUnreadCount?.call(count);
     } catch (_) {}
@@ -204,12 +227,36 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
     return DateFormat('dd/MM/yyyy').format(date);
   }
 
+  String _buildPaginationLabel() {
+    final total = _totalCount > 0 ? _totalCount : _notifications.length;
+    final totalPages = (_pageSize > 0 && total > 0)
+        ? ((total + _pageSize - 1) / _pageSize).ceil()
+        : 1;
+    if (totalPages <= 1) {
+      return '${_notifications.length} notification${_notifications.length > 1 ? 's' : ''}';
+    }
+    return 'Page $_page sur $totalPages • ${_notifications.length} affichées';
+  }
+
   void _gotoOrder(GrocerNotificationModel n) {
     final orderId = n.commandeId;
     if (orderId != null) {
       widget.onNavigateToOrder?.call(orderId);
     } else {
       widget.onNavigateToOrders?.call();
+    }
+  }
+
+  void _gotoReclamation(GrocerNotificationModel n) {
+    final reclamationId = n.reclamationId;
+    if (reclamationId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              GrocerReclamationDetailScreen(reclamationId: reclamationId),
+        ),
+      );
     }
   }
 
@@ -231,7 +278,8 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
             Tab(text: 'Historique'),
           ],
         ),
-        if (_showUnreadOnly && _notifications.any((n) => !n.lue)) _buildMarkAllBar(),
+        if (_showUnreadOnly && _notifications.any((n) => !n.lue))
+          _buildMarkAllBar(),
         Expanded(child: _buildBody()),
       ],
     );
@@ -243,7 +291,11 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Icon(Icons.check_circle_outline, size: 16, color: GrocerTheme.primary),
+          Icon(
+            Icons.check_circle_outline,
+            size: 16,
+            color: GrocerTheme.primary,
+          ),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
@@ -257,7 +309,10 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               foregroundColor: GrocerTheme.primary,
             ),
-            child: const Text('Tout lire', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Tout lire',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -278,7 +333,11 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.wifi_off_rounded, size: 64, color: Colors.grey.shade400),
+              Icon(
+                Icons.wifi_off_rounded,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Impossible de charger les notifications',
@@ -320,7 +379,8 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
       color: GrocerTheme.primary,
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
-          if (n is ScrollEndNotification && n.metrics.pixels >= n.metrics.maxScrollExtent - 100) {
+          if (n is ScrollEndNotification &&
+              n.metrics.pixels >= n.metrics.maxScrollExtent - 100) {
             _loadMore();
           }
           return false;
@@ -330,22 +390,44 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
           children: [
             ...grouped.entries
                 .where((e) => e.value.isNotEmpty)
-                .expand((e) => [
-                      _buildSectionHeader(e.key),
-                      ...e.value.map((n) => _buildCard(n)),
-                    ]),
+                .expand(
+                  (e) => [
+                    _buildSectionHeader(e.key),
+                    ...e.value.map((n) => _buildCard(n)),
+                  ],
+                ),
             if (_loadingMore)
               const Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator(color: GrocerTheme.primary)),
+                child: Center(
+                  child: CircularProgressIndicator(color: GrocerTheme.primary),
+                ),
               ),
             if (_hasMore && !_loadingMore && _notifications.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Center(
-                  child: TextButton(
+                  child: FilledButton.icon(
                     onPressed: _loadMore,
-                    child: const Text('Charger plus'),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Charger plus'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: GrocerTheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            if (_totalCount > 0 || _notifications.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Center(
+                  child: Text(
+                    _buildPaginationLabel(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: GrocerTheme.textMuted,
+                    ),
                   ),
                 ),
               ),
@@ -388,7 +470,11 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
       child: GestureDetector(
         onTap: () {
           if (!n.lue) _markRead(n.id);
-          if (n.isOrderRelated) _gotoOrder(n);
+          if (n.isReclamationRelated && n.reclamationId != null) {
+            _gotoReclamation(n);
+          } else if (n.isOrderRelated) {
+            _gotoOrder(n);
+          }
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -399,7 +485,10 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
             borderRadius: BorderRadius.circular(16),
             border: n.lue
                 ? Border.all(color: GrocerTheme.border)
-                : Border.all(color: GrocerTheme.primary.withOpacity(0.3), width: 1.5),
+                : Border.all(
+                    color: GrocerTheme.primary.withOpacity(0.3),
+                    width: 1.5,
+                  ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(n.lue ? 10 : 20),
@@ -432,7 +521,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
                             n.shortTitle,
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: n.lue ? FontWeight.w600 : FontWeight.bold,
+                              fontWeight: n.lue
+                                  ? FontWeight.w600
+                                  : FontWeight.bold,
                               color: GrocerTheme.textDark,
                             ),
                           ),
@@ -441,11 +532,17 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
                           TextButton(
                             onPressed: () => _markRead(n.id),
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               minimumSize: Size.zero,
                               foregroundColor: GrocerTheme.primary,
                             ),
-                            child: const Text('Marquer lu', style: TextStyle(fontSize: 11)),
+                            child: const Text(
+                              'Marquer lu',
+                              style: TextStyle(fontSize: 11),
+                            ),
                           ),
                           Container(
                             width: 9,
@@ -473,8 +570,11 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.access_time_rounded,
-                            size: 12, color: Colors.grey.shade500),
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 12,
+                          color: Colors.grey.shade500,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           _relativeTime(n.dateEnvoi),
@@ -483,7 +583,25 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
                             color: Colors.grey.shade500,
                           ),
                         ),
-                        if (n.isOrderRelated) ...[
+                        if (n.isReclamationRelated &&
+                            n.reclamationId != null) ...[
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () {
+                              if (!n.lue) _markRead(n.id);
+                              _gotoReclamation(n);
+                            },
+                            child: const Text(
+                              '→ Voir réclamation',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: GrocerTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ] else if (n.isOrderRelated) ...[
                           const SizedBox(width: 12),
                           GestureDetector(
                             onTap: () {
@@ -540,7 +658,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
           ),
           const SizedBox(height: 28),
           Text(
-            _showUnreadOnly ? 'Aucune notification non lue' : 'Aucune notification dans l\'historique',
+            _showUnreadOnly
+                ? 'Aucune notification non lue'
+                : 'Aucune notification dans l\'historique',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
