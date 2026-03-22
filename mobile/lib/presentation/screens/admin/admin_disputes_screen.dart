@@ -23,6 +23,8 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
   
   Map<String, dynamic> _stats = {'totalDisputes': 0, 'ongoing': 0, 'resolved': 0};
   List<dynamic> _disputes = [];
+  int _currentPage = 0;
+  static const int _disputesPerPage = 3;
 
   @override
   void initState() {
@@ -228,7 +230,10 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
             child: FilterChip(
               label: Text(filter['label'] as String),
               selected: isSelected,
-              onSelected: (val) => setState(() => _selectedFilter = filter['label'] as String),
+              onSelected: (val) => setState(() {
+                _selectedFilter = filter['label'] as String;
+                _currentPage = 0;
+              }),
               backgroundColor: Colors.white,
               selectedColor: const Color(0xFFFFCC33),
               labelStyle: TextStyle(
@@ -265,8 +270,38 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
       ));
     }
 
+    final int totalPages = (filteredDisputes.length / _disputesPerPage).ceil();
+    final int start = _currentPage * _disputesPerPage;
+    final int end = (start + _disputesPerPage < filteredDisputes.length) 
+        ? start + _disputesPerPage 
+        : filteredDisputes.length;
+    final List<dynamic> paginatedDisputes = filteredDisputes.sublist(start, end);
+
     return Column(
-      children: filteredDisputes.map((d) => _buildDisputeCard(d)).toList(),
+      children: [
+        ...paginatedDisputes.map((d) => _buildDisputeCard(d)).toList(),
+        if (totalPages > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back_ios, size: 18, color: _currentPage > 0 ? const Color(0xFF2D1A0E) : Colors.grey),
+                  onPressed: _currentPage > 0 ? () => setState(() => _currentPage--) : null,
+                ),
+                Text(
+                  'Page ${_currentPage + 1} sur $totalPages',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E)),
+                ),
+                IconButton(
+                  icon: Icon(Icons.arrow_forward_ios, size: 18, color: _currentPage < totalPages - 1 ? const Color(0xFF2D1A0E) : Colors.grey),
+                  onPressed: _currentPage < totalPages - 1 ? () => setState(() => _currentPage++) : null,
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 
