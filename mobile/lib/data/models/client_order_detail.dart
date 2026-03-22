@@ -11,6 +11,10 @@ class ClientOrderDetail {
   final double montantTotal;
   final String statut;
   final int articleCount;
+  final bool clientAccepteModification;
+  final bool hasRupture;
+  final bool hasPendingAcceptance;
+  final String? messageRefus;
   final List<ClientOrderLine> lignes;
 
   ClientOrderDetail({
@@ -25,6 +29,10 @@ class ClientOrderDetail {
     required this.montantTotal,
     required this.statut,
     required this.articleCount,
+    this.clientAccepteModification = false,
+    this.hasRupture = false,
+    this.hasPendingAcceptance = false,
+    this.messageRefus,
     required this.lignes,
   });
 
@@ -42,6 +50,10 @@ class ClientOrderDetail {
       montantTotal: double.tryParse(json['montant_total']?.toString() ?? '0') ?? 0,
       statut: json['statut']?.toString() ?? 'reçue',
       articleCount: int.tryParse(json['article_count']?.toString() ?? '0') ?? 0,
+      clientAccepteModification: json['client_accepte_modification'] == true,
+      hasRupture: json['has_rupture'] == true,
+      hasPendingAcceptance: json['has_pending_acceptance'] == true,
+      messageRefus: json['message_refus']?.toString(),
       lignes: lignesList
           .map((e) => ClientOrderLine.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList(),
@@ -50,27 +62,36 @@ class ClientOrderDetail {
 }
 
 class ClientOrderLine {
+  final int detailId;
   final int produitId;
   final String nom;
   final int quantite;
   final double prixUnitaire;
   final double totalLigne;
+  final bool rupture;
+  final bool enAttenteAcceptationClient;
 
   ClientOrderLine({
+    required this.detailId,
     required this.produitId,
     required this.nom,
     required this.quantite,
     required this.prixUnitaire,
     required this.totalLigne,
+    this.rupture = false,
+    this.enAttenteAcceptationClient = false,
   });
 
   static ClientOrderLine fromJson(Map<String, dynamic> json) {
     return ClientOrderLine(
+      detailId: int.tryParse(json['detail_id']?.toString() ?? '0') ?? 0,
       produitId: int.tryParse(json['produit_id']?.toString() ?? '0') ?? 0,
       nom: json['nom']?.toString() ?? '',
       quantite: int.tryParse(json['quantite']?.toString() ?? '0') ?? 0,
       prixUnitaire: double.tryParse(json['prix_unitaire']?.toString() ?? '0') ?? 0,
       totalLigne: double.tryParse(json['total_ligne']?.toString() ?? '0') ?? 0,
+      rupture: json['rupture'] == true,
+      enAttenteAcceptationClient: json['en_attente_acceptation_client'] == true,
     );
   }
 }
