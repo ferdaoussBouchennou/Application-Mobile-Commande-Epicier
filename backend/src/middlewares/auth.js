@@ -17,6 +17,10 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded.id) {
+      // Ancien token sans champ `id` (généré avant la correction du authController)
+      return res.status(401).json({ error: 'Token obsolète, veuillez vous reconnecter.' });
+    }
     req.user = { id: decoded.id, email: decoded.email, role: decoded.role, storeId: decoded.storeId || null };
     next();
   } catch (err) {

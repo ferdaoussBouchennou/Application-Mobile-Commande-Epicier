@@ -92,7 +92,7 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        serverClientId: dotenv.env['GOOGLE_CLIENT_ID'], // Web Client ID pour obtenir idToken
         scopes: ['email', 'profile', 'openid'],
       );
 
