@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../providers/auth_provider.dart';
-import '../../../screens/auth/welcome_screen.dart';
 import 'grocer_theme.dart';
 import 'dashboard/grocer_dashboard_screen.dart';
 import 'catalogue/grocer_catalogue_screen.dart';
@@ -65,24 +62,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
           'MyHanut',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            child: TextButton.icon(
-              onPressed: () => _confirmLogout(context),
-              icon: const Icon(Icons.logout, color: Colors.white, size: 20),
-              label: const Text(
-                'Déconnexion',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-              style: TextButton.styleFrom(
-                backgroundColor: Colors.white.withOpacity(0.15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              ),
-            ),
-          ),
-        ],
+
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -136,40 +116,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
     );
   }
 
-  Future<void> _confirmLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Déconnexion', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Voulez-vous vraiment vous déconnecter ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: GrocerTheme.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Se déconnecter'),
-          ),
-        ],
-      ),
-    );
 
-    if (confirmed == true && mounted) {
-      context.read<AuthProvider>().logout();
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-        (route) => false,
-      );
-    }
-  }
 }
 
 class _NavItem {
