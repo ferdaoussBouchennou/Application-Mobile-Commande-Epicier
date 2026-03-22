@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../widgets/admin/admin_bottom_nav.dart';
+import '../../../../screens/auth/welcome_screen.dart';
 
 class PlatformStatsScreen extends StatefulWidget {
   const PlatformStatsScreen({super.key});
@@ -18,6 +19,8 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _data;
   String? _error;
+  int _touchedGroupIndex = -1;
+  int _touchedStackIndex = -1;
 
   @override
   void initState() {
@@ -75,11 +78,41 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
       appBar: AppBar(
-        title: const Text('Tableau de Bord', style: TextStyle(fontWeight: FontWeight.bold)),
+        automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFF2D5016),
-        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Tableau de Bord', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
         actions: [
-          IconButton(onPressed: _loadData, icon: const Icon(Icons.refresh)),
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF26444),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white, size: 22),
+            onPressed: _loadData,
+            tooltip: 'Actualiser',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 22),
+            tooltip: 'Déconnexion',
+            onPressed: () {
+              context.read<AuthProvider>().logout();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => WelcomeScreen()),
+                (route) => false,
+              );
+            },
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 0),
@@ -251,19 +284,23 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
 
     final days = dayMap.keys.toList()..sort();
     final List<BarChartGroupData> groups = [];
+    double maxTotal = 0;
 
     for (int i = 0; i < days.length; i++) {
       final dayData = dayMap[days[i]]!;
       final delivered = _toDouble(dayData['livrée']);
       final ongoing = _toDouble(dayData['reçue']) + _toDouble(dayData['prête']);
       final cancelled = _toDouble(dayData['refusee']) + _toDouble(dayData['refusée']);
+      
+      final total = delivered + ongoing + cancelled;
+      if (total > maxTotal) maxTotal = total;
 
       groups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: delivered + ongoing + cancelled,
+              toY: total,
               width: 16,
               borderRadius: BorderRadius.circular(4),
               rodStackItems: [
@@ -276,6 +313,8 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
         ),
       );
     }
+
+    final maxY = maxTotal > 0 ? (maxTotal * 1.2).ceilToDouble() : 20.0;
 
     return Container(
       height: 250,
@@ -290,8 +329,68 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                maxY: 20, // Should be dynamic based on max value
-                barTouchData: BarTouchData(enabled: true),
+                maxY: maxY,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchCallback: (event, response) {
+                    setState(() {
+                      if (!event.isInterestedForInteractions || response == null || response.spot == null) {
+                        _touchedGroupIndex = -1;
+                        _touchedStackIndex = -1;
+                        return;
+                      }
+                      _touchedGroupIndex = response.spot!.touchedBarGroupIndex;
+                      _touchedStackIndex = response.spot!.touchedStackItemIndex;
+                    });
+                  },
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.black.withOpacity(0.8),
+                    tooltipRoundedRadius: 8,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      if (groupIndex != _touchedGroupIndex) return null;
+                      
+                      final day = _getFrenchDay(days[groupIndex]);
+                      String status;
+                      num value;
+                      Color color;
+                      
+                      switch (_touchedStackIndex) {
+                        case 0:
+                          status = 'Livrées';
+                          value = rod.rodStackItems[0].toY - rod.rodStackItems[0].fromY;
+                          color = const Color(0xFF2D5016);
+                          break;
+                        case 1:
+                          status = 'En cours';
+                          value = rod.rodStackItems[1].toY - rod.rodStackItems[1].fromY;
+                          color = const Color(0xFFC06C1E);
+                          break;
+                        case 2:
+                          status = 'Annulées';
+                          value = rod.rodStackItems[2].toY - rod.rodStackItems[2].fromY;
+                          color = const Color(0xFFE53935);
+                          break;
+                        default:
+                          return null;
+                      }
+                      
+                      return BarTooltipItem(
+                        '$day\n',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                        children: [
+                          TextSpan(
+                            text: '■ ',
+                            style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          TextSpan(
+                            text: '$status: ${value.toInt()}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 13),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   show: true,
                   bottomTitles: AxisTitles(
@@ -300,7 +399,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                       getTitlesWidget: (value, meta) {
                         if (value.toInt() >= days.length) return const Text('');
                         final date = DateTime.parse(days[value.toInt()]);
-                        final label = DateFormat('E').format(date); // Mon, Tue...
+                        final label = _getFrenchDay(days[value.toInt()]);
                         return Padding(
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
@@ -551,7 +650,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                   if (index < 0 || index >= days.length) return const Text('');
                   return Padding(
                     padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(DateFormat('dd/MM').format(DateTime.parse(days[index])), style: const TextStyle(fontSize: 9, color: Colors.grey)),
+                    child: Text(_getFrenchDay(days[index], short: true), style: const TextStyle(fontSize: 9, color: Colors.grey)),
                   );
                 },
               ),
@@ -598,6 +697,18 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value) ?? 0.0;
     return 0.0;
+  }
+
+  String _getFrenchDay(String dateStr, {bool short = false}) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+      final label = days[date.weekday - 1];
+      if (short) return '${date.day}/${date.month}'; // Keep DD/MM for line chart as it's more compact
+      return label;
+    } catch (_) {
+      return '';
+    }
   }
 }
 
