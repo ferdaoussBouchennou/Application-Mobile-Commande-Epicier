@@ -1,6 +1,7 @@
 const sequelize = require('../config/db');
 const { QueryTypes } = require('sequelize');
 const Commande = require('../models/Commande');
+const { sendNotificationToEpicier } = require('../utils/notificationEpicier');
 const DetailCommande = require('../models/DetailCommande');
 const Panier = require('../models/Panier');
 const PanierProduit = require('../models/PanierProduit');
@@ -202,6 +203,12 @@ const commandeController = {
         });
       }
 
+      sendNotificationToEpicier(
+        Number(epicier_id),
+        `Nouvelle commande #${commande.id} reçue (${montantTotal.toFixed(2)} MAD).`,
+        'Nouvelle commande'
+      ).catch(() => {});
+
       res.status(201).json({
         message: 'Commande créée avec succès',
         commande_id: commande.id,
@@ -235,6 +242,12 @@ const commandeController = {
       }
       detail.en_attente_acceptation_client = 0;
       await detail.save();
+      const produitNom = detail.Product?.nom ?? 'Un produit';
+      sendNotificationToEpicier(
+        commande.epicier_id,
+        `Le client a accepté d'ajouter le produit "${produitNom}" à la commande #${id}.`,
+        'Produit accepté'
+      ).catch(() => {});
       res.status(200).json({ message: 'Produit accepté dans la commande.', detail_id: detail.id });
     } catch (error) {
       console.error('Erreur accepterProduitRemisEnStock:', error);
@@ -273,10 +286,7 @@ const commandeController = {
       commande.montant_total = newTotal;
       await commande.save();
       const msg = `Le client a refusé d'ajouter le produit "${produitNom}" à la commande #${id}. Le produit a été retiré (nouveau total: ${newTotal.toFixed(2)} MAD). Vous pouvez accepter la commande.`;
-      await sequelize.query(
-        'INSERT INTO notifications_epicier (epicier_id, message, lue) VALUES (:epicier_id, :message, 0)',
-        { replacements: { epicier_id: commande.epicier_id, message: msg }, type: QueryTypes.INSERT }
-      );
+      sendNotificationToEpicier(commande.epicier_id, msg, 'Produit refusé').catch(() => {});
       res.status(200).json({
         message: 'Produit retiré de la commande. L\'épicier a été notifié.',
         montant_total: newTotal,

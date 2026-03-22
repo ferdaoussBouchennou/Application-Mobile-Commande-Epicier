@@ -3,6 +3,7 @@ const { QueryTypes } = require('sequelize');
 const Avis = require('../models/Avis');
 const Commande = require('../models/Commande');
 const Store = require('../models/Store');
+const { sendNotificationToEpicier } = require('../utils/notificationEpicier');
 
 const avisController = {
   // GET /avis/commande/:commandeId — get current user's avis for this order (to show existing or allow submit)
@@ -79,6 +80,11 @@ const avisController = {
       );
       const moy = (rows && rows[0] && rows[0].moy != null) ? Number(Number(rows[0].moy).toFixed(1)) : 0;
       await Store.update({ rating: moy }, { where: { id: commande.epicier_id } });
+      sendNotificationToEpicier(
+        commande.epicier_id,
+        `Nouvel avis reçu : ${noteNum}/5${commentaire ? ` — "${String(commentaire).slice(0, 80)}${String(commentaire).length > 80 ? '...' : ''}"` : ''} (commande #${commande_id})`,
+        'Nouvel avis'
+      ).catch(() => {});
       res.status(200).json({
         message: created ? 'Avis enregistré' : 'Avis modifié',
         avis: { id: avis.id, note: avis.note, commentaire: avis.commentaire },
