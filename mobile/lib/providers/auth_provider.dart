@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -92,7 +93,8 @@ class AuthProvider with ChangeNotifier {
     _setLoading(true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId: dotenv.env['GOOGLE_CLIENT_ID'], // Web Client ID pour obtenir idToken
+        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        serverClientId: kIsWeb ? null : dotenv.env['GOOGLE_CLIENT_ID'], // null sur le web car non supporté
         scopes: ['email', 'profile', 'openid'],
       );
 
