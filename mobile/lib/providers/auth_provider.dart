@@ -234,10 +234,23 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> registerEpicier(Map<String, dynamic> data) async {
+  Future<bool> registerEpicier(
+    Map<String, dynamic> data, {
+    List<int>? docBytes,
+    String? docFilename,
+  }) async {
     _setLoading(true);
     try {
-      await _apiService.post('/auth/register/epicier', data);
+      if (docBytes != null && docFilename != null && docBytes.isNotEmpty) {
+        await _apiService.postMultipart(
+          '/auth/register/epicier',
+          data,
+          files: {'document_verification': docBytes},
+          filenames: {'document_verification': docFilename},
+        );
+      } else {
+        await _apiService.post('/auth/register/epicier', data);
+      }
       _setLoading(false);
       return true;
     } catch (e) {

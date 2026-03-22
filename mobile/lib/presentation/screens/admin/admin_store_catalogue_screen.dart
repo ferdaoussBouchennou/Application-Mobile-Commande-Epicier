@@ -9,6 +9,7 @@ import '../../../providers/auth_provider.dart';
 import 'admin_product_form_screen.dart';
 import 'admin_category_form_screen.dart';
 import '../../../screens/auth/welcome_screen.dart';
+import '../../widgets/admin/admin_bottom_nav.dart';
 
 class AdminStoreCatalogueScreen extends StatefulWidget {
   final UserModel storeOwner;
@@ -127,6 +128,18 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
     }
   }
 
+  Future<void> _toggleRuptureStock(int productId) async {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
+    try {
+      await _apiService.patch('/admin/products/$productId/rupture-stock', {
+        'epicier_id': widget.storeOwner.store?['id']
+      }, token: token);
+      _fetchProducts();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -189,6 +202,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
     );
   }
 
@@ -739,6 +753,13 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  _buildIconButton(
+                    product.ruptureStock ? Icons.check_circle_outline : Icons.remove_shopping_cart_outlined,
+                    product.ruptureStock ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+                    product.ruptureStock ? const Color(0xFF4CBB5E) : Colors.orange,
+                    () => _toggleRuptureStock(product.id),
+                  ),
+                  const SizedBox(width: 8),
                   _buildIconButton(Icons.edit_outlined, const Color(0xFFE8F5E9), const Color(0xFF4CBB5E), () {
                     Navigator.push(
                       context,
