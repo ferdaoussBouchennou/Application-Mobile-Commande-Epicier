@@ -12,6 +12,7 @@ import 'admin_epicier_profile_screen.dart';
 import 'admin_disputes_screen.dart';
 import 'admin_store_catalogue_screen.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../widgets/admin/admin_bottom_nav.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -704,39 +705,4 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
   }
 
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 1,
-      selectedItemColor: const Color(0xFF2D5016),
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
-          );
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
-          );
-        } else if (index == 4) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminDisputesScreen()),
-          );
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
-        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
-        BottomNavigationBarItem(icon: Icon(Icons.warning_amber_rounded), label: 'Litiges'),
-      ],
-    );
-  }
 }

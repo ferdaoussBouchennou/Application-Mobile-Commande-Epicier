@@ -12,6 +12,7 @@ import 'admin_category_form_screen.dart';
 import '../../../data/models/category.dart' as model;
 import '../../../core/constants/api_constants.dart';
 import 'admin_category_products_screen.dart';
+import '../../widgets/admin/admin_bottom_nav.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
@@ -120,45 +121,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Catégorie'),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 3,
-      selectedItemColor: _primary,
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
-          );
-        } else if (index == 2) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => AdminOrdersScreen()),
-          );
-        } else if (index == 4) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => AdminDisputesScreen()),
-          );
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
-        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
-        BottomNavigationBarItem(icon: Icon(Icons.warning_amber_rounded), label: 'Litiges'),
-      ],
-    );
-  }
 
   Widget _buildHeader() {
     return Container(
