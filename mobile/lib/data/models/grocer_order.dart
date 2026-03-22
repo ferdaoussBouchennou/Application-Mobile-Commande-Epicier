@@ -98,6 +98,7 @@ class GrocerOrderDetail {
   final String clientNom;
   final String clientPrenom;
   final String? clientEmail;
+  final String? clientTelephone;
   final String? dateCommande;
   final String? dateRecuperation;
   final String creneau;
@@ -113,6 +114,7 @@ class GrocerOrderDetail {
     required this.clientNom,
     required this.clientPrenom,
     this.clientEmail,
+    this.clientTelephone,
     this.dateCommande,
     this.dateRecuperation,
     required this.creneau,
@@ -131,6 +133,7 @@ class GrocerOrderDetail {
       clientNom: json['client_nom']?.toString() ?? '',
       clientPrenom: json['client_prenom']?.toString() ?? '',
       clientEmail: json['client_email']?.toString(),
+      clientTelephone: json['client_telephone']?.toString(),
       dateCommande: json['date_commande']?.toString(),
       dateRecuperation: json['date_recuperation']?.toString(),
       creneau: json['creneau']?.toString() ?? '',

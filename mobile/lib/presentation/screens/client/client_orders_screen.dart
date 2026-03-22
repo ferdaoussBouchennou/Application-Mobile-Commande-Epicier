@@ -5,6 +5,9 @@ import '../../../data/models/client_order_detail.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/cart_provider.dart';
+import '../../../providers/order_provider.dart';
+import 'reclamations/claim_submission_screen.dart';
+import 'reclamations/client_reclamations_screen.dart';
 import '../../widgets/rate_order_sheet.dart';
 
 /// Liste des commandes du client (onglet Commandes).
@@ -23,67 +26,44 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
   static const Color _totalOrange = Color(0xFFB85C38);
 
   final ApiService _api = ApiService();
-  List<ClientOrder> _orders = [];
-  bool _loading = true;
-  String? _error;
   int _selectedFilterIndex = 0;
   static const List<String> _filterLabels = ['Toutes', 'Reçue', 'Prête', 'Livrée'];
   static const List<String?> _filterStatuts = [null, 'reçue', 'prête', 'livrée'];
 
-  List<ClientOrder> get _filteredOrders {
-    final statut = _filterStatuts[_selectedFilterIndex];
-    if (statut == null) return _orders;
-    return _orders.where((o) => o.statut == statut).toList();
-  }
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initPolling();
+    });
   }
 
-  Future<void> _load() async {
+  void _initPolling() {
     final token = context.read<AuthProvider>().token;
-    if (token == null || token.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _orders = [];
-        });
-      }
-      return;
+    if (token != null && token.isNotEmpty) {
+      context.read<OrderProvider>().startPolling(token);
     }
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
+  }
+
+  @override
+  void dispose() {
+    // Note: If you want polling to stop when the tab is hidden, this might not be enough as part of IndexedStack
+    // But since IndexedStack keeps the state alive, we might want to check for visibility.
+    // However, usually it's fine for small polling.
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    final token = context.read<AuthProvider>().token;
+    if (token != null) {
+      await context.read<OrderProvider>().fetchOrders(token);
     }
-    try {
-      final response = await _api.get('/commandes', token: token);
-      if (!mounted) return;
-      List<ClientOrder> orders = [];
-      if (response is List) {
-        for (final e in response) {
-          if (e is Map) {
-            try {
-              orders.add(ClientOrder.fromJson(Map<String, dynamic>.from(e as Map)));
-            } catch (_) {}
-          }
-        }
-      }
-      setState(() {
-        _orders = orders;
-        _loading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
-          _loading = false;
-        });
-      }
-    }
+  }
+
+  List<ClientOrder> _getFilteredOrders(List<ClientOrder> orders) {
+    final statut = _filterStatuts[_selectedFilterIndex];
+    if (statut == null) return orders;
+    return orders.where((o) => o.statut == statut).toList();
   }
 
   static String _formatPrice(double v) => v.toStringAsFixed(2).replaceAll('.', ',');
@@ -107,6 +87,8 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     }
     final dateText = detail.dateCommande != null && detail.dateCommande!.isNotEmpty
         ? _formatDateHour(detail.dateCommande) : null;
+    final recupDateText = detail.dateRecuperation != null && detail.dateRecuperation!.isNotEmpty
+        ? _formatPickupDate(detail.dateRecuperation) : null;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -179,13 +161,45 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                               _StatutChip(statut: detail.statut),
                             ],
                           ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context); // close current sheet
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ClaimSubmissionScreen(commandeId: detail.id),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.report_problem_outlined, color: Colors.orange, size: 18),
+                                label: const Text(
+                                  'Faire une réclamation',
+                                  style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
                           if (dateText != null && dateText.isNotEmpty) ...[
                             const SizedBox(height: 10),
                             Row(
                               children: [
                                 Icon(Icons.calendar_today_outlined, size: 18, color: _textMuted),
                                 const SizedBox(width: 8),
-                                Text(dateText!, style: TextStyle(fontSize: 14, color: _textMuted)),
+                                Text('Commandé le $dateText', style: TextStyle(fontSize: 14, color: _textMuted)),
+                              ],
+                            ),
+                          ],
+                          if (recupDateText != null && recupDateText.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.event_available, size: 18, color: _textMuted),
+                                const SizedBox(width: 8),
+                                Text('Récupération le $recupDateText', style: TextStyle(fontSize: 14, color: _textMuted)),
                               ],
                             ),
                           ],
@@ -298,6 +312,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         dateCommandeFormatted: order.dateCommandeFormatted,
         formatDateHour: _formatDateHour,
         dateCommande: order.dateCommande,
+        dateRecuperation: order.dateRecuperation,
         fetchOrderDetail: _fetchOrderDetail,
         primary: _primary,
         textDark: _textDark,
@@ -316,7 +331,13 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     }
     final cart = context.read<CartProvider>();
     for (final l in detail.lignes) {
-      await cart.addToCart(token, l.produitId, quantite: l.quantite, epicierId: order.epicierId);
+      await cart.addToCart(
+        produitId: l.produitId,
+        nom: l.nom,
+        prix: l.prixUnitaire,
+        quantite: l.quantite,
+        epicierId: order.epicierId,
+      );
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${detail.lignes.length} article(s) ajouté(s) au panier')));
@@ -339,6 +360,8 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final token = context.watch<AuthProvider>().token;
+    final orderProvider = context.watch<OrderProvider>();
+
     if (token == null || token.isEmpty) {
       return Center(
         child: Padding(
@@ -351,20 +374,20 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         ),
       );
     }
-    if (_loading) {
+    if (orderProvider.isLoading) {
       return const Center(child: CircularProgressIndicator(color: _primary));
     }
-    if (_error != null) {
+    if (orderProvider.error != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+              Text(orderProvider.error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 16),
               TextButton.icon(
-                onPressed: _load,
+                onPressed: _refresh,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Réessayer'),
               ),
@@ -373,7 +396,10 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         ),
       );
     }
-    if (_orders.isEmpty) {
+
+    final filteredOrders = _getFilteredOrders(orderProvider.orders);
+
+    if (orderProvider.orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -393,9 +419,57 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         ),
       );
     }
+
     return Column(
       children: [
-        // Filter chips (Toutes, Reçue, Prête, Livrée)
+        // Entry to Reclamations
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ClientReclamationsScreen()),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade100),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.report_problem_outlined, color: Colors.orange.shade800, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mes Réclamations',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.shade900,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          'Suivez le statut de vos litiges',
+                          style: TextStyle(
+                            color: Colors.orange.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.orange.shade300, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Filter chips
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: SingleChildScrollView(
@@ -439,7 +513,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
           ),
         ),
         Expanded(
-          child: _filteredOrders.isEmpty
+          child: filteredOrders.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -455,13 +529,13 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _load,
+                  onRefresh: _refresh,
                   color: _primary,
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                    itemCount: _filteredOrders.length,
+                    itemCount: filteredOrders.length,
                     itemBuilder: (context, index) {
-                      final o = _filteredOrders[index];
+                      final o = filteredOrders[index];
                       final isLivree = o.statut == 'livrée';
                       final dateTimeText = o.dateCommandeFormatted?.isNotEmpty == true
                           ? o.dateCommandeFormatted!
@@ -603,6 +677,20 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     );
   }
 
+  static String _formatPickupDate(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      final d = DateTime.parse(iso);
+      const mois = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juill', 'août', 'sept', 'oct', 'nov', 'déc'];
+      const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      final sem = jours[d.weekday - 1];
+      final m = mois[d.month - 1];
+      return '$sem ${d.day} $m ${d.year}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   static String _formatDateHour(String? iso) {
     if (iso == null || iso.isEmpty) return '';
     try {
@@ -626,6 +714,7 @@ class _SuivreOrderSheet extends StatefulWidget {
   final String creneau;
   final String? dateCommandeFormatted;
   final String? dateCommande;
+  final String? dateRecuperation;
   final String Function(String? iso) formatDateHour;
   final Future<ClientOrderDetail?> Function(int id) fetchOrderDetail;
   final Color primary;
@@ -639,6 +728,7 @@ class _SuivreOrderSheet extends StatefulWidget {
     required this.creneau,
     this.dateCommandeFormatted,
     this.dateCommande,
+    this.dateRecuperation,
     required this.formatDateHour,
     required this.fetchOrderDetail,
     required this.primary,
@@ -753,6 +843,16 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
                             ),
                           ],
                         ),
+                        if (widget.dateRecuperation != null && widget.dateRecuperation!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.event_available, size: 18, color: widget.textMuted),
+                              const SizedBox(width: 8),
+                              Text('Date: ${_formatPickupDate(widget.dateRecuperation)}', style: TextStyle(fontSize: 14, color: widget.textMuted)),
+                            ],
+                          ),
+                        ],
                         if (widget.creneau.isNotEmpty) ...[
                           const SizedBox(height: 8),
                           Row(
@@ -829,6 +929,19 @@ class _SuivreOrderSheetState extends State<_SuivreOrderSheet> {
     );
   }
 
+  static String _formatPickupDate(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    try {
+      final d = DateTime.parse(iso);
+      const mois = ['janv', 'févr', 'mars', 'avr', 'mai', 'juin', 'juill', 'août', 'sept', 'oct', 'nov', 'déc'];
+      const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      final sem = jours[d.weekday - 1];
+      final m = mois[d.month - 1];
+      return '$sem ${d.day} $m ${d.year}';
+    } catch (_) {
+      return '';
+    }
+  }
 }
 
 class _StepInfo {

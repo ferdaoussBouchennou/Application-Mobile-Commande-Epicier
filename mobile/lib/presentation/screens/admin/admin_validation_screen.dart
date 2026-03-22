@@ -10,6 +10,8 @@ import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_epicier_profile_screen.dart';
 import 'admin_disputes_screen.dart';
+import 'admin_store_catalogue_screen.dart';
+import '../../../core/constants/api_constants.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -20,8 +22,9 @@ class AdminValidationScreen extends StatefulWidget {
 
 class _AdminValidationScreenState extends State<AdminValidationScreen> {
   final ApiService _apiService = ApiService();
+  final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'Tous';
-  String _selectedRole = 'Tous'; // 'Tous', 'CLIENT', 'EPICIER'
+  String _selectedRole = 'Client'; // Default to Client as requested "lorsque je la coche une autre fois je vois les epicier"
   bool _isLoading = true;
   
   int _pendingCount = 0;
@@ -47,7 +50,15 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
 
   Future<void> _fetchStats() async {
     try {
-      final stats = await _apiService.get('/admin/stats');
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
+      debugPrint('AdminValidationScreen DEBUG: FETCH STATS token=$token, isLoggedIn=${auth.isLoggedIn}');
+      
+      String roleParam = '';
+      if (_selectedRole == 'Client') roleParam = 'CLIENT';
+      else if (_selectedRole == 'Épicier') roleParam = 'EPICIER';
+
+      final stats = await _apiService.get('/admin/stats?role=$roleParam', token: token);
       if (mounted) {
         setState(() {
           _pendingCount = stats['pending'];
@@ -71,7 +82,10 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
       if (_selectedRole == 'Client') roleParam = 'CLIENT';
       else if (_selectedRole == 'Épicier') roleParam = 'EPICIER';
 
-      final List<dynamic> data = await _apiService.get('/admin/users?status=$status&role=$roleParam');
+      final String search = _searchController.text.trim();
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
+
+      final List<dynamic> data = await _apiService.get('/admin/users?status=$status&role=$roleParam&search=$search', token: token);
       if (mounted) {
         setState(() {
           _users = data.map((json) => UserModel.fromJson(json)).toList();
@@ -84,10 +98,11 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
 
   Future<void> _updateStatus(int userId, {String? status, bool? isActive}) async {
     try {
+      final token = Provider.of<AuthProvider>(context, listen: false).token;
       await _apiService.patch('/admin/users/$userId/status', {
         if (status != null) 'statut_inscription': status,
         if (isActive != null) 'is_active': isActive,
-      });
+      }, token: token);
       _loadData(); // Reload everything
     } catch (e) {
       if (mounted) {
@@ -118,18 +133,42 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            if (_selectedRole == 'Tous' || _selectedRole == 'Épicier') ...[
+                            _buildRoleToggle(),
+                            const SizedBox(height: 16),
+                            if (_selectedRole == 'Épicier') ...[
                               _buildStatsRow(),
                               const SizedBox(height: 20),
                             ],
                             _buildFilterBar(),
                             const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _selectedRole == 'Client' ? 'Clients' : 'Épiceries',
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
+                                ),
+                                if (_selectedRole == 'Épicier') 
+                                  TextButton.icon(
+                                    onPressed: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const AddEpicierScreen()),
+                                      );
+                                      if (result == true) _loadData();
+                                    },
+                                    icon: const Icon(Icons.add, size: 18, color: Color(0xFFF26444)),
+                                    label: const Text('Ajouter', style: TextStyle(color: Color(0xFFF26444))),
+                                    style: TextButton.styleFrom(
+                                      backgroundColor: const Color(0xFFF26444).withOpacity(0.1),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
                             _buildStoreList(),
-                            const SizedBox(height: 20),
-                            if (_selectedRole == 'Tous' || _selectedRole == 'Épicier') ...[
-                              _buildCreateAccountButton(),
-                              const SizedBox(height: 100),
-                            ]
+                            const SizedBox(height: 100),
                           ],
                         ),
                       ),
@@ -145,32 +184,44 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      color: const Color(0xFF2D5016),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 20),
+      decoration: const BoxDecoration(
+        color: Color(0xFF2D5016),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(25),
+          bottomRight: Radius.circular(25),
+        ),
+      ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.store, color: Colors.white, size: 30),
-                  SizedBox(width: 8),
-                  Text(
+                  Image.asset('assets/images/shop_icon.png', height: 26, errorBuilder: (_,__,___) => const Icon(Icons.store, color: Colors.white, size: 26)),
+                  const SizedBox(width: 8),
+                  const Text(
                     'MyHanut',
-                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
                   ),
                 ],
               ),
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF26444),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.orange, size: 26),
+                    onPressed: () {},
+                    visualDensity: VisualDensity.compact,
                   ),
                   const SizedBox(width: 8),
                   IconButton(
@@ -189,15 +240,84 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          const Align(
+          const SizedBox(height: 12),
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Validation comptes',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              _selectedRole == 'Client' ? 'Gestion des clients' : 'Gestion des épiceries',
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
+          const SizedBox(height: 12),
+          _buildSearchBar(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => _fetchUsers(),
+        decoration: InputDecoration(
+          hintText: _selectedRole == 'Client' ? 'Rechercher un client...' : 'Rechercher une épicerie...',
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(Icons.search, color: Colors.blue),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleToggle() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5EDDA),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          _buildToggleOption('Client', _selectedRole == 'Client'),
+          _buildToggleOption('Épicier', _selectedRole == 'Épicier'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleOption(String label, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedRole = label;
+            _loadData();
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF2D5016) : Colors.transparent,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : const Color(0xFF2D5016),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -239,60 +359,43 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
   }
 
   Widget _buildFilterBar() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Filtrer par statut :', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D5016))),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: ['Tous', 'En attente', 'Actifs', 'Suspendus'].map((f) {
-              final isSelected = _selectedFilter == f;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: FilterChip(
-                  label: Text(f == 'En attente' ? 'En attente ($_pendingCount)' : f),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    setState(() => _selectedFilter = f);
-                    _fetchUsers();
-                  },
-                  backgroundColor: Colors.white,
-                  selectedColor: const Color(0xFF2D5016),
-                  labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  showCheckmark: false,
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        const Text('Filtrer par type :', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D5016))),
-        const SizedBox(height: 8),
-        Row(
-          children: ['Tous', 'Client', 'Épicier'].map((r) {
-            final isSelected = _selectedRole == r;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: FilterChip(
-                label: Text(r),
-                selected: isSelected,
-                onSelected: (val) {
-                  setState(() => _selectedRole = r);
-                  _fetchUsers();
-                },
-                backgroundColor: Colors.white,
-                selectedColor: const Color(0xFFF26444),
-                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                showCheckmark: false,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: ['Tous', 'En attente', 'Actifs', 'Suspendus'].map((f) {
+          final isSelected = _selectedFilter == f;
+          String label = f;
+          if (f == 'En attente') label = 'En attente ($_pendingCount)';
+          else if (f == 'Actifs') label = 'Actives ($_activeCount)'; // Match image plural
+          else if (f == 'Suspendus') label = 'Inactives ($_suspendedCount)'; // Match image style
+          else if (f == 'Tous') label = 'Toutes (${_pendingCount + _activeCount + _suspendedCount})';
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: ChoiceChip(
+              label: Text(label),
+              selected: isSelected,
+              onSelected: (val) {
+                setState(() => _selectedFilter = f);
+                _fetchUsers();
+              },
+              backgroundColor: Colors.white,
+              selectedColor: const Color(0xFF2D5016),
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-            );
-          }).toList(),
-        ),
-      ],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade200),
+              ),
+              showCheckmark: false,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -309,51 +412,14 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
   }
 
   Widget _buildUserCard(UserModel user) {
-    final bool isEpicier = user.role == 'EPICIER';
-    final String storeName = user.store?['nom_boutique'] ?? user.fullName;
-    final String address = user.store?['adresse'] ?? 'Client Standard';
-    final String phone = user.store?['telephone'] ?? 'N/A';
-    
-    Color statusColor;
-    String statusLabel;
-    Color? textColor;
-    List<Widget> actions = [];
-
-    if (user.statutInscription == 'EN_ATTENTE') {
-      statusColor = const Color(0xFFF2A93B).withOpacity(0.2);
-      statusLabel = 'En attente';
-      textColor = Colors.orange.shade800;
-      actions = [
-        _buildActionBtn('Valider', const Color(0xFF2D5016), Icons.check, onTap: () => _updateStatus(user.id, status: 'ACCEPTE', isActive: true)),
-        const SizedBox(width: 8),
-        _buildActionBtn('Refuser', const Color(0xFFFFEBEE), Icons.close, textColor: Colors.red, onTap: () => _updateStatus(user.id, status: 'REFUSE')),
-        const SizedBox(width: 8),
-        _buildActionBtn('Voir', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () => _showDoc(user)),
-      ];
-    } else if (user.isActive) {
-      statusColor = const Color(0xFFE8F5E9);
-      statusLabel = 'Actif';
-      textColor = const Color(0xFF4CBB5E);
-      actions = [
-        _buildActionBtn('Suspendre', const Color(0xFFFFEBEE), Icons.remove_circle_outline, textColor: Colors.red, onTap: () => _updateStatus(user.id, isActive: false)),
-        const SizedBox(width: 8),
-        _buildActionBtn('Voir profil', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user)));
-        }),
-      ];
-    } else {
-      statusColor = const Color(0xFFFFEBEE);
-      statusLabel = 'Suspendu';
-      textColor = Colors.red;
-      actions = [
-        _buildActionBtn('Réactiver', const Color(0xFF2D5016), Icons.lock_open, onTap: () => _updateStatus(user.id, isActive: true)),
-        const SizedBox(width: 8),
-        _buildActionBtn('Voir profil', const Color(0xFFF5EDDA), Icons.visibility, textColor: const Color(0xFF2D5016), onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user)));
-        }),
-      ];
+    if (_selectedRole == 'Épicier') {
+      return _buildEpicierCard(user);
     }
-
+    
+    // Default Client Card (Simplified for now or kept as is)
+    final String name = user.fullName;
+    final String email = user.email;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -363,22 +429,81 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.blue.withOpacity(0.1),
+                child: const Icon(Icons.person, color: Colors.blue),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(email, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                  ],
+                ),
+              ),
+              _buildStatusBadge(user),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Spacer(),
+              _buildActionBtn(
+                user.isActive ? 'Désactiver le compte' : 'Activer le compte', 
+                user.isActive ? const Color(0xFFFFEBEE) : const Color(0xFF2D5016),
+                user.isActive ? Icons.remove_circle_outline : Icons.lock_open,
+                textColor: user.isActive ? Colors.red : Colors.white,
+                onTap: () => _updateStatus(user.id, isActive: !user.isActive),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpicierCard(UserModel user) {
+    final String storeName = user.store?['nom_boutique'] ?? user.fullName;
+    final String address = user.store?['adresse'] ?? 'Lieu non renseigné';
+    final String ownerName = user.fullName;
+    final String? imageUrl = user.store?['image_url'];
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+      ),
+      child: Column(
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Thumbnail
               Container(
-                width: 60,
-                height: 60,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
-                  color: isEpicier ? const Color(0xFFFFEBEE) : const Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFFDF6F0),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                child: Icon(
-                  isEpicier ? Icons.storefront : Icons.person,
-                  color: isEpicier ? const Color(0xFFF26444) : Colors.blue,
-                  size: 30
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: imageUrl != null 
+                    ? Image.network(
+                        ApiConstants.formatImageUrl(imageUrl),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_,__,___) => const Icon(Icons.store, color: Color(0xFFF26444), size: 35),
+                      )
+                    : const Icon(Icons.store, color: Color(0xFFF26444), size: 35),
                 ),
               ),
               const SizedBox(width: 12),
@@ -386,47 +511,139 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(storeName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            storeName, 
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildStatusBadge(user),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                        const Icon(Icons.location_on_rounded, size: 14, color: Color(0xFFF26444)),
                         const SizedBox(width: 4),
-                        Expanded(child: Text(address, style: const TextStyle(color: Colors.grey, fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        Expanded(child: Text(address, style: TextStyle(color: Colors.grey.shade600, fontSize: 13), overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.phone, size: 14, color: Colors.grey),
+                        const Icon(Icons.person_rounded, size: 14, color: Color(0xFF2D5016)),
                         const SizedBox(width: 4),
-                        Text(phone, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        Text(ownerName, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
                       ],
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Stats row
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFDF6F0),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatColumn(user.produitsCount.toString(), 'Produits'),
+                _buildStatColumn(user.commandesCount.toString(), 'Commandes'),
+                _buildStatColumn(user.rating.toStringAsFixed(1), 'Note', isRating: true),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Actions row
+          Row(
+            children: [
+              _buildActionBtn('Catalogue', const Color(0xFF2D5016), Icons.category_outlined, onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => AdminStoreCatalogueScreen(storeOwner: user)),
+                ).then((_) => _loadData());
+              }),
+              const SizedBox(width: 8),
+              _buildActionBtn('Modifier', const Color(0xFFF5EDDA), Icons.edit_outlined, textColor: const Color(0xFF2D1A0E), onTap: () async {
+                final result = await Navigator.push(
+                  context, 
+                  MaterialPageRoute(builder: (_) => AdminEpicierProfileScreen(user: user))
+                );
+                if (result == true) {
+                  _loadData();
+                }
+              }),
+              const SizedBox(width: 8),
+              _buildActionBtn(
+                user.isActive ? 'Désact.' : 'Activer', 
+                user.isActive ? const Color(0xFFFFEBEE) : const Color(0xFF2D5016),
+                user.isActive ? Icons.remove_circle_outline : Icons.lock_open,
+                textColor: user.isActive ? Colors.red : Colors.white,
+                onTap: () => _updateStatus(user.id, isActive: !user.isActive),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Row(children: actions),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatusBadge(UserModel user) {
+    Color bg;
+    Color text;
+    String label;
+
+    if (user.statutInscription == 'EN_ATTENTE') {
+      bg = Colors.orange.shade50;
+      text = Colors.orange.shade700;
+      label = 'En attente';
+    } else if (user.isActive) {
+      bg = const Color(0xFFE8F5E9);
+      text = const Color(0xFF4CBB5E);
+      label = 'Actif';
+    } else {
+      bg = const Color(0xFFFFEBEE);
+      text = Colors.red;
+      label = 'Inactif';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: text, fontSize: 12, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildStatColumn(String count, String label, {bool isRating = false}) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Text(count, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2D1A0E))),
+            if (isRating) ...[
+              const SizedBox(width: 2),
+              const Icon(Icons.star, size: 16, color: Colors.orange),
+            ],
+          ],
+        ),
+        Text(label, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+      ],
     );
   }
 
@@ -470,7 +687,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           children: [
             if (user.docVerf != null && user.docVerf!.isNotEmpty)
               Image.network(
-                user.docVerf!, // Need to handle relative paths if necessary
+                ApiConstants.formatImageUrl(user.docVerf),
                 errorBuilder: (_, __, ___) => const Icon(Icons.description, size: 100, color: Colors.grey),
               )
             else
@@ -486,42 +703,6 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
     );
   }
 
-  Widget _buildCreateAccountButton() {
-    return InkWell(
-      onTap: () async {
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AddEpicierScreen()),
-        );
-        if (result == true) {
-          _loadData(); // Refresh list
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5EDDA).withOpacity(0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF2D5016), style: BorderStyle.solid, width: 2),
-        ),
-        child: Column(
-          children: [
-            const Icon(Icons.add_circle, color: Color(0xFF2D5016), size: 40),
-            const SizedBox(height: 12),
-            const Text(
-              'Créer un compte épicier',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D5016)),
-            ),
-            Text(
-              'Inscription manuelle par l\'admin',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildBottomNav() {
     return BottomNavigationBar(

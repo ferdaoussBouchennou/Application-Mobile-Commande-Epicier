@@ -5,10 +5,13 @@ import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/active_toggle.dart';
 import '../../../screens/auth/welcome_screen.dart';
-import 'admin_category_products_screen.dart';
+import 'admin_validation_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_disputes_screen.dart';
-import 'admin_validation_screen.dart';
+import 'admin_category_form_screen.dart';
+import '../../../data/models/category.dart' as model;
+import '../../../core/constants/api_constants.dart';
+import 'admin_category_products_screen.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
@@ -19,8 +22,8 @@ class AdminCategoriesScreen extends StatefulWidget {
 
 class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   final ApiService _api = ApiService();
-  List<Map<String, dynamic>> _categories = [];
-  List<Map<String, dynamic>> _filtered = [];
+  List<model.Category> _categories = [];
+  List<model.Category> _filtered = [];
   bool _loading = true;
   String? _error;
   final _searchController = TextEditingController();
@@ -33,10 +36,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   String? get _token => context.read<AuthProvider>().token;
 
   int get _totalPages => (_filtered.length / _pageSize).ceil();
-  List<Map<String, dynamic>> get _pageItems {
+  List<model.Category> get _pageItems {
     final start = _page * _pageSize;
     final end = min(start + _pageSize, _filtered.length);
-    return start < _filtered.length ? _filtered.sublist(start, end) : [];
+    return start < _filtered.length ? _filtered.sublist(start, end) : <model.Category>[];
   }
 
   @override
@@ -57,7 +60,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     setState(() {
       _filtered = q.isEmpty
           ? List.from(_categories)
-          : _categories.where((c) => (c['nom'] as String).toLowerCase().contains(q)).toList();
+          : _categories.where((c) => c.nom.toLowerCase().contains(q)).toList();
       _page = 0;
     });
   }
@@ -73,7 +76,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       final data = await _api.get('/admin/categories', token: token);
       if (data is List) {
         setState(() {
-          _categories = List<Map<String, dynamic>>.from(data.map((e) => Map<String, dynamic>.from(e as Map)));
+          _categories = data.map((e) => model.Category.fromJson(e)).toList();
           _loading = false;
         });
         _applyFilter();
@@ -84,75 +87,18 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 
   int get _totalCategories => _categories.length;
-  int get _totalProducts => _categories.fold(0, (s, c) => s + ((c['productCount'] as int?) ?? 0));
-  int get _totalActive => _categories.fold(0, (s, c) => s + ((c['activeProductCount'] as int?) ?? 0));
+  int get _totalProducts => _categories.fold(0, (s, c) => s + c.productCount);
+  int get _totalStores => _categories.fold(0, (s, c) => s + c.storeCount);
 
-  Future<void> _createCategory() async {
-    final nom = await _showNameDialog('Nouvelle catégorie');
-    if (nom == null || nom.isEmpty || !mounted) return;
-    try {
-      await _api.post('/admin/categories', {'nom': nom.trim()}, token: _token!);
-      if (mounted) { _snack('Catégorie créée'); _load(); }
-    } catch (e) {
-      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  Future<void> _editCategory(Map<String, dynamic> c) async {
-    final nom = await _showNameDialog('Modifier', initialValue: c['nom'] as String?);
-    if (nom == null || nom.isEmpty || !mounted) return;
-    try {
-      await _api.put('/admin/categories/${c['id']}', {'nom': nom.trim()}, token: _token!);
-      if (mounted) { _snack('Catégorie modifiée'); _load(); }
-    } catch (e) {
-      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  Future<void> _toggleCategory(Map<String, dynamic> c, bool active) async {
-    final token = _token;
-    if (token == null) return;
-    try {
-      if (active) {
-        await _api.patch('/admin/categories/${c['id']}/activate', {}, token: token);
-      } else {
-        await _api.delete('/admin/categories/${c['id']}', token: token);
-      }
-      if (mounted) { _snack(active ? 'Catégorie réactivée' : 'Catégorie désactivée'); _load(); }
-    } catch (e) {
-      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
-    }
+  Future<void> _navigateToForm({model.Category? category}) async {
+    final res = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AdminCategoryFormScreen(category: category)),
+    );
+    if (res == true) _load();
   }
 
   void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-  Future<String?> _showNameDialog(String title, {String? initialValue}) async {
-    final ctrl = TextEditingController(text: initialValue ?? '');
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(title),
-        content: TextField(
-          controller: ctrl,
-          decoration: InputDecoration(
-            labelText: 'Nom de la catégorie',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          autofocus: true,
-          onSubmitted: (_) => Navigator.pop(ctx, ctrl.text.trim()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            style: FilledButton.styleFrom(backgroundColor: _primary),
-            child: const Text('Enregistrer'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,12 +110,11 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
             _buildHeader(),
             if (!_loading && _error == null) _buildSearchBar(),
             Expanded(child: _buildBody()),
-            if (!_loading && _error == null && _totalPages > 1) _buildPagination(),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createCategory,
+        onPressed: () => _navigateToForm(),
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -196,12 +141,12 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         } else if (index == 2) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminOrdersScreen()),
+            MaterialPageRoute(builder: (_) => AdminOrdersScreen()),
           );
         } else if (index == 4) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const AdminDisputesScreen()),
+            MaterialPageRoute(builder: (_) => AdminDisputesScreen()),
           );
         }
       },
@@ -337,136 +282,85 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         ),
       );
     }
-    final items = _pageItems;
+    
     return RefreshIndicator(
       onRefresh: _load,
       color: _primary,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        itemCount: items.length,
-        itemBuilder: (ctx, i) => _buildCategoryCard(items[i]),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.85,
+          crossAxisSpacing: 15,
+          mainAxisSpacing: 15,
+        ),
+        itemCount: _filtered.length,
+        itemBuilder: (context, index) => _buildCategoryCard(_filtered[index]),
       ),
     );
   }
 
-  Widget _buildPagination() {
+  Widget _buildCategoryCard(model.Category cat) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, -2))],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _page > 0 ? () => setState(() => _page--) : null,
-            color: _primary,
-          ),
-          const SizedBox(width: 4),
-          ...List.generate(_totalPages, (i) {
-            final isActive = i == _page;
-            if (_totalPages > 7 && (i - _page).abs() > 2 && i != 0 && i != _totalPages - 1) {
-              if (i == 1 || i == _totalPages - 2) {
-                return const Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text('…'));
-              }
-              return const SizedBox.shrink();
-            }
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: InkWell(
-                onTap: () => setState(() => _page = i),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: isActive ? _primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${i + 1}',
-                    style: TextStyle(
-                      color: isActive ? Colors.white : _primary,
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _page < _totalPages - 1 ? () => setState(() => _page++) : null,
-            color: _primary,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryCard(Map<String, dynamic> c) {
-    final total = (c['productCount'] as int?) ?? 0;
-    final active = (c['activeProductCount'] as int?) ?? 0;
-    final isActive = active > 0;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 1,
       child: InkWell(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AdminCategoryProductsScreen(
-              categoryId: c['id'] as int,
-              categoryName: c['nom'] as String,
-            ),
-          ),
-        ).then((_) => _load()),
-        borderRadius: BorderRadius.circular(14),
+        onTap: () => _navigateToForm(category: cat),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: isActive ? _primary.withOpacity(0.12) : Colors.orange.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFFDF6F0),
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                child: Icon(Icons.category, color: isActive ? _primary : Colors.orange.shade700, size: 24),
+                child: cat.imageUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Image.network('${ApiConstants.baseUrl}${cat.imageUrl}', fit: BoxFit.cover),
+                    )
+                  : const Icon(Icons.category_outlined, size: 30, color: Color(0xFF2D5016)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(c['nom'] as String, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                    const SizedBox(height: 2),
-                  ],
-                ),
+              const SizedBox(height: 10),
+              Text(
+                cat.nom,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2D1A0E)),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 20),
-                onPressed: () => _editCategory(c),
-                color: _primary,
-                tooltip: 'Renommer',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              Text(
+                '${cat.productCount} produits',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
               ),
-              const SizedBox(width: 4),
-              ActiveToggle(
-                value: isActive,
-                onChanged: (v) => _toggleCategory(c, v),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5EDDA),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 14, color: Color(0xFFB99D6B)),
+                        SizedBox(width: 4),
+                        Text('Gérer', style: TextStyle(color: Color(0xFFB99D6B), fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
             ],
           ),
         ),

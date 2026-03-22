@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../../core/constants/api_constants.dart';
 import '../../core/utils/logger.dart';
@@ -15,9 +17,11 @@ class ApiService {
 
   Future<dynamic> get(String endpoint, {String? token}) async {
     try {
+      final headers = _headers(token: token);
+      print('ApiService DEBUG: GET $_baseUrl$endpoint headers=$headers');
       final response = await http.get(
         Uri.parse('$_baseUrl$endpoint'),
-        headers: _headers(token: token),
+        headers: headers,
       );
       return _handleResponse(response);
     } catch (e) {
@@ -112,6 +116,38 @@ class ApiService {
     }
   }
 
+  /// Upload icône catégorie pour l'admin.
+  Future<String> uploadCategoryIconAdmin({
+    required String token,
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/admin/categories/upload-icon');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+      request.files.add(http.MultipartFile.fromBytes('image', bytes, filename: filename));
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final body = response.body;
+        String msg = 'Erreur ${response.statusCode}';
+        try {
+          final j = jsonDecode(body) as Map<String, dynamic>;
+          if (j['message'] != null) msg = j['message'] as String;
+        } catch (_) {}
+        throw Exception(msg);
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final path = data['image_url'] as String?;
+      if (path == null || path.isEmpty) throw Exception('Réponse invalide');
+      return path;
+    } catch (e) {
+      Logger.error('uploadCategoryIconAdmin → $e');
+      rethrow;
+    }
+  }
+
   Future<String> uploadProductImage({
     required String token,
     required int categorieId,
@@ -183,6 +219,72 @@ class ApiService {
       return path;
     } catch (e) {
       Logger.error('uploadProductImageAdmin → $e');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> postMultipart(
+    String endpoint,
+    Map<String, dynamic> fields, {
+    String? token,
+    Map<String, List<int>>? files, // Map of fieldName -> bytes
+    Map<String, String>? filenames, // Map of fieldName -> filename
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final request = http.MultipartRequest('POST', uri);
+      
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+      fields.forEach((key, value) {
+        if (value != null) request.fields[key] = value.toString();
+      });
+
+      if (files != null) {
+        files.forEach((field, bytes) {
+          final name = filenames?[field] ?? 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          request.files.add(http.MultipartFile.fromBytes(field, bytes, filename: name));
+        });
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      return _handleResponse(response);
+    } catch (e) {
+      Logger.error('POST MULTIPART $endpoint → $e');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> putMultipart(
+    String endpoint,
+    Map<String, dynamic> fields, {
+    String? token,
+    Map<String, List<int>>? files,
+    Map<String, String>? filenames,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final request = http.MultipartRequest('PUT', uri);
+      
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+      fields.forEach((key, value) {
+        if (value != null) request.fields[key] = value.toString();
+      });
+
+      if (files != null) {
+        files.forEach((field, bytes) {
+          final name = filenames?[field] ?? 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          request.files.add(http.MultipartFile.fromBytes(field, bytes, filename: name));
+        });
+      }
+
+      final streamed = await request.send();
+      final response = await http.Response.fromStream(streamed);
+      return _handleResponse(response);
+    } catch (e) {
+      Logger.error('PUT MULTIPART $endpoint → $e');
       rethrow;
     }
   }
