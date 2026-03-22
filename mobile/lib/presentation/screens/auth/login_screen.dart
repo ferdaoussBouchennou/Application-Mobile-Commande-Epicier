@@ -125,6 +125,13 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (_) => VerifyEmailScreen(email: _emailController.text.trim()),
             ),
           );
+        } else if (msg.contains('en attente de validation')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Votre compte Epicier est en attente de validation par l\'administrateur.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg)),
@@ -385,9 +392,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Erreur Facebook: $e'), backgroundColor: Colors.red),
-                                );
+                                final msg = e.toString();
+                                if (msg.contains('en attente de validation')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Votre compte Epicier est en attente de validation par l\'administrateur.'), backgroundColor: Colors.orange),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(msg.replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                                  );
+                                }
                               }
                             }
                           },
@@ -408,9 +422,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Erreur Instagram: $e'), backgroundColor: Colors.red),
-                                );
+                                final msg = e.toString();
+                                if (msg.contains('en attente de validation')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Votre compte Epicier est en attente de validation par l\'administrateur.'), backgroundColor: Colors.orange),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(msg.replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                                  );
+                                }
                               }
                             }
                           },

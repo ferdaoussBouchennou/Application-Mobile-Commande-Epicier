@@ -145,10 +145,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             context,
             MaterialPageRoute(builder: (_) => LoginScreen()),
           );
+        } else if (errorMsg.contains('en attente de validation')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.orange),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(e.toString().replaceAll('Exception: ', '')),
+              content: Text(errorMsg.replaceAll('Exception: ', '')),
               backgroundColor: Colors.red,
             ),
           );
@@ -505,7 +509,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (mounted) {
                                 if (e.toString().contains('en attente de validation') && _isEpicier) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.green),
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.orange),
                                   );
                                   Navigator.pushReplacement(
                                     context,
@@ -574,9 +578,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Erreur Facebook: $e'), backgroundColor: Colors.red),
-                                );
+                                final errorMsg = e.toString();
+                                if (errorMsg.contains('en attente de validation') && _isEpicier) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.orange),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                                  );
+                                } else if (errorMsg.contains('EMAIL_EXISTS')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Cet email est déjà associé à un compte Client. Veuillez vous connecter.'),
+                                      backgroundColor: Colors.orange,
+                                      duration: Duration(seconds: 4),
+                                    ),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(errorMsg.replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                                  );
+                                }
                               }
                             }
                           },
@@ -623,9 +650,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                             } catch (e) {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Erreur Instagram: $e'), backgroundColor: Colors.red),
-                                );
+                                final errorMsg = e.toString();
+                                if (errorMsg.contains('en attente de validation') && _isEpicier) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Inscription envoyée ! En attente de validation par l\'administrateur.'), backgroundColor: Colors.orange),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                                  );
+                                } else if (errorMsg.contains('EMAIL_EXISTS')) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Cet email est déjà associé à un compte Client. Veuillez vous connecter.'),
+                                      backgroundColor: Colors.orange,
+                                      duration: Duration(seconds: 4),
+                                    ),
+                                  );
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => LoginScreen()),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(errorMsg.replaceAll('Exception: ', '')), backgroundColor: Colors.red),
+                                  );
+                                }
                               }
                             }
                           },
