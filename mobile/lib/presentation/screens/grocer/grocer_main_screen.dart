@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../screens/auth/welcome_screen.dart';
 import 'grocer_theme.dart';
@@ -20,16 +21,20 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
   int _currentIndex = 0;
   int _newOrdersCount = 0;
   int _unreadNotificationsCount = 0;
+  int? _orderIdToOpen;
   VoidCallback? _catalogueRefresh;
   VoidCallback? _notificationsRefresh;
+  VoidCallback? _ordersRefresh;
   final GlobalKey<NavigatorState> _catalogueNavKey = GlobalKey<NavigatorState>();
-
-  late List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    _screens = [
+    _fetchUnreadCount();
+  }
+
+  List<Widget> _buildScreens() {
+    return [
       const GrocerDashboardScreen(),
       Builder(
         builder: (context) => Navigator(
@@ -43,13 +48,36 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       ),
       GrocerOrdersScreen(
         onNewOrdersCount: (count) => setState(() => _newOrdersCount = count),
+        orderIdToOpen: _orderIdToOpen,
+        onOpenOrderHandled: () => setState(() => _orderIdToOpen = null),
+        onRegisterRefresh: (fn) => _ordersRefresh = fn,
       ),
       GrocerNotificationsScreen(
         onNavigateToOrders: () => setState(() => _currentIndex = 2),
+        onNavigateToOrder: (orderId) {
+          setState(() {
+            _currentIndex = 2;
+            _orderIdToOpen = orderId;
+          });
+        },
         onUnreadCount: (count) => setState(() => _unreadNotificationsCount = count),
         onRegisterRefresh: (fn) => _notificationsRefresh = fn,
       ),
     ];
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    // Appelé après build pour avoir context
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      final token = auth.token;
+      if (token == null || !mounted) return;
+      try {
+        final data = await ApiService().get('/epicier/notifications/unread-count', token: token);
+        final count = (data as Map<String, dynamic>?)?['count'] as int? ?? 0;
+        if (mounted) setState(() => _unreadNotificationsCount = count);
+      } catch (_) {}
+    });
   }
 
   List<_NavItem> get _navItems => [
@@ -92,7 +120,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       ),
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: _buildScreens(),
       ),
       bottomNavigationBar: _buildBottomNav(),
     );

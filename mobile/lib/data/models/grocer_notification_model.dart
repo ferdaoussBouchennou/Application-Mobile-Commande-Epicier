@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
 
+DateTime? _parseDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is int) {
+    return DateTime.fromMillisecondsSinceEpoch(value);
+  }
+  if (value is num) {
+    return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  }
+  final str = value.toString().trim();
+  if (str.isEmpty) return null;
+  final normalized = str.contains(' ') && !str.contains('T') ? str.replaceFirst(' ', 'T') : str;
+  return DateTime.tryParse(normalized);
+}
+
 class GrocerNotificationModel {
   final int id;
-  final int epicierId;
+  final int utilisateurId;
   final String message;
   final DateTime dateEnvoi;
   bool lue;
 
   GrocerNotificationModel({
     required this.id,
-    required this.epicierId,
+    required this.utilisateurId,
     required this.message,
     required this.dateEnvoi,
     required this.lue,
@@ -18,10 +32,10 @@ class GrocerNotificationModel {
   factory GrocerNotificationModel.fromJson(Map<String, dynamic> json) {
     return GrocerNotificationModel(
       id: json['id'],
-      epicierId: json['epicier_id'],
+      utilisateurId: json['utilisateur_id'] ?? json['epicier_id'] ?? 0,
       message: json['message'] ?? '',
-      dateEnvoi: DateTime.tryParse(json['date_envoi']?.toString() ?? '') ??
-          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+      dateEnvoi: _parseDateTime(json['date_envoi']) ??
+          _parseDateTime(json['created_at']) ??
           DateTime.now(),
       lue: json['lue'] == 1 || json['lue'] == true,
     );
@@ -29,12 +43,27 @@ class GrocerNotificationModel {
 
   String get shortTitle {
     final msg = message.toLowerCase();
-    if (msg.contains('nouvelle commande') || msg.contains('commande #')) return 'Nouvelle commande';
+    if (msg.contains('nouvelle commande') || (msg.contains('commande #') && msg.contains('reçue'))) return 'Nouvelle commande';
+    if (msg.contains('refusé d\'ajouter') || (msg.contains('refusé') && msg.contains('produit'))) return 'Produit refusé';
+    if (msg.contains('commande refusée') || (msg.contains('refusé') && msg.contains('commande #'))) return 'Commande refusée';
+    if (msg.contains('a annulé la commande')) return 'Commande annulée';
+    if (msg.contains('accepté les modifications') || msg.contains('modifications (ruptures)')) return 'Commande modifiée';
     if (msg.contains('nouvel avis') || msg.contains('avis reçu')) return 'Nouvel avis';
     if (msg.contains('réclamation') || msg.contains('reclamation')) return 'Nouvelle réclamation';
-    if (msg.contains('accepté') || msg.contains('accepte')) return 'Produit accepté';
-    if (msg.contains('refusé') || msg.contains('refuse')) return 'Produit refusé';
+    if (msg.contains('accepté d\'ajouter') || (msg.contains('accepté') && msg.contains('produit'))) return 'Produit accepté';
     return 'Notification';
+  }
+
+  /// Extrait l'ID de commande du message (ex: "commande #123" ou "#123")
+  int? get commandeId {
+    final match = RegExp(r'commande\s*#(\d+)|#(\d+)').firstMatch(message);
+    if (match != null) {
+      final g1 = match.group(1);
+      final g2 = match.group(2);
+      final id = int.tryParse(g1 ?? g2 ?? '');
+      return id;
+    }
+    return null;
   }
 
   IconData get icon {
@@ -43,7 +72,7 @@ class GrocerNotificationModel {
     if (msg.contains('nouvel avis') || msg.contains('avis reçu')) return Icons.star_outline;
     if (msg.contains('réclamation') || msg.contains('reclamation')) return Icons.report_problem_outlined;
     if (msg.contains('accepté') || msg.contains('accepte')) return Icons.check_circle_outline;
-    if (msg.contains('refusé') || msg.contains('refuse')) return Icons.cancel_outlined;
+    if (msg.contains('refusé') || msg.contains('refuse') || msg.contains('annulé')) return Icons.cancel_outlined;
     return Icons.notifications_outlined;
   }
 

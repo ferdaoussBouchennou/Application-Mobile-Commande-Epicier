@@ -11,18 +11,21 @@ const { sendNotification } = require('./notification');
 async function sendNotificationToEpicier(epicierId, message, title = 'MyHanut') {
   try {
     const rows = await sequelize.query(
-      `SELECT u.fcm_token FROM epiciers e
+      `SELECT u.id as utilisateur_id, u.fcm_token FROM epiciers e
        JOIN utilisateurs u ON e.utilisateur_id = u.id
        WHERE e.id = :epicierId`,
       { replacements: { epicierId }, type: QueryTypes.SELECT }
     );
-    if (rows.length > 0 && rows[0].fcm_token) {
-      await sendNotification(rows[0].fcm_token, title, message);
+    if (rows.length > 0) {
+      const utilisateurId = rows[0].utilisateur_id;
+      if (rows[0].fcm_token) {
+        await sendNotification(rows[0].fcm_token, title, message);
+      }
+      await sequelize.query(
+        'INSERT INTO notifications (utilisateur_id, message, date_envoi, lue) VALUES (:utilisateur_id, :message, NOW(), 0)',
+        { replacements: { utilisateur_id: utilisateurId, message }, type: QueryTypes.INSERT }
+      );
     }
-    await sequelize.query(
-      'INSERT INTO notifications_epicier (epicier_id, message, lue) VALUES (:epicier_id, :message, 0)',
-      { replacements: { epicier_id: epicierId, message }, type: QueryTypes.INSERT }
-    );
   } catch (e) {
     console.error('sendNotificationToEpicier error:', e);
   }
