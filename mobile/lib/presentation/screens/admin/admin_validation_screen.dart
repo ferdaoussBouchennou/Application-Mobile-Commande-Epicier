@@ -179,7 +179,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
     );
   }
 
@@ -231,7 +231,7 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                       context.read<AuthProvider>().logout();
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                        MaterialPageRoute(builder: (_) => WelcomeScreen()),
                         (route) => false,
                       );
                     },

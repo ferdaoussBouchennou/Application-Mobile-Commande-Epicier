@@ -170,7 +170,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
               context.read<AuthProvider>().logout();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                MaterialPageRoute(builder: (_) => WelcomeScreen()),
                 (route) => false,
               );
             },
