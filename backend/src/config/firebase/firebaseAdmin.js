@@ -1,13 +1,19 @@
-const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
 
-const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+let admin = null;
 let firebaseInitialized = false;
 
-if (fs.existsSync(serviceAccountPath)) {
+try {
+  admin = require('firebase-admin');
+} catch (e) {
+  console.warn('firebase-admin not installed. Run: npm install firebase-admin');
+  console.warn('Push notifications will be simulated (logged to console).');
+}
+
+if (admin && fs.existsSync(path.join(__dirname, 'serviceAccountKey.json'))) {
   try {
-    const serviceAccount = require(serviceAccountPath);
+    const serviceAccount = require(path.join(__dirname, 'serviceAccountKey.json'));
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
@@ -16,8 +22,10 @@ if (fs.existsSync(serviceAccountPath)) {
   } catch (error) {
     console.error('Error initializing Firebase Admin:', error);
   }
+} else if (!admin) {
+  console.warn('Push notifications will be simulated (logged to console).');
 } else {
-  console.warn('Firebase Admin NOT initialized: Service account key missing at', serviceAccountPath);
+  console.warn('Firebase Admin NOT initialized: Service account key missing at', path.join(__dirname, 'serviceAccountKey.json'));
   console.warn('Push notifications will be simulated (logged to console).');
 }
 
