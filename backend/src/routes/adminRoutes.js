@@ -5,6 +5,7 @@ const { authMiddleware, requireAdmin } = require('../middlewares/auth');
 const uploadProductImage = require('../middlewares/uploadProductImage');
 
 router.get('/stats', adminController.getStats);
+router.get('/dashboard/stats', authMiddleware, requireAdmin, adminController.getDashboardStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 router.put('/users/:id/details', authMiddleware, requireAdmin, uploadProductImage.fields([

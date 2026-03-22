@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mar. 17 mars 2026 à 18:55
+-- Généré le : dim. 22 mars 2026 à 00:59
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -54,24 +54,29 @@ INSERT INTO `avis` (`id`, `note`, `commentaire`, `client_id`, `epicier_id`, `com
 
 CREATE TABLE `categories` (
   `id` int(11) NOT NULL,
-  `nom` varchar(100) NOT NULL
+  `nom` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `image_url` varchar(255) DEFAULT NULL,
+  `display_order` int(11) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `categories`
 --
 
-INSERT INTO `categories` (`id`, `nom`) VALUES
-(1, 'Huiles'),
-(2, 'Confiserie'),
-(3, 'Farines'),
-(4, 'Conserves'),
-(5, 'Laitiers'),
-(6, 'Hygiène'),
-(7, 'Boissons'),
-(8, 'Épices'),
-(9, 'Boulangerie'),
-(11, 'Pâtes et riz');
+INSERT INTO `categories` (`id`, `nom`, `description`, `image_url`, `display_order`, `is_active`) VALUES
+(1, 'Huiles', NULL, NULL, 0, 1),
+(2, 'Confiserie', NULL, NULL, 0, 1),
+(3, 'Farines', NULL, NULL, 0, 1),
+(4, 'Conserves', NULL, NULL, 0, 1),
+(5, 'Laitiers', NULL, NULL, 0, 1),
+(6, 'Hygiène', NULL, NULL, 0, 1),
+(7, 'Boissons', NULL, NULL, 0, 1),
+(8, 'Épices', NULL, NULL, 0, 1),
+(9, 'Boulangerie', NULL, NULL, 0, 1),
+(11, 'Pâtes et riz', NULL, NULL, 0, 1),
+(15, 'test', 'xi haja', NULL, 2, 0);
 
 -- --------------------------------------------------------
 
@@ -85,21 +90,28 @@ CREATE TABLE `commandes` (
   `epicier_id` int(11) NOT NULL,
   `date_commande` datetime NOT NULL DEFAULT current_timestamp(),
   `date_recuperation` datetime DEFAULT NULL,
-  `statut` enum('reçue','prête','livrée') NOT NULL DEFAULT 'reçue',
-  `montant_total` decimal(10,2) NOT NULL DEFAULT 0.00
+  `statut` enum('reçue','prête','refusee','livrée') NOT NULL DEFAULT 'reçue',
+  `montant_total` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `message_refus` text DEFAULT NULL,
+  `lu_epicier` tinyint(4) DEFAULT 0,
+  `notes` text DEFAULT NULL,
+  `client_accepte_modification` tinyint(4) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `commandes`
 --
 
-INSERT INTO `commandes` (`id`, `client_id`, `epicier_id`, `date_commande`, `date_recuperation`, `statut`, `montant_total`) VALUES
-(1, 2, 1, '2026-03-09 10:00:00', NULL, 'reçue', 45.50),
-(2, 2, 1, '2026-03-08 14:30:00', '2026-03-08 16:00:00', 'livrée', 186.50),
-(3, 2, 1, '2026-03-07 09:15:00', '2026-03-07 11:00:00', 'livrée', 87.00),
-(4, 2, 1, '2026-03-06 18:00:00', NULL, 'prête', 98.50),
-(5, 2, 1, '2026-03-05 12:00:00', '2026-03-05 14:00:00', 'livrée', 32.00),
-(7, 33, 11, '2026-03-17 17:08:53', '2026-03-17 18:00:00', 'reçue', 120.00);
+INSERT INTO `commandes` (`id`, `client_id`, `epicier_id`, `date_commande`, `date_recuperation`, `statut`, `montant_total`, `message_refus`, `lu_epicier`, `notes`, `client_accepte_modification`) VALUES
+(1, 2, 1, '2026-03-09 10:00:00', NULL, 'reçue', 45.50, NULL, 0, NULL, 0),
+(2, 2, 1, '2026-03-08 14:30:00', '2026-03-08 16:00:00', 'livrée', 186.50, NULL, 0, NULL, 0),
+(3, 2, 1, '2026-03-07 09:15:00', '2026-03-07 11:00:00', 'livrée', 87.00, NULL, 0, NULL, 0),
+(4, 2, 1, '2026-03-06 18:00:00', NULL, 'prête', 98.50, NULL, 0, NULL, 0),
+(5, 2, 1, '2026-03-05 12:00:00', '2026-03-05 14:00:00', 'livrée', 32.00, NULL, 0, NULL, 0),
+(7, 33, 11, '2026-03-17 17:08:53', '2026-03-17 18:00:00', 'reçue', 120.00, NULL, 0, NULL, 0),
+(9, 43, 21, '2026-03-19 14:27:27', '2026-03-19 15:00:00', 'livrée', 159.00, NULL, 1, NULL, 0),
+(10, 43, 21, '2026-03-19 15:28:25', '2026-03-19 17:00:00', 'refusee', 85.00, 'Produit indisponible', 1, NULL, 0),
+(11, 43, 21, '2026-03-19 16:32:22', '2026-03-20 12:00:00', 'reçue', 240.00, NULL, 0, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -113,34 +125,40 @@ CREATE TABLE `detailscommande` (
   `produit_id` int(11) NOT NULL,
   `quantite` int(11) NOT NULL DEFAULT 1,
   `prix_unitaire` decimal(10,2) NOT NULL,
-  `total_ligne` decimal(10,2) NOT NULL
+  `total_ligne` decimal(10,2) NOT NULL,
+  `rupture` tinyint(4) DEFAULT 0,
+  `en_attente_acceptation_client` tinyint(4) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `detailscommande`
 --
 
-INSERT INTO `detailscommande` (`id`, `commande_id`, `produit_id`, `quantite`, `prix_unitaire`, `total_ligne`) VALUES
-(1, 1, 4, 2, 7.00, 14.00),
-(2, 1, 5, 3, 2.50, 7.50),
-(3, 1, 18, 4, 1.50, 6.00),
-(4, 1, 19, 18, 1.00, 18.00),
-(5, 2, 1, 1, 19.50, 19.50),
-(6, 2, 8, 1, 35.00, 35.00),
-(7, 2, 3, 1, 120.00, 120.00),
-(8, 2, 14, 2, 6.00, 12.00),
-(9, 3, 9, 2, 13.00, 26.00),
-(10, 3, 10, 1, 15.00, 15.00),
-(11, 3, 12, 2, 11.00, 22.00),
-(12, 3, 14, 4, 6.00, 24.00),
-(13, 4, 7, 2, 18.00, 36.00),
-(14, 4, 6, 4, 2.50, 10.00),
-(15, 4, 15, 2, 8.50, 17.00),
-(16, 4, 21, 3, 4.50, 13.50),
-(17, 4, 22, 1, 22.00, 22.00),
-(18, 5, 4, 2, 7.00, 14.00),
-(19, 5, 16, 3, 6.00, 18.00),
-(21, 7, 3, 1, 120.00, 120.00);
+INSERT INTO `detailscommande` (`id`, `commande_id`, `produit_id`, `quantite`, `prix_unitaire`, `total_ligne`, `rupture`, `en_attente_acceptation_client`) VALUES
+(1, 1, 4, 2, 7.00, 14.00, 0, 0),
+(2, 1, 5, 3, 2.50, 7.50, 0, 0),
+(3, 1, 18, 4, 1.50, 6.00, 0, 0),
+(4, 1, 19, 18, 1.00, 18.00, 0, 0),
+(5, 2, 1, 1, 19.50, 19.50, 0, 0),
+(6, 2, 8, 1, 35.00, 35.00, 0, 0),
+(7, 2, 3, 1, 120.00, 120.00, 0, 0),
+(8, 2, 14, 2, 6.00, 12.00, 0, 0),
+(9, 3, 9, 2, 13.00, 26.00, 0, 0),
+(10, 3, 10, 1, 15.00, 15.00, 0, 0),
+(11, 3, 12, 2, 11.00, 22.00, 0, 0),
+(12, 3, 14, 4, 6.00, 24.00, 0, 0),
+(13, 4, 7, 2, 18.00, 36.00, 0, 0),
+(14, 4, 6, 4, 2.50, 10.00, 0, 0),
+(15, 4, 15, 2, 8.50, 17.00, 0, 0),
+(16, 4, 21, 3, 4.50, 13.50, 0, 0),
+(17, 4, 22, 1, 22.00, 22.00, 0, 0),
+(18, 5, 4, 2, 7.00, 14.00, 0, 0),
+(19, 5, 16, 3, 6.00, 18.00, 0, 0),
+(21, 7, 3, 1, 120.00, 120.00, 0, 0),
+(23, 9, 1, 2, 19.50, 39.00, 0, 0),
+(24, 9, 3, 1, 120.00, 120.00, 0, 0),
+(25, 10, 2, 1, 85.00, 85.00, 0, 0),
+(26, 11, 3, 2, 120.00, 240.00, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -237,7 +255,14 @@ INSERT INTO `disponibilites` (`id`, `epicier_id`, `jour`, `heure_debut`, `heure_
 (74, 11, 'jeudi', '08:00:00', '22:00:00'),
 (75, 11, 'vendredi', '08:00:00', '22:00:00'),
 (76, 11, 'samedi', '08:00:00', '22:00:00'),
-(77, 11, 'dimanche', '09:00:00', '14:00:00');
+(77, 11, 'dimanche', '09:00:00', '14:00:00'),
+(145, 21, 'lundi', '08:00:00', '22:00:00'),
+(146, 21, 'mardi', '08:00:00', '22:00:00'),
+(147, 21, 'mercredi', '08:00:00', '22:00:00'),
+(148, 21, 'jeudi', '08:00:00', '22:00:00'),
+(149, 21, 'vendredi', '08:00:00', '22:00:00'),
+(150, 21, 'samedi', '08:00:00', '22:00:00'),
+(151, 21, 'dimanche', '09:00:00', '14:00:00');
 
 -- --------------------------------------------------------
 
@@ -266,17 +291,20 @@ CREATE TABLE `epiciers` (
 --
 
 INSERT INTO `epiciers` (`id`, `utilisateur_id`, `nom_boutique`, `adresse`, `telephone`, `description`, `is_active`, `date_creation`, `image_url`, `rating`, `statut_inscription`, `latitude`, `longitude`) VALUES
-(1, 3, 'Epicerie de sara', 'Adresse à configurer', '677777777', 'Votre Hanut de confiance : lait frais, pain chaud, sucre et produits de base.', 1, '2026-03-08 23:51:27', 'uploads/epiciers/hanut3.jpg', 4.0, 'COMPLETE', NULL, NULL),
-(2, 5, 'Epicerie de ali', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 09:55:52', 'uploads/epiciers/hanut1.jpg', 5.0, 'COMPLETE', NULL, NULL),
-(3, 6, 'Épicerie Fleurie', '12 Rue de la Liberté, Casablanca', '0522345678', 'Produits frais et locaux, arrivages quotidiens.', 1, '2026-03-09 14:23:43', 'uploads/epiciers/hanut4.jpg', 4.5, 'COMPLETE', NULL, NULL),
-(4, 7, 'Le Petit Marché', '45 Avenue FAR, Rabat', '0537112233', 'Spécialités régionales et épices fines.', 1, '2026-03-09 14:23:43', 'uploads/epiciers/hanut5.jpg', 3.0, 'COMPLETE', NULL, NULL),
-(5, 8, 'Hanut Marrakech', '7 bis Rue Ibn Batouta, Marrakech', '0524112233', 'Tout pour la maison, livraison rapide dans le quartier.', 1, '2026-03-09 14:23:43', 'uploads/epiciers/hanut6.jpg', 5.0, 'COMPLETE', NULL, NULL),
-(6, 9, 'Épicerie Ahmed', 'Rue de la Liberté, Tunis', '0555112233', 'Produits frais du terroir et épices fines.', 1, '2026-03-09 14:34:37', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 2.0, 'COMPLETE', NULL, NULL),
-(7, 10, 'Hanut Sami', 'Avenue Habib Bourguiba, Sfax', '0555445566', 'Votre Hanut de quartier ouvert tard le soir.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/hanut2.jpg', 1.0, 'COMPLETE', NULL, NULL),
-(8, 11, 'Chez Leila', 'Route de la Plage, Hammamet', '0555778899', 'Fruits de mer et alimentation générale.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/hanut7.jpg', 4.0, 'COMPLETE', NULL, NULL),
-(9, 12, 'Karim Market', 'Boulevard de l\'Environnement, Sousse', '0555001122', 'Le meilleur couscous et produits locaux.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 3.0, 'COMPLETE', NULL, NULL),
-(10, 13, 'Mondher Express', 'Cité des Jeunes, Bizerte', '0555334455', 'Rapide, efficace et toujours avec le sourire.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 4.5, 'COMPLETE', NULL, NULL),
-(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 19:54:35', 'uploads/epiciers/hanut1.jpg', 2.5, 'COMPLETE', NULL, NULL);
+(1, 3, 'Epicerie de sara', 'Adresse à configurer', '677777777', 'Votre Hanut de confiance : lait frais, pain chaud, sucre et produits de base.', 1, '2026-03-08 23:51:27', 'uploads/epiciers/hanut3.jpg', 4.0, 'COMPLETE', 35.5802000, -5.3687000),
+(2, 5, 'Epicerie de ali', 'Adresse à configurer', '0655555555', NULL, 1, '2026-03-09 09:55:52', 'uploads/epiciers/hanut1.jpg', 5.0, 'COMPLETE', 35.5755000, -5.3601000),
+(3, 6, 'Épicerie Fleurie', '12 Rue de la Liberté, Casablanca', '0522345678', 'Produits frais et locaux, arrivages quotidiens.', 1, '2026-03-09 14:23:43', 'uploads/epiciers/hanut4.jpg', 4.5, 'COMPLETE', 35.5710000, -5.3725000),
+(4, 7, 'Le Petit Marché', '45 Avenue FAR, Rabat', '0537112233', 'Spécialités régionales et épices fines.', 1, '2026-03-09 14:23:43', 'uploads/epiciers/hanut5.jpg', 3.0, 'COMPLETE', 35.5688000, -5.3550000),
+(5, 8, 'Hanut Marrakech', '7 bis Rue Ibn Batouta, Marrakech', '0524112233', 'Tout pour la maison, livraison rapide dans le quartier.', 1, '2026-03-09 14:23:43', 'uploads/epiciers/hanut6.jpg', 5.0, 'COMPLETE', 35.5768000, -5.3699000),
+(6, 9, 'Épicerie Ahmed', 'Rue de la Liberté, Tunis', '0555112233', 'Produits frais du terroir et épices fines.', 1, '2026-03-09 14:34:37', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 2.0, 'COMPLETE', 35.5822000, -5.3501000),
+(7, 10, 'Hanut Sami', 'Avenue Habib Bourguiba, Sfax', '0555445566', 'Votre Hanut de quartier ouvert tard le soir.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/hanut2.jpg', 1.0, 'COMPLETE', 35.5601000, -5.3622000),
+(8, 11, 'Chez Leila', 'Route de la Plage, Hammamet', '0555778899', 'Fruits de mer et alimentation générale.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/hanut7.jpg', 4.0, 'COMPLETE', 35.5655000, -5.3788000),
+(9, 12, 'Karim Market', 'Boulevard de l\'Environnement, Sousse', '0555001122', 'Le meilleur couscous et produits locaux.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 3.0, 'COMPLETE', 35.5788000, -5.3522000),
+(10, 13, 'Mondher Express', 'Cité des Jeunes, Bizerte', '0555334455', 'Rapide, efficace et toujours avec le sourire.', 1, '2026-03-09 14:34:38', 'uploads/epiciers/Moul-hanoute-epiciers.jpg', 4.5, 'COMPLETE', 35.5844000, -5.3755000),
+(11, 14, 'Epicerie de mohamed', 'Adresse à configurer', '0655555555', '', 1, '2026-03-09 19:54:35', 'uploads/epiciers/hanut1.jpg', 2.5, 'COMPLETE', 35.5611000, -5.3455000),
+(21, 42, 'Epicerie de Ferdaouss', 'Tétouan', '0612345678', NULL, 1, '2026-03-19 13:47:08', 'uploads/stores/store_21_1773928127462.webp', 0.0, 'COMPLETE', 35.5646704, -5.3632953),
+(22, 47, 'Epicerie de ziko', 'Adresse à configurer', '0626687788', 'xi haja', 1, '2026-03-20 00:19:03', NULL, 0.0, 'COMPLETE', NULL, NULL),
+(23, 48, 'issamShop', 'dddddddddddddddd', '0626262626', '.......', 1, '2026-03-21 19:45:38', 'uploads/shops/shop-1774122338621.png', 0.0, 'ACCEPTE', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -568,7 +596,15 @@ INSERT INTO `epicier_produits` (`epicier_id`, `produit_id`, `prix`, `rupture_sto
 (11, 21, 4.50, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
 (11, 22, 22.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
 (11, 23, 15.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
-(11, 24, 10.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37');
+(11, 24, 10.00, 0, 1, '2026-03-12 19:17:37', '2026-03-12 19:17:37'),
+(11, 37, 5000.00, 0, 1, '2026-03-20 18:05:23', '2026-03-20 18:05:23'),
+(11, 38, 100.00, 0, 0, '2026-03-21 01:50:23', '2026-03-21 01:56:23'),
+(21, 1, 19.50, 0, 0, '2026-03-19 13:49:13', '2026-03-19 23:53:33'),
+(21, 2, 86.00, 0, 1, '2026-03-19 13:49:13', '2026-03-19 22:56:40'),
+(21, 3, 120.00, 0, 1, '2026-03-19 13:49:13', '2026-03-19 22:56:33'),
+(21, 36, 50.00, 0, 0, '2026-03-19 23:53:08', '2026-03-19 23:53:20'),
+(22, 11, 15.00, 0, 1, '2026-03-20 00:21:40', '2026-03-20 00:21:40'),
+(22, 13, 16.00, 0, 1, '2026-03-20 00:21:39', '2026-03-20 00:21:39');
 
 -- --------------------------------------------------------
 
@@ -610,7 +646,8 @@ CREATE TABLE `paniers` (
 --
 
 INSERT INTO `paniers` (`id`, `client_id`, `date_creation`) VALUES
-(10, 33, '2026-03-17');
+(10, 33, '2026-03-17'),
+(17, 43, '2026-03-19');
 
 -- --------------------------------------------------------
 
@@ -638,44 +675,48 @@ CREATE TABLE `produits` (
   `categorie_id` int(11) NOT NULL,
   `image_principale` varchar(500) DEFAULT NULL,
   `date_ajout` timestamp NOT NULL DEFAULT current_timestamp(),
-  `date_modif` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `date_modif` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `prix` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `produits`
 --
 
-INSERT INTO `produits` (`id`, `nom`, `description`, `categorie_id`, `image_principale`, `date_ajout`, `date_modif`) VALUES
-(1, 'Huile Lesieur 1L', 'Huile de table raffinée Lesieur.', 1, 'uploads/huiles/lesieur.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(2, 'Huile d\'Olive Oued Souss 1L', 'Huile d\'olive extra vierge du Maroc.', 1, 'uploads/huiles/oued_souss.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(3, 'Huile Argan Alimentaire 250ml', 'Huile d\'argan pure et certifiée.', 1, 'uploads/huiles/argan.jpg', '2026-03-10 21:47:44', '2026-03-12 15:25:18'),
-(4, 'Lait Centrale 1L', 'Lait frais pasteurisé Centrale Danone.', 5, 'uploads/laitiers/centrale.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
-(5, 'Yaourt Jaouda Fraise', 'Yaourt crémeux aux morceaux de fruits.', 5, 'uploads/laitiers/jaouda_fraise.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
-(6, 'Raibi Jamila', 'Boisson lactée fermentée iconique.', 5, 'uploads/laitiers/raibi.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
-(7, 'Fromage La Vache Qui Rit (16p)', 'Portions de fromage fondu.', 5, 'uploads/laitiers/vache_qui_rit.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28'),
-(8, 'Farine Mouna 5kg', 'Farine de blé tendre de luxe.', 3, 'uploads/farines/mouna.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(9, 'Semoule Fine Al Ittihad 1kg', 'Semoule de blé dur pour couscous.', 3, 'uploads/farines/semoule.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(10, 'Couscous Dari 1kg', 'Couscous marocain précuit.', 3, 'uploads/farines/dari.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(11, 'Thon Mario à l\'huile', 'Morceaux de thon de qualité.', 4, 'uploads/conserves/mario.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(12, 'Tomate Aïcha 400g', 'Double concentré de tomate Aïcha.', 4, 'uploads/conserves/aicha.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(13, 'Confiture Aïcha Fraise', 'Confiture de fraises extra.', 4, 'uploads/conserves/confiture.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(14, 'Eau Sidi Ali 1.5L', 'Eau minérale naturelle Sidi Ali.', 7, 'uploads/boissons/sidi_ali.jpg', '2026-03-10 21:47:44', '2026-03-12 03:42:56'),
-(15, 'Eau Gazeuse Oulmès 1L', 'Eau minérale gazeuse naturelle.', 7, 'uploads/boissons/oulmes.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(16, 'Poms', 'Boisson rafraîchissante à la pomme.', 7, 'uploads/boissons/poms.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(17, 'Thé Sultan (Grain Vert)', 'Thé vert de qualité supérieure.', 7, 'uploads/boissons/the_sultan.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(18, 'Pain Batbout (Unité)', 'Petit pain traditionnel marocain.', 9, 'uploads/boulangerie/batbout.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44'),
-(19, 'Biscuits Henry\'s', 'Biscuits secs traditionnels.', 2, 'uploads/confiserie/henrys.jpg', '2026-03-10 21:47:44', '2026-03-12 03:31:06'),
-(20, 'Merendina Classic', 'Génoise enrobée de chocolat.', 2, 'uploads/confiserie/merendina.jpg', '2026-03-10 21:47:44', '2026-03-12 02:13:25'),
-(21, 'Savon El Kef', 'Savon de marseille traditionnel.', 6, 'uploads/hygiene/elkef.jpg', '2026-03-10 21:47:44', '2026-03-12 01:49:45'),
-(22, 'Détergent Magix 1kg', 'Lessive poudre pour machine.', 6, 'uploads/hygiene/magix.jpg', '2026-03-10 21:47:44', '2026-03-12 05:13:01'),
-(23, 'Ras el Hanout 50g', 'Mélange d\'épices marocain.', 8, 'uploads/epices/ras_hanout.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:58'),
-(24, 'Kamoun (Cumin) 50g', 'Cumin moulu pur.', 8, 'uploads/epices/cumin.jpg', '2026-03-10 21:47:44', '2026-03-12 14:53:38'),
-(27, 'Ain Saiss 15L - Eau minérale', 'Eau minérale naturelle Ain Saiss 15L.', 7, 'uploads/Boissons/Ain_Saiss_15L_-_Eau_minerale-1.webp', '2026-03-12 01:14:39', '2026-03-12 15:27:01'),
-(28, 'Penne 500g AL-ITKANE', 'Pâtes penne 500g.', 11, 'uploads/Pates_et_riz/Penne_500g_AL-ITKANE.webp', '2026-03-12 01:14:39', '2026-03-12 01:49:25'),
-(29, 'Arroz cigala long', 'Riz long grain.', 11, 'uploads/Pates_et_riz/Arroz_cigala_long.png', '2026-03-12 01:14:39', '2026-03-12 15:20:51'),
-(30, 'Pâtes courtes 500g Dalia', 'Pâtes courtes 500g.', 11, 'uploads/Pates_et_riz/Pates_courtes_500g-Dalia.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25'),
-(31, 'Farfalle 500g Kenz', 'Pâtes farfalle 500g.', 11, 'uploads/Pates_et_riz/farfalle_500g_kenz.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25'),
-(32, 'Eau Minérale Ain Soltane 5L', NULL, 7, 'uploads/Boissons/Eau_Minerale_Ain_Soltane_5L.jpg', '2026-03-12 01:53:39', '2026-03-12 01:53:39');
+INSERT INTO `produits` (`id`, `nom`, `description`, `categorie_id`, `image_principale`, `date_ajout`, `date_modif`, `prix`) VALUES
+(1, 'Huile Lesieur 1L', 'Huile de table raffinée Lesieur.', 1, 'uploads/huiles/lesieur.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(2, 'Huile d\'Olive Oued Souss 1L', 'Huile d\'olive extra vierge du Maroc.', 1, 'uploads/huiles/oued_souss.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(3, 'Huile Argan Alimentaire 250ml', 'Huile d\'argan pure et certifiée.', 1, 'uploads/huiles/argan.jpg', '2026-03-10 21:47:44', '2026-03-12 15:25:18', 0.00),
+(4, 'Lait Centrale 1L', 'Lait frais pasteurisé Centrale Danone.', 5, 'uploads/laitiers/centrale.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28', 0.00),
+(5, 'Yaourt Jaouda Fraise', 'Yaourt crémeux aux morceaux de fruits.', 5, 'uploads/laitiers/jaouda_fraise.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28', 0.00),
+(6, 'Raibi Jamila', 'Boisson lactée fermentée iconique.', 5, 'uploads/laitiers/raibi.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28', 0.00),
+(7, 'Fromage La Vache Qui Rit (16p)', 'Portions de fromage fondu.', 5, 'uploads/laitiers/vache_qui_rit.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:28', 0.00),
+(8, 'Farine Mouna 5kg', 'Farine de blé tendre de luxe.', 3, 'uploads/farines/mouna.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(9, 'Semoule Fine Al Ittihad 1kg', 'Semoule de blé dur pour couscous.', 3, 'uploads/farines/semoule.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(10, 'Couscous Dari 1kg', 'Couscous marocain précuit.', 3, 'uploads/farines/dari.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(11, 'Thon Mario à l\'huile', 'Morceaux de thon de qualité.', 4, 'uploads/conserves/mario.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(12, 'Tomate Aïcha 400g', 'Double concentré de tomate Aïcha.', 4, 'uploads/conserves/aicha.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(13, 'Confiture Aïcha Fraise', 'Confiture de fraises extra.', 4, 'uploads/conserves/confiture.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(14, 'Eau Sidi Ali 1.5L', 'Eau minérale naturelle Sidi Ali.', 7, 'uploads/boissons/sidi_ali.jpg', '2026-03-10 21:47:44', '2026-03-12 03:42:56', 0.00),
+(15, 'Eau Gazeuse Oulmès 1L', 'Eau minérale gazeuse naturelle.', 7, 'uploads/boissons/oulmes.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(16, 'Poms', 'Boisson rafraîchissante à la pomme.', 7, 'uploads/boissons/poms.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(17, 'Thé Sultan (Grain Vert)', 'Thé vert de qualité supérieure.', 7, 'uploads/boissons/the_sultan.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(18, 'Pain Batbout (Unité)', 'Petit pain traditionnel marocain.', 9, 'uploads/boulangerie/batbout.jpg', '2026-03-10 21:47:44', '2026-03-10 21:47:44', 0.00),
+(19, 'Biscuits Henry\'s', 'Biscuits secs traditionnels.', 2, 'uploads/confiserie/henrys.jpg', '2026-03-10 21:47:44', '2026-03-12 03:31:06', 0.00),
+(20, 'Merendina Classic', 'Génoise enrobée de chocolat.', 2, 'uploads/confiserie/merendina.jpg', '2026-03-10 21:47:44', '2026-03-12 02:13:25', 0.00),
+(21, 'Savon El Kef', 'Savon de marseille traditionnel.', 6, 'uploads/hygiene/elkef.jpg', '2026-03-10 21:47:44', '2026-03-12 01:49:45', 0.00),
+(22, 'Détergent Magix 1kg', 'Lessive poudre pour machine.', 6, 'uploads/hygiene/magix.jpg', '2026-03-10 21:47:44', '2026-03-12 05:13:01', 0.00),
+(23, 'Ras el Hanout 50g', 'Mélange d\'épices marocain.', 8, 'uploads/epices/ras_hanout.jpg', '2026-03-10 21:47:44', '2026-03-12 05:15:58', 0.00),
+(24, 'Kamoun (Cumin) 50g', 'Cumin moulu pur.', 8, 'uploads/epices/cumin.jpg', '2026-03-10 21:47:44', '2026-03-12 14:53:38', 0.00),
+(27, 'Ain Saiss 15L - Eau minérale', 'Eau minérale naturelle Ain Saiss 15L.', 7, 'uploads/Boissons/Ain_Saiss_15L_-_Eau_minerale-1.webp', '2026-03-12 01:14:39', '2026-03-12 15:27:01', 0.00),
+(28, 'Penne 500g AL-ITKANE', 'Pâtes penne 500g.', 11, 'uploads/Pates_et_riz/Penne_500g_AL-ITKANE.webp', '2026-03-12 01:14:39', '2026-03-12 01:49:25', 0.00),
+(29, 'Arroz cigala long', 'Riz long grain.', 11, 'uploads/Pates_et_riz/Arroz_cigala_long.png', '2026-03-12 01:14:39', '2026-03-12 15:20:51', 0.00),
+(30, 'Pâtes courtes 500g Dalia', 'Pâtes courtes 500g.', 11, 'uploads/Pates_et_riz/Pates_courtes_500g-Dalia.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25', 0.00),
+(31, 'Farfalle 500g Kenz', 'Pâtes farfalle 500g.', 11, 'uploads/Pates_et_riz/farfalle_500g_kenz.png', '2026-03-12 01:14:39', '2026-03-12 01:49:25', 0.00),
+(32, 'Eau Minérale Ain Soltane 5L', NULL, 7, 'uploads/Boissons/Eau_Minerale_Ain_Soltane_5L.jpg', '2026-03-12 01:53:39', '2026-03-12 01:53:39', 0.00),
+(36, 'chi jaja', 'lbn dl3bar', 7, 'uploads/Boissons/chi_jaja.jpeg', '2026-03-19 23:53:08', '2026-03-19 23:53:08', 0.00),
+(37, 'l3ssl', 'ghaali bzzf', 7, 'uploads/Boissons/l3ssl.jpeg', '2026-03-20 18:05:23', '2026-03-20 18:05:23', 0.00),
+(38, 'test1', '.............', 15, 'uploads/test/test1.png', '2026-03-21 01:50:23', '2026-03-21 01:50:23', 0.00);
 
 -- --------------------------------------------------------
 
@@ -689,16 +730,19 @@ CREATE TABLE `reclamations` (
   `statut` enum('Résolu','En médiation','Remboursé','Litige ouvert') DEFAULT NULL,
   `client_id` int(11) NOT NULL,
   `commande_id` int(11) DEFAULT NULL,
-  `date_creation` date NOT NULL
+  `date_creation` date NOT NULL,
+  `motif` varchar(255) NOT NULL,
+  `photo` varchar(255) DEFAULT NULL,
+  `reponse_epicier` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `reclamations`
 --
 
-INSERT INTO `reclamations` (`id`, `description`, `statut`, `client_id`, `commande_id`, `date_creation`) VALUES
-(1, 'Un produit de la commande #3 était légèrement abîmé. Demande d\'échange.', 'Résolu', 2, 3, '2026-03-07'),
-(2, 'Retard de livraison sur la commande #2.', 'Litige ouvert', 2, 2, '2026-03-08');
+INSERT INTO `reclamations` (`id`, `description`, `statut`, `client_id`, `commande_id`, `date_creation`, `motif`, `photo`, `reponse_epicier`) VALUES
+(1, 'Un produit de la commande #3 était légèrement abîmé. Demande d\'échange.', 'Résolu', 2, 3, '2026-03-07', '', NULL, NULL),
+(2, 'Retard de livraison sur la commande #2.', 'En médiation', 2, 2, '2026-03-08', '', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -722,27 +766,33 @@ CREATE TABLE `utilisateurs` (
   `fcm_token` varchar(255) DEFAULT NULL,
   `email_verified` tinyint(1) DEFAULT 0,
   `otp_code` varchar(6) DEFAULT NULL,
-  `otp_expires_at` datetime DEFAULT NULL
+  `otp_expires_at` datetime DEFAULT NULL,
+  `telephone` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `utilisateurs`
 --
 
-INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `id_facebook`, `id_instagram`, `role`, `doc_verf`, `is_active`, `date_creation`, `fcm_token`, `email_verified`, `otp_code`, `otp_expires_at`) VALUES
-(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57', NULL, 0, NULL, NULL),
-(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26', NULL, 0, NULL, NULL),
-(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51', NULL, 0, NULL, NULL),
-(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42', NULL, 0, NULL, NULL),
-(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 0, NULL, NULL),
-(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 0, NULL, NULL),
-(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, 0, NULL, NULL),
-(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, 0, NULL, NULL),
-(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL),
-(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL),
-(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL),
-(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'IMG-20260308-WA0037.', 1, '2026-03-09 19:54:34', NULL, 0, NULL, NULL),
-(33, 'bou', 'ferdaouss', 'ferdaousbo12@gmail.com', '$2b$10$c4zVCTOdWZ7x733dkxXs5utN9sa/FSPYR6HPEOL.T3gJs/qqsC7h.', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-17 16:38:10', NULL, 1, NULL, NULL);
+INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, `id_facebook`, `id_instagram`, `role`, `doc_verf`, `is_active`, `date_creation`, `fcm_token`, `email_verified`, `otp_code`, `otp_expires_at`, `telephone`) VALUES
+(2, 'bou', 'fer', 'fer@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'CLIENT', NULL, 1, '2026-03-08 23:38:57', NULL, 0, NULL, NULL, NULL),
+(3, 'ran', 'sara', 'sa@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-08 23:51:26', NULL, 0, NULL, NULL, NULL),
+(5, 'bo', 'ali', 'ali@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'Screenshot_20260309-', 1, '2026-03-09 09:55:51', NULL, 0, NULL, NULL, NULL),
+(6, 'Benani', 'Ahmed', 'ahmed.boutique@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:42', NULL, 0, NULL, NULL, NULL),
+(7, 'Tazi', 'Driss', 'driss.market@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 0, NULL, NULL, NULL),
+(8, 'Mansouri', 'Sanaa', 'sanaa.epicerie@example.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:23:43', NULL, 0, NULL, NULL, NULL),
+(9, 'Ben Salah', 'Ahmed', 'ahmed@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774121527656.png', 1, '2026-03-09 14:34:37', NULL, 0, NULL, NULL, NULL),
+(10, 'Mansour', 'Sami', 'sami@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:37', NULL, 0, NULL, NULL, NULL),
+(11, 'Trabelsi', 'Leila', 'leila@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL, NULL),
+(12, 'Gharbi', 'Karim', 'karim@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL, NULL),
+(13, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', NULL, 1, '2026-03-09 14:34:38', NULL, 0, NULL, NULL, NULL),
+(14, 'alaoui', 'mohamed', 'mohamed@gmail.com', '$2b$10$6NeGDyqCVTVpRvJIIwtKHeQdUF3BhTJ5sKi7qAiyZY1vfxWxooB0S', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774121583102.png', 1, '2026-03-09 19:54:34', NULL, 0, NULL, NULL, NULL),
+(33, 'bou', 'ferdaouss', 'ferdaous@gmail.com', '$2b$10$c4zVCTOdWZ7x733dkxXs5utN9sa/FSPYR6HPEOL.T3gJs/qqsC7h.', '106221859492863677746', NULL, NULL, 'CLIENT', NULL, 1, '2026-03-17 16:38:10', NULL, 1, NULL, NULL, NULL),
+(42, 'Bouchennou', 'Ferdaouss', 'ferdaousbo12@gmail.com', '$2b$10$0ADrbN9LNXPkTAddhOf2WOhKHZK5BdIhLMDjV1bUEejaDNdgsJoN.', NULL, NULL, NULL, 'EPICIER', '1e43b912-b9dd-4415-9', 1, '2026-03-19 13:47:08', NULL, 1, NULL, NULL, NULL),
+(43, 'Bouchennou', 'Ferdaous', 'ferdaouss@gmail.com', '$2b$10$/YLTEoLWVXajMHgJTfONbONDmJcDbgnwzEw9NpMLkpSWhCpTNsBIi', '116936960074879664236', NULL, NULL, 'CLIENT', NULL, 1, '2026-03-19 13:55:14', NULL, 1, NULL, NULL, '0612345678'),
+(46, 'ziko', 'zaki', 'allouchezaki45@gmail.com', '$2b$10$vuMLv95V8uv5/NQPHi.JSe/Y3/xiD/qhP5pEpy6JPDPHOepkkHWMO', NULL, NULL, NULL, 'ADMIN', NULL, 1, '2026-03-19 21:48:13', NULL, 1, NULL, NULL, '0626687780'),
+(47, 'zaki', 'ziko', 'zelallouche@gmail.com', '$2b$10$XwN.giCoGos.Yq5bq/ZFzePybY7xiDWdMLxLnndeJmnY2bllsTXKq', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774108438898.png', 1, '2026-03-20 00:19:03', NULL, 1, NULL, NULL, NULL),
+(48, 'issama', 'allouche', 'issa@gmail.com', '$2b$10$Sm9NoEuqerDnCQKFYx4ym.f8Xb4dqdI7JerCeXABR29KOYuthUxAa', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774122338623.png', 1, '2026-03-21 19:45:38', NULL, 0, NULL, NULL, NULL);
 
 --
 -- Index pour les tables déchargées
@@ -921,31 +971,31 @@ ALTER TABLE `avis`
 -- AUTO_INCREMENT pour la table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT pour la table `commandes`
 --
 ALTER TABLE `commandes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT pour la table `detailscommande`
 --
 ALTER TABLE `detailscommande`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT pour la table `disponibilites`
 --
 ALTER TABLE `disponibilites`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=138;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=152;
 
 --
 -- AUTO_INCREMENT pour la table `epiciers`
 --
 ALTER TABLE `epiciers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT pour la table `notifications`
@@ -957,13 +1007,13 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT pour la table `paniers`
 --
 ALTER TABLE `paniers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT pour la table `produits`
 --
 ALTER TABLE `produits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT pour la table `reclamations`
@@ -975,7 +1025,7 @@ ALTER TABLE `reclamations`
 -- AUTO_INCREMENT pour la table `utilisateurs`
 --
 ALTER TABLE `utilisateurs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- Contraintes pour les tables déchargées
