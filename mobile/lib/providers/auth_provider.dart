@@ -84,11 +84,15 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> loginWithGoogle({Map<String, dynamic>? epicierData}) async {
+  Future<bool> loginWithGoogle({
+    Map<String, dynamic>? epicierData,
+    List<int>? docBytes,
+    String? docFilename,
+  }) async {
     _setLoading(true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId: dotenv.env['GOOGLE_CLIENT_ID'],
+        serverClientId: dotenv.env['GOOGLE_CLIENT_ID'], // Web Client ID pour obtenir idToken
         scopes: ['email', 'profile', 'openid'],
       );
 
@@ -116,7 +120,17 @@ class AuthProvider with ChangeNotifier {
       }
  
       // Envoi du token au backend pour vérification et connexion/inscription
-      final response = await _apiService.post('/auth/google', payload);
+      dynamic response;
+      if (docBytes != null && docFilename != null && docBytes.isNotEmpty) {
+        response = await _apiService.postMultipart(
+          '/auth/google',
+          payload,
+          files: {'document_verification': docBytes},
+          filenames: {'document_verification': docFilename},
+        );
+      } else {
+        response = await _apiService.post('/auth/google', payload);
+      }
 
       _token = response['token'];
       _user = response['user'];
@@ -137,7 +151,11 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> loginWithFacebook({Map<String, dynamic>? epicierData}) async {
+  Future<bool> loginWithFacebook({
+    Map<String, dynamic>? epicierData,
+    List<int>? docBytes,
+    String? docFilename,
+  }) async {
     _setLoading(true);
     try {
       final LoginResult result = await FacebookAuth.instance.login(
@@ -159,7 +177,17 @@ class AuthProvider with ChangeNotifier {
         payload.addAll(epicierData);
       }
 
-      final response = await _apiService.post('/auth/facebook', payload);
+      dynamic response;
+      if (docBytes != null && docFilename != null && docBytes.isNotEmpty) {
+        response = await _apiService.postMultipart(
+          '/auth/facebook',
+          payload,
+          files: {'document_verification': docBytes},
+          filenames: {'document_verification': docFilename},
+        );
+      } else {
+        response = await _apiService.post('/auth/facebook', payload);
+      }
 
       _token = response['token'];
       _user = response['user'];
@@ -178,11 +206,13 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> loginWithInstagram({Map<String, dynamic>? epicierData}) async {
+  Future<bool> loginWithInstagram({
+    Map<String, dynamic>? epicierData,
+    List<int>? docBytes,
+    String? docFilename,
+  }) async {
     _setLoading(true);
     try {
-      // Pour Instagram moderne (2026), on utilise le flux Meta (Facebook Auth)
-      // car les deux plateformes sont désormais unifiées.
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: ['email', 'public_profile'],
       );
@@ -202,8 +232,17 @@ class AuthProvider with ChangeNotifier {
         payload.addAll(epicierData);
       }
 
-      // On envoie le token au endpoint Instagram du backend
-      final response = await _apiService.post('/auth/instagram', payload);
+      dynamic response;
+      if (docBytes != null && docFilename != null && docBytes.isNotEmpty) {
+        response = await _apiService.postMultipart(
+          '/auth/instagram',
+          payload,
+          files: {'document_verification': docBytes},
+          filenames: {'document_verification': docFilename},
+        );
+      } else {
+        response = await _apiService.post('/auth/instagram', payload);
+      }
 
       _token = response['token'];
       _user = response['user'];
@@ -234,10 +273,23 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> registerEpicier(Map<String, dynamic> data) async {
+  Future<bool> registerEpicier(
+    Map<String, dynamic> data, {
+    List<int>? docBytes,
+    String? docFilename,
+  }) async {
     _setLoading(true);
     try {
-      await _apiService.post('/auth/register/epicier', data);
+      if (docBytes != null && docFilename != null && docBytes.isNotEmpty) {
+        await _apiService.postMultipart(
+          '/auth/register/epicier',
+          data,
+          files: {'document_verification': docBytes},
+          filenames: {'document_verification': docFilename},
+        );
+      } else {
+        await _apiService.post('/auth/register/epicier', data);
+      }
       _setLoading(false);
       return true;
     } catch (e) {

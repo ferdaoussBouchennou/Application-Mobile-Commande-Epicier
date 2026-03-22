@@ -9,6 +9,7 @@ import '../../../providers/auth_provider.dart';
 import 'admin_product_form_screen.dart';
 import 'admin_category_form_screen.dart';
 import '../../../screens/auth/welcome_screen.dart';
+import '../../widgets/admin/admin_bottom_nav.dart';
 
 class AdminStoreCatalogueScreen extends StatefulWidget {
   final UserModel storeOwner;
@@ -24,7 +25,8 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
   final TextEditingController _searchController = TextEditingController();
   
   List<Product> _products = [];
-  List<model.Category> _categories = [];
+  List<model.Category> _categories = [];       // store's categories (has products)
+  List<model.Category> _allCategories = [];    // ALL platform categories
   int? _selectedCategoryId;
   bool _showCategories = true;
   bool _isLoading = true;
@@ -48,12 +50,21 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
       final token = auth.token;
-      debugPrint('AdminStoreCatalogueScreen DEBUG: FETCH CATEGORIES token=$token, isLoggedIn=${auth.isLoggedIn}');
       final storeId = widget.storeOwner.store?['id'];
+
+      // Store's own categories (already has products)
       final List<dynamic> data = await _apiService.get('/admin/categories?storeId=$storeId', token: token);
+      // All platform categories for the "link existing" dialog
+      final List<dynamic> allData = await _apiService.get('/admin/categories', token: token);
+
       if (mounted) {
         setState(() {
-          _categories = data.map((json) => model.Category.fromJson(json)).toList();
+          // Only show categories that have at least one product
+          _categories = data
+              .map((json) => model.Category.fromJson(json))
+              .where((c) => c.productCount > 0)
+              .toList();
+          _allCategories = allData.map((json) => model.Category.fromJson(json)).toList();
         });
       }
     } catch (e) {
@@ -117,6 +128,18 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
     }
   }
 
+  Future<void> _toggleRuptureStock(int productId) async {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
+    try {
+      await _apiService.patch('/admin/products/$productId/rupture-stock', {
+        'epicier_id': widget.storeOwner.store?['id']
+      }, token: token);
+      _fetchProducts();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -141,7 +164,6 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                             if (_showCategories) ...[
                               _buildCategoryGrid(),
                             ] else ...[
-                              _buildCategoryFilters(),
                               const SizedBox(height: 20),
                               _buildTitleRow(),
                               const SizedBox(height: 12),
@@ -157,6 +179,29 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF2D5016),
+        onPressed: () async {
+          if (_showCategories) {
+            _showAddCategorySheet();
+          } else {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AdminProductFormScreen(
+                storeOwner: widget.storeOwner,
+                initialCategoryId: _selectedCategoryId,
+              )),
+            );
+            if (result == true) _loadData();
+          }
+        },
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          _showCategories ? 'Catégorie' : 'Produit',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
     );
   }
 
@@ -262,32 +307,11 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
 
   Widget _buildCategoryGrid() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Catégories',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
-            ),
-            InkWell(
-              onTap: () => _navigateToCategoryForm(),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEBEE),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.add, size: 18, color: Color(0xFFF26444)),
-                    SizedBox(width: 4),
-                    Text('Ajouter', style: TextStyle(color: Color(0xFFF26444), fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        const Text(
+          'Catégories',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
         ),
         const SizedBox(height: 16),
         if (_categories.isEmpty)
@@ -318,6 +342,171 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       MaterialPageRoute(builder: (_) => AdminCategoryFormScreen(category: category)),
     );
     if (result == true) _loadData();
+  }
+
+  void _showAddCategorySheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Ajouter une catégorie', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('Choisissez comment ajouter une catégorie à ce catalogue :', style: TextStyle(color: Colors.black54, fontSize: 14)),
+            const SizedBox(height: 24),
+            // Option 1: link existing category
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showExistingCategoriesDialog();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F7EC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: const Color(0xFF2D5016), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.link, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Catégorie existante', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          SizedBox(height: 4),
+                          Text('Ajouter des produits d\'une catégorie déjà créée', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Option 2: create new category
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                Navigator.pop(ctx);
+                _navigateToCategoryForm();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF3E0),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: const Color(0xFFC06C1E), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.add_box_outlined, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Nouvelle catégorie', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          SizedBox(height: 4),
+                          Text('Créer une nouvelle catégorie sur la plateforme', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExistingCategoriesDialog() {
+    // Filter out categories already in the store
+    final existingIds = _categories.map((c) => c.id).toSet();
+    final available = _allCategories.where((c) => !existingIds.contains(c.id)).toList();
+
+    if (available.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Toutes les catégories sont déjà dans ce catalogue.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Choisir une catégorie'),
+        contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: available.length,
+            separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+            itemBuilder: (_, i) {
+              final cat = available[i];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFF0F7EC),
+                  child: cat.imageUrl != null
+                      ? ClipOval(child: Image.network(
+                          ApiConstants.formatImageUrl(cat.imageUrl),
+                          fit: BoxFit.cover, width: 40, height: 40,
+                          errorBuilder: (_, __, ___) => const Icon(Icons.category_outlined, color: Color(0xFF2D5016), size: 20),
+                        ))
+                      : const Icon(Icons.category_outlined, color: Color(0xFF2D5016), size: 20),
+                ),
+                title: Text(cat.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF2D5016)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  // Navigate to add product in this category
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AdminProductFormScreen(
+                      storeOwner: widget.storeOwner,
+                      initialCategoryId: cat.id,
+                    )),
+                  ).then((result) { if (result == true) _loadData(); });
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+        ],
+      ),
+    );
   }
 
   Widget _buildCategoryCard(model.Category cat) {
@@ -381,18 +570,19 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                   final bool? confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
-                      title: const Text('Supprimer'),
-                      content: const Text('Voulez-vous vraiment supprimer cette catégorie ?'),
+                      title: const Text('Retirer la catégorie'),
+                      content: const Text('Voulez-vous retirer tous les produits de cette catégorie de CE catalogue ?\n\nLes produits seront désactivés pour cet épicier uniquement, la catégorie restera disponible pour les autres.'),
                       actions: [
                         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer', style: TextStyle(color: Colors.red))),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirmer', style: TextStyle(color: Colors.red))),
                       ],
                     ),
                   );
                   if (confirm == true) {
                     try {
                       final token = Provider.of<AuthProvider>(context, listen: false).token;
-                      await _apiService.delete('/admin/categories/${cat.id}', token: token);
+                      final storeId = widget.storeOwner.store?['id'];
+                      await _apiService.delete('/admin/stores/$storeId/categories/${cat.id}', token: token);
                       _loadData();
                     } catch (e) {
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
@@ -412,81 +602,10 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
     );
   }
 
-  Widget _buildCategoryFilters() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _buildFilterChip('Tous', null),
-          ..._categories.map((c) => _buildFilterChip(c.nom, c.id)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, int? id) {
-    bool isSelected = _selectedCategoryId == id;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (val) {
-          setState(() {
-            _selectedCategoryId = id;
-            _fetchProducts();
-          });
-        },
-        backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF2D5016),
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: isSelected ? Colors.transparent : Colors.grey.shade200),
-        ),
-        showCheckmark: false,
-      ),
-    );
-  }
-
   Widget _buildTitleRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          'Produits',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
-        ),
-        InkWell(
-          onTap: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => AdminProductFormScreen(
-                storeOwner: widget.storeOwner,
-                initialCategoryId: _selectedCategoryId,
-              )),
-            );
-            if (result == true) _fetchProducts();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEBEE),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.add, size: 18, color: Color(0xFFF26444)),
-                SizedBox(width: 4),
-                Text('Ajouter', style: TextStyle(color: Color(0xFFF26444), fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return const Text(
+      'Produits',
+      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
     );
   }
 
@@ -594,6 +713,13 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
+                  _buildIconButton(
+                    product.ruptureStock ? Icons.check_circle_outline : Icons.remove_shopping_cart_outlined,
+                    product.ruptureStock ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+                    product.ruptureStock ? const Color(0xFF4CBB5E) : Colors.orange,
+                    () => _toggleRuptureStock(product.id),
+                  ),
+                  const SizedBox(width: 8),
                   _buildIconButton(Icons.edit_outlined, const Color(0xFFE8F5E9), const Color(0xFF4CBB5E), () {
                     Navigator.push(
                       context,

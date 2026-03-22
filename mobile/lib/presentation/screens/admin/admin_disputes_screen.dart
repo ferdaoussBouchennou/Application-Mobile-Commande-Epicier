@@ -7,6 +7,7 @@ import '../../../screens/auth/welcome_screen.dart';
 import 'admin_validation_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
+import '../../widgets/admin/admin_bottom_nav.dart';
 
 class AdminDisputesScreen extends StatefulWidget {
   const AdminDisputesScreen({super.key});
@@ -113,7 +114,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 4),
     );
   }
 
@@ -169,7 +170,7 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
               context.read<AuthProvider>().logout();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                MaterialPageRoute(builder: (_) => WelcomeScreen()),
                 (route) => false,
               );
             },
@@ -373,25 +374,4 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 4,
-      selectedItemColor: const Color(0xFF2D5016),
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        if (index == 0) Navigator.popUntil(context, (route) => route.isFirst);
-        else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminValidationScreen()));
-        else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminOrdersScreen()));
-        else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()));
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
-        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
-        BottomNavigationBarItem(icon: Icon(Icons.warning_amber_rounded), label: 'Litiges'),
-      ],
-    );
-  }
 }

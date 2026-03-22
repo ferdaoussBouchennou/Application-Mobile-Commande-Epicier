@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../data/services/api_service.dart';
+import '../../widgets/admin/admin_bottom_nav.dart';
 import '../../../screens/auth/welcome_screen.dart';
 import 'admin_validation_screen.dart';
 import 'admin_disputes_screen.dart';
@@ -60,119 +61,63 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
           children: [
             _buildHeader(),
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator(color: Color(0xFF2D5016)))
-                : RefreshIndicator(
-                    onRefresh: _fetchData,
-                    color: const Color(0xFF2D5016),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildStatsRow(),
-                          const SizedBox(height: 30),
-                          _buildRecentOrdersHeader(),
-                          const SizedBox(height: 12),
-                          _buildRecentOrdersTable(),
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Color(0xFF2D5016)))
+                  : _buildBody(),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       decoration: const BoxDecoration(
         color: Color(0xFF2D5016),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                    tooltip: 'Retour',
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.store, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'MyHanut',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Suivi des Commandes',
-                        style: TextStyle(
-                          color: Color(0xFFB5D39D),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              const Expanded(
+                child: Text(
+                  'Commandes',
+                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                ),
               ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF26444),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'ADMIN',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
-                    onPressed: () {
-                      context.read<AuthProvider>().logout();
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                        (route) => false,
-                      );
-                    },
-                    tooltip: 'Déconnexion',
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF26444),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
+                onPressed: () {
+                  context.read<AuthProvider>().logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => WelcomeScreen()),
+                    (route) => false,
+                  );
+                },
+                tooltip: 'Déconnexion',
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white, size: 22),
+                onPressed: _fetchData,
+                tooltip: 'Actualiser',
               ),
             ],
           ),
@@ -180,6 +125,30 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       ),
     );
   }
+
+  Widget _buildBody() {
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      color: const Color(0xFF2D5016),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildStatsRow(),
+            const SizedBox(height: 30),
+            _buildRecentOrdersHeader(),
+            const SizedBox(height: 12),
+            _buildRecentOrdersTable(),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+
 
   Widget _buildStatsRow() {
     return Row(
@@ -363,39 +332,4 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: 2,
-      selectedItemColor: const Color(0xFF2D5016),
-      unselectedItemColor: Colors.grey,
-      onTap: (index) {
-        if (index == 0) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminValidationScreen()),
-          );
-        } else if (index == 3) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminCategoriesScreen()),
-          );
-        } else if (index == 4) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminDisputesScreen()),
-          );
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-        BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Utilisateurs'),
-        BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Commandes'),
-        BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Catégories'),
-        BottomNavigationBarItem(icon: Icon(Icons.warning_amber_rounded), label: 'Litiges'),
-      ],
-    );
-  }
 }

@@ -5,6 +5,7 @@ const { authMiddleware, requireAdmin } = require('../middlewares/auth');
 const uploadProductImage = require('../middlewares/uploadProductImage');
 
 router.get('/stats', adminController.getStats);
+router.get('/dashboard/stats', authMiddleware, requireAdmin, adminController.getDashboardStats);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 router.put('/users/:id/details', authMiddleware, requireAdmin, uploadProductImage.fields([
@@ -32,6 +33,7 @@ router.post('/categories/upload-icon', (req, res, next) => {
 // Gestion des produits par catégorie (admin)
 router.get('/stores', authMiddleware, requireAdmin, adminController.getStores);
 router.get('/stores/:storeId/products', authMiddleware, requireAdmin, adminController.getStoreProducts);
+router.delete('/stores/:storeId/categories/:categoryId', authMiddleware, requireAdmin, adminController.deactivateStoreCategory);
 router.get('/categories/:categoryId/products', authMiddleware, requireAdmin, adminController.getCategoryProducts);
 router.post('/products', authMiddleware, requireAdmin, adminController.createProduct);
 router.put('/products/:id', authMiddleware, requireAdmin, adminController.updateProduct);
