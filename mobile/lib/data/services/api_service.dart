@@ -36,6 +36,28 @@ class ApiService {
     }
   }
 
+  /// Réponse brute (PDF, etc.) — ne parse pas le JSON.
+  Future<Uint8List> getBytes(String endpoint, {String? token}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl$endpoint'),
+        headers: _headers(token: token, omitContentType: true),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      }
+      String msg = 'Erreur ${response.statusCode}';
+      try {
+        final j = jsonDecode(response.body) as Map<String, dynamic>;
+        if (j['message'] != null) msg = j['message'] as String;
+      } catch (_) {}
+      throw Exception(msg);
+    } catch (e) {
+      Logger.error('GET bytes $endpoint → $e');
+      rethrow;
+    }
+  }
+
   Future<dynamic> post(String endpoint, Map<String, dynamic> body, {String? token}) async {
     try {
       final response = await http.post(
