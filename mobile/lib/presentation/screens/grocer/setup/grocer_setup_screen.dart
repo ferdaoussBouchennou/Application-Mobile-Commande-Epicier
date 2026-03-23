@@ -16,7 +16,16 @@ import '../grocer_theme.dart';
 import '../grocer_main_screen.dart';
 
 class GrocerSetupScreen extends StatefulWidget {
-  const GrocerSetupScreen({super.key});
+  final String submitEndpoint;
+  final bool isEditing;
+  final String finalButtonText;
+
+  const GrocerSetupScreen({
+    super.key,
+    this.submitEndpoint = '/epicier/complete-registration',
+    this.isEditing = false,
+    this.finalButtonText = 'Terminer',
+  });
 
   @override
   State<GrocerSetupScreen> createState() => _GrocerSetupScreenState();
@@ -380,9 +389,11 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
       if (_longitude != null) body['longitude'] = _longitude;
       if (_uploadedImageUrl != null) body['image_url'] = _uploadedImageUrl;
 
-      await _apiService.put('/epicier/complete-registration', body, token: token);
+      await _apiService.put(widget.submitEndpoint, body, token: token);
 
-      auth.markSetupComplete();
+      if (!widget.isEditing) {
+        auth.markSetupComplete();
+      }
 
       if (mounted) {
         Navigator.pushAndRemoveUntil(
@@ -1190,7 +1201,7 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _currentStep < 3 ? 'Suivant' : 'Terminer',
+                          _currentStep < 3 ? 'Suivant' : widget.finalButtonText,
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                         ),
                         const SizedBox(width: 8),
