@@ -11,7 +11,6 @@ const seedAdmin = async () => {
         email: 'admin@gmail.com',
         mdp: '12345678',
         role: 'ADMIN',
-        statut_inscription: 'ACCEPTE',
         is_active: true
       });
       console.log('✅ Compte Admin créé avec succès !');

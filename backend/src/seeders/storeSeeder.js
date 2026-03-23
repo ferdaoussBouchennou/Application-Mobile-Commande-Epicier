@@ -86,7 +86,7 @@ const seedStores = async () => {
         description: data.description,
         image_url: data.image_url,
         rating: data.rating,
-        statut_inscription: 'ACCEPTE',
+        statut_inscription: 'COMPLETE',
         is_active: true
       });
 

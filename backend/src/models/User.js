@@ -40,6 +40,7 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+  // Le statut d'inscription épicier (EN_ATTENTE, ACCEPTE, REFUSE, COMPLETE) est sur la table epiciers (Store), pas ici.
   role: {
     type: DataTypes.ENUM('CLIENT', 'ADMIN', 'EPICIER'),
     allowNull: false,
