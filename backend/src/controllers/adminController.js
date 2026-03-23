@@ -512,44 +512,83 @@ exports.createProduct = async (req, res) => {
       epicierProduct.is_active = true;
       await epicierProduct.save();
     }
+    const withCategory = await Product.findByPk(product.id, {
+      include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
+    });
+
     res.status(201).json({
-      id: product.id,
-      nom: product.nom,
+      id: withCategory.id,
+      nom: withCategory.nom,
       prix: parseFloat(epicierProduct.prix),
-      description: product.description,
-      epicier_id: parseInt(epicier_id, 10),
-      categorie_id: product.categorie_id,
-      image_principale: product.image_principale,
-      is_active: true,
-      store_name: store.nom_boutique
+      description: withCategory.description,
+      epicier_id: epicierProduct.epicier_id,
+      categorie_id: withCategory.categorie_id,
+      categorie_nom: withCategory.categorie?.nom ?? null,
+      image_principale: withCategory.image_principale,
+      rupture_stock: !!epicierProduct.rupture_stock
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Erreur createProduct:', error);
+    res.status(500).json({ message: 'Erreur lors de la création du produit', error: error.message });
   }
 };
 
+/**
+ * Mettre à jour un produit (global) et éventuellement son prix pour un épicier.
+ */
+exports.updateProduct = async (req, res) => {
+  try {
+    const { nom, prix, description, image_principale, epicier_id } = req.body;
+    const produitId = parseInt(req.params.id, 10);
+
+    const product = await Product.findByPk(produitId);
+    if (!product) return res.status(404).json({ message: 'Produit introuvable.' });
+
+    if (nom) product.nom = nom.trim();
+    if (description !== undefined) product.description = description?.trim() || null;
+    if (image_principale !== undefined) product.image_principale = image_principale?.trim() || null;
+    await product.save();
+
+    if (epicier_id != null && prix != null) {
+      const link = await EpicierProduct.findOne({ where: { epicier_id: parseInt(epicier_id, 10), produit_id: product.id } });
+      if (link) {
+        link.prix = parseFloat(prix);
+        await link.save();
+      }
+    }
+
+    res.json({ message: 'Produit mis à jour avec succès.' });
+  } catch (error) {
+    console.error('Erreur updateProduct:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour', error: error.message });
+  }
+};
+
+/**
+ * Récupère les produits d'un magasin spécifique.
+ */
 exports.getStoreProducts = async (req, res) => {
   try {
     const { storeId } = req.params;
-    const { search, categoryId } = req.query;
+    const { categoryId, search } = req.query;
 
-    let productWhere = {};
-    if (search) {
-      productWhere.nom = { [Op.like]: `%${search}%` };
-    }
-    if (categoryId) {
-      productWhere.categorie_id = categoryId;
-    }
+    const where = { epicier_id: storeId, is_active: true };
+    const productWhere = {};
+    if (categoryId) productWhere.categorie_id = categoryId;
+    if (search) productWhere.nom = { [require('sequelize').Op.like]: `%${search}%` };
 
     const epicierProducts = await EpicierProduct.findAll({
-      where: { epicier_id: storeId, is_active: true },
+      where,
       include: [{
         model: Product,
         as: 'produit',
-        where: productWhere,
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }]
-      }],
-      order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']]
+        where: Object.keys(productWhere).length ? productWhere : null,
+        include: [{
+          model: Category,
+          as: 'categorie',
+          attributes: ['id', 'nom']
+        }]
+      }]
     });
 
     const products = epicierProducts.map(ep => ({
@@ -557,6 +596,7 @@ exports.getStoreProducts = async (req, res) => {
       nom: ep.produit.nom,
       prix: parseFloat(ep.prix),
       description: ep.produit.description,
+      epicier_id: ep.epicier_id,
       categorie_id: ep.produit.categorie_id,
       categorie_nom: ep.produit.categorie?.nom,
       image_principale: ep.produit.image_principale,
