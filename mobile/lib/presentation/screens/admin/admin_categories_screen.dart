@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
-import '../../widgets/active_toggle.dart';
 import '../../../screens/auth/welcome_screen.dart';
 import 'admin_validation_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_disputes_screen.dart';
 import 'admin_category_form_screen.dart';
 import '../../../data/models/category.dart' as model;
-import '../../../core/constants/api_constants.dart';
 import 'admin_category_products_screen.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
 
@@ -97,24 +95,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       MaterialPageRoute(builder: (_) => AdminCategoryFormScreen(category: category)),
     );
     if (res == true) _load();
-  }
-
-  Future<void> _toggleCategoryActive(model.Category cat, bool active) async {
-    final token = _token;
-    if (token == null) return;
-    try {
-      await _api.put(
-        '/admin/categories/${cat.id}',
-        {'is_active': active},
-        token: token,
-      );
-      if (!mounted) return;
-      _snack(active ? 'Catégorie activée' : 'Catégorie désactivée');
-      _load();
-    } catch (e) {
-      if (!mounted) return;
-      _snack(e.toString().replaceAll('Exception: ', ''));
-    }
   }
 
   void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -305,16 +285,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
             color: const Color(0xFFFDF6F0),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: cat.imageUrl != null && cat.imageUrl!.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.network(
-                    '${ApiConstants.baseUrl}${cat.imageUrl}',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.category_outlined, size: 22),
-                  ),
-                )
-              : const Icon(Icons.category_outlined, size: 22, color: Color(0xFF2D5016)),
+          child: const Icon(Icons.category_outlined, size: 22, color: Color(0xFF2D5016)),
         ),
         title: Text(
           cat.nom,
@@ -326,25 +297,16 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
           '${cat.productCount} produits',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
         ),
-        trailing: SizedBox(
-          width: 160,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, color: Color(0xFFB99D6B)),
-                onPressed: () => _navigateToForm(category: cat),
-                tooltip: 'Modifier la catégorie',
-              ),
-              const SizedBox(width: 4),
-              ActiveToggle(
-                value: cat.isActive,
-                onChanged: (v) => _toggleCategoryActive(cat, v),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: Colors.grey),
-            ],
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Color(0xFFB99D6B)),
+              onPressed: () => _navigateToForm(category: cat),
+              tooltip: 'Modifier la catégorie',
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
         ),
       ),
     );

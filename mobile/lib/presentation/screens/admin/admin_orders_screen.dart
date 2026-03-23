@@ -284,7 +284,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
                   return _buildTableRow(
                     '${o['client']?['prenom'] ?? ''} ${o['client']?['nom'] ?? ''}'.trim(),
-                    o['epicier']?['nom_boutique'] ?? 'N/A',
+                    (o['epicier'] ?? o['store'])?['nom_boutique'] ?? 'N/A',
                     '${o['montant_total'] ?? '0'} DH',
                     statusLabel,
                     statusColor,
