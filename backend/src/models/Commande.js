@@ -63,7 +63,7 @@ const Commande = sequelize.define('Commande', {
 
 User.hasMany(Commande, { foreignKey: 'client_id' });
 Commande.belongsTo(User, { foreignKey: 'client_id', as: 'client' });
-Store.hasMany(Commande, { foreignKey: 'epicier_id' });
-Commande.belongsTo(Store, { foreignKey: 'epicier_id', as: 'store' });
+Store.hasMany(Commande, { foreignKey: 'epicier_id', as: 'commandes' });
+Commande.belongsTo(Store, { foreignKey: 'epicier_id', as: 'epicier' });
 
 module.exports = Commande;
