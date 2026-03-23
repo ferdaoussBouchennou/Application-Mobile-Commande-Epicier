@@ -580,6 +580,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         prix: l.prixUnitaire,
         quantite: l.quantite,
         epicierId: order.epicierId,
+        imagePrincipale: l.imagePrincipale,
       );
     }
     if (mounted) {
