@@ -97,10 +97,17 @@ const avisController = {
         return res.status(403).json({ message: 'Store ID manquant' });
       }
 
+      const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+      const limit = Math.max(parseInt(req.query.limit || '5', 10), 1);
+      const offset = (page - 1) * limit;
+
+      const total = await Avis.count({ where: { epicier_id: epicierId } });
       const avisList = await Avis.findAll({
         where: { epicier_id: epicierId },
         include: [{ model: User, as: 'client', attributes: ['nom', 'prenom'] }],
         order: [['date_avis', 'DESC']],
+        limit,
+        offset,
       });
 
       const avisIds = avisList.map((a) => a.id);
@@ -132,14 +139,77 @@ const avisController = {
         note: a.note,
         commentaire: a.commentaire || '',
         date_avis: a.date_avis,
+        client_id: a.client_id,
         client_nom: a.client ? `${a.client.prenom || ''} ${a.client.nom || ''}`.trim() : 'Client',
         contestations: reclamationsByAvis[a.id] || [],
       }));
 
-      res.status(200).json({ avis: data });
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+      res.status(200).json({
+        avis: data,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      });
     } catch (error) {
       console.error('Erreur getStoreAvisForEpicier:', error);
       res.status(500).json({ message: 'Erreur lors de la récupération des avis', error: error.message });
+    }
+  },
+
+  // GET /epicier/avis/:id — details d'un avis + client + commandes
+  getAvisDetailsForEpicier: async (req, res) => {
+    try {
+      const epicierId = req.user.storeId;
+      const avisId = parseInt(req.params.id, 10);
+      if (!epicierId) return res.status(403).json({ message: 'Store ID manquant' });
+      if (Number.isNaN(avisId)) return res.status(400).json({ message: 'Identifiant avis invalide' });
+
+      const avis = await Avis.findOne({
+        where: { id: avisId, epicier_id: epicierId },
+        include: [
+          { model: User, as: 'client', attributes: ['id', 'nom', 'prenom', 'email', 'telephone'] },
+        ],
+      });
+
+      if (!avis) return res.status(404).json({ message: 'Avis introuvable' });
+
+      const commandes = await Commande.findAll({
+        where: { epicier_id: epicierId, client_id: avis.client_id },
+        order: [['date_commande', 'DESC']],
+        attributes: ['id', 'date_commande', 'statut', 'montant_total'],
+      });
+
+      const contestations = await Reclamation.findAll({
+        where: { epicier_id: epicierId, avis_id: avisId, type: 'AVIS' },
+        order: [['date_creation', 'DESC']],
+      });
+
+      res.status(200).json({
+        avis: {
+          id: avis.id,
+          note: avis.note,
+          commentaire: avis.commentaire || '',
+          date_avis: avis.date_avis,
+        },
+        client: avis.client
+          ? {
+              id: avis.client.id,
+              nom: avis.client.nom || '',
+              prenom: avis.client.prenom || '',
+              email: avis.client.email || null,
+              telephone: avis.client.telephone || null,
+            }
+          : null,
+        commandes,
+        contestations,
+      });
+    } catch (error) {
+      console.error('Erreur getAvisDetailsForEpicier:', error);
+      res.status(500).json({ message: 'Erreur lors de la récupération des détails', error: error.message });
     }
   },
 
