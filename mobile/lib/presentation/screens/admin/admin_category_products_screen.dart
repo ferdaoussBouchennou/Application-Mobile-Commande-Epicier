@@ -78,13 +78,20 @@ class _AdminCategoryProductsScreenState
     final q = _searchCtrl.text.trim().toLowerCase();
     final groups = <String, List<Map<String, dynamic>>>{};
     for (final p in _products) {
-      final nom = p['nom'] as String? ?? '';
+      final nom = (p['nom'] as String?) ?? '';
       if (q.isNotEmpty && !nom.toLowerCase().contains(q)) continue;
-      final img = p['image_principale'] as String? ?? '';
-      final key = '$nom|$img';
+      final pid = p['id'];
+      final key = pid == null ? null : pid.toString();
+      if (key == null) continue;
       groups.putIfAbsent(key, () => []).add(p);
     }
-    return Map.fromEntries(groups.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
+    final entries = groups.entries.toList();
+    entries.sort((a, b) {
+      final an = (a.value.first['nom'] as String?) ?? '';
+      final bn = (b.value.first['nom'] as String?) ?? '';
+      return an.compareTo(bn);
+    });
+    return Map.fromEntries(entries);
   }
 
   int get _totalPages {
@@ -103,10 +110,11 @@ class _AdminCategoryProductsScreenState
     final seen = <String>{};
     int count = 0;
     for (final p in _products) {
-      final key = '${p['nom']}|${p['image_principale'] ?? ''}';
+      final key = p['id'] == null ? null : p['id'].toString();
+      if (key == null) continue;
       if (!seen.contains(key)) {
         seen.add(key);
-        final items = _products.where((x) => '${x['nom']}|${x['image_principale'] ?? ''}' == key);
+        final items = _products.where((x) => (x['id']?.toString() ?? '') == key);
         if (items.any((x) => x['is_active'] == true)) count++;
       }
     }
@@ -117,63 +125,19 @@ class _AdminCategoryProductsScreenState
     final token = _token;
     if (token == null) return;
     try {
-      for (final p in items) {
-        final epicierId = p['epicier_id'];
-        if (epicierId == null) continue;
+      final epicierIds = items
+          .map((p) => p['epicier_id'])
+          .whereType<num>()
+          .map((n) => n.toInt())
+          .toSet();
+      for (final epicierId in epicierIds) {
         final endpoint = active
-            ? '/admin/products/${p['id']}/activate'
-            : '/admin/products/${p['id']}/deactivate';
+            ? '/admin/products/${items.first['id']}/activate'
+            : '/admin/products/${items.first['id']}/deactivate';
         await _api.patch(endpoint, {'epicier_id': epicierId}, token: token);
       }
       if (mounted) {
-        _snack(active ? 'Produit activé pour tous les épiciers' : 'Produit désactivé pour tous les épiciers');
-        _load();
-      }
-    } catch (e) {
-      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  Future<void> _toggleSingle(Map<String, dynamic> p, bool active, bool globalInactive) async {
-    if (active && globalInactive) {
-      _snack('Activez d\'abord le produit globalement (toggle principal).');
-      return;
-    }
-    final epicierId = p['epicier_id'];
-    if (epicierId == null) {
-      _snack('Données incomplètes (epicier_id manquant)');
-      return;
-    }
-    final token = _token;
-    if (token == null) return;
-    try {
-      final endpoint = active
-          ? '/admin/products/${p['id']}/activate'
-          : '/admin/products/${p['id']}/deactivate';
-      await _api.patch(endpoint, {'epicier_id': epicierId}, token: token);
-      if (mounted) { _snack(active ? 'Réactivé pour cet épicier' : 'Désactivé pour cet épicier'); _load(); }
-    } catch (e) {
-      if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  Future<void> _toggleRuptureStock(Map<String, dynamic> p) async {
-    final token = _token;
-    if (token == null) return;
-    final epicierId = p['epicier_id'];
-    if (epicierId == null) {
-      _snack('Données incomplètes (epicier_id manquant)');
-      return;
-    }
-    try {
-      await _api.patch(
-        '/admin/products/${p['id']}/rupture-stock',
-        {'epicier_id': epicierId},
-        token: token,
-      );
-      final isRupture = p['rupture_stock'] == true;
-      if (mounted) {
-        _snack(isRupture ? 'Produit remis en stock' : 'Produit marqué en rupture de stock');
+        _snack(active ? 'Produit activé globalement' : 'Produit désactivé globalement');
         _load();
       }
     } catch (e) {
@@ -526,6 +490,7 @@ class _AdminCategoryProductsScreenState
     final someActive = items.any((p) => p['is_active'] == true);
     final isExpanded = _expandedKey == key;
     final globalInactive = !someActive;
+    final prix = first['prix'];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -552,7 +517,16 @@ class _AdminCategoryProductsScreenState
                         Text(nom, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                         const SizedBox(height: 2),
                         Text(
-                          '${items.length} épicier(s) • ${items.where((p) => p['is_active'] == true).length} actif(s)',
+                          globalInactive ? 'Inactif' : 'Actif',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: globalInactive ? Colors.orange.shade700 : Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Prix: ${_prix(prix)}',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ],
@@ -582,6 +556,8 @@ class _AdminCategoryProductsScreenState
           ),
           if (isExpanded)
             Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
@@ -590,107 +566,16 @@ class _AdminCategoryProductsScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Divider(height: 1),
-                  if (globalInactive)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      color: Colors.orange.shade50,
-                      child: Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Produit désactivé globalement. Activez le toggle principal pour activer un épicier.',
-                              style: TextStyle(fontSize: 11, color: Colors.orange.shade800),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ...items.map((p) => _buildEpicierRow(p, globalInactive)),
+                  const SizedBox(height: 8),
+                  Text(
+                    (first['description'] as String?)?.trim().isNotEmpty == true
+                        ? (first['description'] as String)
+                        : '—',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade800),
+                  ),
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEpicierRow(Map<String, dynamic> p, bool globalInactive) {
-    final isActive = p['is_active'] == true;
-    final isRupture = p['rupture_stock'] == true;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.storefront, size: 18, color: isActive ? _primary : Colors.grey.shade400),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            p['store_name'] ?? '—',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13,
-                              color: isActive ? Colors.black87 : Colors.grey,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isRupture && isActive) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.orange.shade200),
-                            ),
-                            child: Text(
-                              'Rupture',
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.orange.shade800),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    Text(_prix(p['prix']), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                onPressed: () => _editProduct(p),
-                color: _primary,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                tooltip: 'Modifier pour cet épicier',
-              ),
-              IconButton(
-                icon: Icon(
-                  isRupture ? Icons.check_circle_outline : Icons.remove_shopping_cart_outlined,
-                  size: 18,
-                ),
-                onPressed: isActive ? () => _toggleRuptureStock(p) : null,
-                color: isRupture ? _primary : Colors.orange.shade700,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                tooltip: isRupture ? 'Remettre en stock' : 'Rupture de stock',
-              ),
-              ActiveToggle(
-                value: isActive,
-                onChanged: (v) => _toggleSingle(p, v, globalInactive),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -754,13 +639,20 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
   bool _saving = false;
   bool _uploading = false;
 
-  final Set<int> _selectedStoreIds = {};
-  late final Map<int, int> _storeToProductId;
+  final Set<int> _storeIdsToApply = {};
 
   bool get _isCreate => widget.product == null;
-  bool get _isEditAll => widget.existingItems != null && widget.existingItems!.isNotEmpty;
-  bool get _isEditSingle => widget.product != null && !_isEditAll;
-  bool get _showStoreSelector => _isCreate || _isEditAll;
+  bool get _isEditAll => !_isCreate && widget.existingItems != null && widget.existingItems!.isNotEmpty;
+  bool get _isEditSingle => !_isCreate && !_isEditAll;
+
+  int? get _productId {
+    final id = widget.product?['id'] ?? widget.existingItems?.first['id'];
+    if (id is int) return id;
+    if (id == null) return null;
+    return int.tryParse(id.toString());
+  }
+
+  bool get _hasStoresToApply => _storeIdsToApply.isNotEmpty;
 
   static const _primary = Color(0xFF2D5016);
 
@@ -778,16 +670,21 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
     _descCtrl = TextEditingController(text: widget.product?['description'] ?? '');
     _imagePath = widget.product?['image_principale'];
 
-    _storeToProductId = {};
-    if (_isEditAll) {
+    // Mode "global": on applique les modifications à tous les épiciers concernés
+    // (sans affichage/gestion individuelle côté UI).
+    if (_isCreate) {
+      for (final s in widget.stores) {
+        final id = (s is Map) ? s['id'] : null;
+        if (id is num) _storeIdsToApply.add(id.toInt());
+      }
+    } else if (_isEditAll) {
       for (final item in widget.existingItems!) {
         final sid = item['epicier_id'];
-        final pid = item['id'];
-        if (sid is int && pid is int) {
-          _storeToProductId[sid] = pid;
-          _selectedStoreIds.add(sid);
-        }
+        if (sid is num) _storeIdsToApply.add(sid.toInt());
       }
+    } else {
+      final sid = widget.product?['epicier_id'];
+      if (sid is num) _storeIdsToApply.add(sid.toInt());
     }
   }
 
@@ -831,10 +728,16 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_showStoreSelector && _selectedStoreIds.isEmpty) {
-      _snack('Sélectionnez au moins un épicier');
+    if (!_hasStoresToApply) {
+      _snack('Aucun épicier concerné.');
       return;
     }
+    final productId = _productId;
+    if (!_isCreate && productId == null) {
+      _snack('Données incomplètes (id du produit manquant).');
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       final body = {
@@ -844,39 +747,31 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
         if (_imagePath != null) 'image_principale': _imagePath,
       };
 
-      if (_isEditAll) {
-        for (final sid in _selectedStoreIds) {
-          if (_storeToProductId.containsKey(sid)) {
-            await _api.put('/admin/products/${_storeToProductId[sid]}', body, token: widget.token);
-          } else {
-            await _api.post('/admin/products', {
+      if (_isCreate) {
+        for (final sid in _storeIdsToApply) {
+          await _api.post(
+            '/admin/products',
+            {
               'epicier_id': sid,
               'categorie_id': widget.categoryId,
               ...body,
-            }, token: widget.token);
-          }
+            },
+            token: widget.token,
+          );
         }
-        for (final entry in _storeToProductId.entries) {
-          if (!_selectedStoreIds.contains(entry.key)) {
-            await _api.patch('/admin/products/${entry.value}/deactivate', {}, token: widget.token);
-          }
-        }
-        if (mounted) { _snack('Modifié avec succès'); Navigator.pop(context, true); }
-      } else if (_isEditSingle) {
-        await _api.put('/admin/products/${widget.product!['id']}', body, token: widget.token);
-        if (mounted) { _snack('Produit modifié'); Navigator.pop(context, true); }
+        if (mounted) { _snack('Produit créé'); Navigator.pop(context, true); }
       } else {
-        for (final sid in _selectedStoreIds) {
-          await _api.post('/admin/products', {
-            'epicier_id': sid,
-            'categorie_id': widget.categoryId,
-            ...body,
-          }, token: widget.token);
+        for (final sid in _storeIdsToApply) {
+          await _api.put(
+            '/admin/products/$productId',
+            {
+              ...body,
+              'epicier_id': sid, // indispensable pour mettre à jour le prix côté EpicierProduct
+            },
+            token: widget.token,
+          );
         }
-        if (mounted) {
-          _snack('Produit créé pour ${_selectedStoreIds.length} épicier(s)');
-          Navigator.pop(context, true);
-        }
+        if (mounted) { _snack('Produit modifié'); Navigator.pop(context, true); }
       }
     } catch (e) {
       if (mounted) _snack(e.toString().replaceAll('Exception: ', ''));
@@ -887,24 +782,9 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
 
   void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  int? _parseStoreId(dynamic s) {
-    if (s is! Map) return null;
-    final id = s['id'];
-    return id is int ? id : int.tryParse(id?.toString() ?? '');
-  }
-
-  String _storeName(dynamic s) {
-    if (s is! Map) return 'Boutique';
-    return (s['nom_boutique'] ?? 'Boutique').toString();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final title = _isEditAll
-        ? 'Modifier le produit'
-        : _isEditSingle
-            ? 'Modifier le produit'
-            : 'Nouveau produit';
+    final title = _isCreate ? 'Nouveau produit' : 'Modifier le produit';
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
@@ -965,95 +845,12 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            if (_isEditAll)
-              _infoBanner(
-                'Les modifications seront appliquées aux épiciers sélectionnés. '
-                'Décocher un épicier le désactivera pour ce produit.',
-                Colors.green,
-              ),
-            if (_isCreate)
-              _infoBanner(
-                'Le produit sera créé pour chaque épicier sélectionné.',
-                Colors.blue,
-              ),
-
-            if (_showStoreSelector) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.storefront, color: _primary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Épiciers (${_selectedStoreIds.length} sélectionné${_selectedStoreIds.length > 1 ? 's' : ''})',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: _primary, fontSize: 14),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      setState(() {
-                        final allIds = widget.stores.map(_parseStoreId).whereType<int>().toSet();
-                        if (_selectedStoreIds.length == allIds.length) {
-                          _selectedStoreIds.clear();
-                        } else {
-                          _selectedStoreIds.addAll(allIds);
-                        }
-                      });
-                    },
-                    child: Text(
-                      _selectedStoreIds.length == widget.stores.length ? 'Tout désélect.' : 'Tout sélect.',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: ListView(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  children: widget.stores.map((s) {
-                    final id = _parseStoreId(s);
-                    if (id == null) return const SizedBox.shrink();
-                    final nom = _storeName(s);
-                    final isExisting = _storeToProductId.containsKey(id);
-                    return CheckboxListTile(
-                      value: _selectedStoreIds.contains(id),
-                      onChanged: (v) {
-                        setState(() {
-                          if (v == true) { _selectedStoreIds.add(id); }
-                          else { _selectedStoreIds.remove(id); }
-                        });
-                      },
-                      title: Row(
-                        children: [
-                          Expanded(child: Text(nom, style: const TextStyle(fontSize: 14))),
-                          if (isExisting)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: _primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text('déjà assigné', style: TextStyle(fontSize: 10, color: _primary)),
-                            ),
-                        ],
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      dense: true,
-                      activeColor: _primary,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
-            ],
+            _infoBanner(
+              _isCreate
+                  ? 'Le produit sera créé pour tous les épiciers actifs.'
+                  : 'Les modifications seront appliquées au produit pour tous les épiciers concernés.',
+              _isCreate ? Colors.blue : Colors.green,
+            ),
 
             _field(_nomCtrl, 'Nom du produit', required: true),
             const SizedBox(height: 14),
@@ -1100,11 +897,7 @@ class _AdminProductFormScreenState extends State<_AdminProductFormScreen> {
                 child: _saving
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
-                        _isCreate
-                            ? 'Créer (${_selectedStoreIds.length} épicier${_selectedStoreIds.length > 1 ? 's' : ''})'
-                            : _isEditAll
-                                ? 'Appliquer'
-                                : 'Enregistrer',
+                        _isCreate ? 'Créer' : 'Enregistrer',
                       ),
               ),
             ),

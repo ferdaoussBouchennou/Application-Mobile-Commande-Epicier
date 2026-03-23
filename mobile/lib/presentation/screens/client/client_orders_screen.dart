@@ -26,8 +26,8 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
 
   final ApiService _api = ApiService();
   int _selectedFilterIndex = 0;
-  static const List<String> _filterLabels = ['Toutes', 'Reçue', 'Prête', 'Livrée'];
-  static const List<String?> _filterStatuts = [null, 'reçue', 'prête', 'livrée'];
+  static const List<String> _filterLabels = ['Toutes', 'Reçue', 'Prête', 'Livrée', 'Refusée'];
+  static const List<String?> _filterStatuts = [null, 'reçue', 'prête', 'livrée', 'refusee'];
 
   @override
   void initState() {
@@ -160,28 +160,79 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                               _StatutChip(statut: detail.statut),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(context); // close current sheet
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ClaimSubmissionScreen(commandeId: detail.id),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.report_problem_outlined, color: Colors.orange, size: 18),
-                                label: const Text(
-                                  'Faire une réclamation',
-                                  style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold),
+                          if ((detail.statut == 'reçue' || detail.statut == 'prête') && !detail.hasRupture) ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Spacer(),
+                                TextButton.icon(
+                                  onPressed: () => _annulerCommande(detail, () {
+                                    Navigator.pop(context);
+                                    _refresh();
+                                  }),
+                                  icon: const Icon(Icons.cancel_outlined, color: Colors.red, size: 18),
+                                  label: const Text(
+                                    'Annuler la commande',
+                                    style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
                                 ),
+                              ],
+                            ),
+                          ],
+                          if (detail.statut == 'livrée') ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Spacer(),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ClaimSubmissionScreen(commandeId: detail.id),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.report_problem_outlined, color: Colors.orange, size: 18),
+                                  label: const Text(
+                                    'Faire une réclamation',
+                                    style: TextStyle(color: Colors.orange, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (detail.statut == 'refusee' && detail.messageRefus != null && detail.messageRefus!.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFEBEE),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFEF9A9A)),
                               ),
-                            ],
-                          ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Motif du refus',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: Color(0xFFC62828),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    detail.messageRefus!,
+                                    style: const TextStyle(fontSize: 14, color: Color(0xFFC62828)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (dateText != null && dateText.isNotEmpty) ...[
                             const SizedBox(height: 10),
                             Row(
@@ -251,16 +302,18 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2))],
                       ),
-                      child: Column(
-                        children: [
-                          for (int i = 0; i < detail.lignes.length; i++) ...[
-                            if (i > 0) Padding(
-                              padding: const EdgeInsets.only(top: 12, bottom: 12),
-                              child: Divider(height: 1, color: Colors.grey.shade200),
-                            ),
-                            _buildDetailLine(detail.lignes[i]),
-                          ],
-                        ],
+                      child: _OrderDetailSheetBody(
+                        initialDetail: detail,
+                        fetchOrderDetail: _fetchOrderDetail,
+                        buildDetailLine: _buildDetailLine,
+                        acceptProduct: _acceptProduct,
+                        refuseProduct: _refuseProduct,
+                        acceptModifications: _acceptModifications,
+                        refuseModifications: _refuseModifications,
+                        onCloseAndRefresh: () {
+                          Navigator.pop(context);
+                          _refresh();
+                        },
                       ),
                     ),
                   ],
@@ -273,29 +326,219 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     );
   }
 
-  Widget _buildDetailLine(ClientOrderLine l) {
-    return Row(
+  Widget _buildDetailLine(ClientOrderLine l, ClientOrderDetail detail, VoidCallback? onRefresh) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(l.nom, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: l.rupture ? _textMuted : _textDark, decoration: l.rupture ? TextDecoration.lineThrough : null)),
+                      ),
+                      if (l.rupture)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(6)),
+                          child: Text('Rupture', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.orange.shade800)),
+                        ),
+                      if (l.enAttenteAcceptationClient)
+                        Container(
+                          margin: const EdgeInsets.only(left: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(6)),
+                          child: Text('Disponible', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green.shade800)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${l.quantite} × ${_formatPrice(l.prixUnitaire)} MAD',
+                    style: TextStyle(fontSize: 13, color: _textMuted),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${_formatPrice(l.totalLigne)} MAD',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: l.rupture ? _textMuted : _textDark),
+            ),
+          ],
+        ),
+        if (l.enAttenteAcceptationClient && onRefresh != null) ...[
+          const SizedBox(height: 10),
+          Row(
             children: [
-              Text(l.nom, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _textDark)),
-              const SizedBox(height: 4),
-              Text(
-                '${l.quantite} × ${_formatPrice(l.prixUnitaire)} MAD',
-                style: TextStyle(fontSize: 13, color: _textMuted),
+              FilledButton.icon(
+                onPressed: () => _acceptProduct(detail.id, l.detailId, onRefresh),
+                icon: const Icon(Icons.check, size: 16),
+                label: const Text('Accepter'),
+                style: FilledButton.styleFrom(backgroundColor: _primary, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), minimumSize: Size.zero),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _refuseProduct(detail.id, l.detailId, onRefresh),
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Refuser'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), minimumSize: Size.zero),
               ),
             ],
           ),
-        ),
-        Text(
-          '${_formatPrice(l.totalLigne)} MAD',
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _textDark),
-        ),
+        ],
       ],
     );
+  }
+
+  Future<void> _acceptProduct(int orderId, int detailId, VoidCallback onRefresh) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _api.post('/commandes/$orderId/items/$detailId/accepter-produit', {}, token: token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produit accepté')));
+        onRefresh();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}')));
+    }
+  }
+
+  Future<void> _refuseProduct(int orderId, int detailId, VoidCallback onRefresh) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _api.post('/commandes/$orderId/items/$detailId/refuser-produit', {}, token: token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produit retiré de la commande')));
+        onRefresh();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}')));
+    }
+  }
+
+  Future<void> _acceptModifications(ClientOrderDetail detail, VoidCallback closeAndRefresh) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _api.post('/commandes/${detail.id}/accepter-modifications', {}, token: token);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Modifications acceptées')));
+        closeAndRefresh();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}')));
+    }
+  }
+
+  Future<void> _refuseModifications(ClientOrderDetail detail, VoidCallback closeAndRefresh) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Refuser la commande'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Voulez-vous refuser cette commande suite aux ruptures de stock ?'),
+            const SizedBox(height: 16),
+            const Text('Motif (optionnel) :', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'Ex: Produits manquants non remplacés',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Refuser'),
+          ),
+        ],
+      ),
+    );
+    if (result == null || !mounted) return;
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _api.post(
+        '/commandes/${detail.id}/refuser-modifications',
+        result.isEmpty ? {} : {'message': result},
+        token: token,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Commande refusée')));
+        closeAndRefresh();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}')));
+    }
+  }
+
+  Future<void> _annulerCommande(ClientOrderDetail detail, VoidCallback closeAndRefresh) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Annuler la commande'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Voulez-vous annuler cette commande ?'),
+            const SizedBox(height: 16),
+            const Text('Motif (optionnel) :', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: controller,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'Ex: Changement de plan',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Non')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Oui, annuler'),
+          ),
+        ],
+      ),
+    );
+    if (result == null || !mounted) return;
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    try {
+      await _api.post(
+        '/commandes/${detail.id}/annuler',
+        result.isEmpty ? {} : {'message': result},
+        token: token,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Commande annulée')));
+        closeAndRefresh();
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString().replaceAll('Exception: ', '')}')));
+    }
   }
 
   void _showSuivre(ClientOrder order) {
@@ -329,7 +572,8 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
       return;
     }
     final cart = context.read<CartProvider>();
-    for (final l in detail.lignes) {
+    final lignesToAdd = detail.lignes.where((l) => !l.rupture).toList();
+    for (final l in lignesToAdd) {
       await cart.addToCart(
         produitId: l.produitId,
         nom: l.nom,
@@ -339,7 +583,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
       );
     }
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${detail.lignes.length} article(s) ajouté(s) au panier')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${lignesToAdd.length} article(s) ajouté(s) au panier')));
     }
   }
 
@@ -525,6 +769,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                     itemBuilder: (context, index) {
                       final o = filteredOrders[index];
                       final isLivree = o.statut == 'livrée';
+                      final isRefusee = o.statut == 'refusee';
                       final dateTimeText = o.dateCommandeFormatted?.isNotEmpty == true
                           ? o.dateCommandeFormatted!
                           : _formatDateHour(o.dateCommande);
@@ -610,7 +855,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 10),
-                                  if (!isLivree)
+                                  if (!isLivree && !isRefusee)
                                     Expanded(
                                       child: FilledButton.icon(
                                         onPressed: () => _showSuivre(o),
@@ -623,7 +868,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                                         ),
                                       ),
                                     )
-                                  else ...[
+                                  else if (isLivree) ...[
                                     // "Noter" button has been removed from here. Rating is now done on the store page.
                                     Expanded(
                                       child: FilledButton.icon(
@@ -678,6 +923,107 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     } catch (_) {
       return '';
     }
+  }
+}
+
+/// Corps du détail commande : articles + boutons accepter/refuser (rupture, produits remis en stock).
+class _OrderDetailSheetBody extends StatefulWidget {
+  final ClientOrderDetail initialDetail;
+  final Future<ClientOrderDetail?> Function(int id) fetchOrderDetail;
+  final Widget Function(ClientOrderLine l, ClientOrderDetail detail, VoidCallback? onRefresh) buildDetailLine;
+  final void Function(int orderId, int detailId, VoidCallback onRefresh) acceptProduct;
+  final void Function(int orderId, int detailId, VoidCallback onRefresh) refuseProduct;
+  final void Function(ClientOrderDetail detail, VoidCallback closeAndRefresh) acceptModifications;
+  final void Function(ClientOrderDetail detail, VoidCallback closeAndRefresh) refuseModifications;
+  final VoidCallback onCloseAndRefresh;
+
+  const _OrderDetailSheetBody({
+    required this.initialDetail,
+    required this.fetchOrderDetail,
+    required this.buildDetailLine,
+    required this.acceptProduct,
+    required this.refuseProduct,
+    required this.acceptModifications,
+    required this.refuseModifications,
+    required this.onCloseAndRefresh,
+  });
+
+  @override
+  State<_OrderDetailSheetBody> createState() => _OrderDetailSheetBodyState();
+}
+
+class _OrderDetailSheetBodyState extends State<_OrderDetailSheetBody> {
+  late ClientOrderDetail _detail;
+
+  Future<void> _load() async {
+    final d = await widget.fetchOrderDetail(_detail.id);
+    if (mounted && d != null) {
+      setState(() => _detail = d);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _detail = widget.initialDetail;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int i = 0; i < _detail.lignes.length; i++) ...[
+          if (i > 0) Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 12),
+            child: Divider(height: 1, color: Colors.grey.shade200),
+          ),
+          widget.buildDetailLine(_detail.lignes[i], _detail, _load),
+        ],
+        if (_detail.hasRupture && !_detail.clientAccepteModification && _detail.statut != 'refusee') ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Des produits sont en rupture. Souhaitez-vous continuer ?',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.orange.shade900),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () => widget.acceptModifications(_detail, _load),
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Accepter'),
+                        style: FilledButton.styleFrom(backgroundColor: _ClientOrdersScreenState._primary, padding: const EdgeInsets.symmetric(vertical: 10)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => widget.refuseModifications(_detail, widget.onCloseAndRefresh),
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text('Refuser'),
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(vertical: 10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -1049,6 +1395,11 @@ class _StatutChip extends StatelessWidget {
         label = 'Récupérée';
         bg = const Color(0xFFD4EDDA);
         fg = const Color(0xFF1A7F6E);
+        break;
+      case 'refusee':
+        label = 'Refusée';
+        bg = const Color(0xFFFFEBEE);
+        fg = const Color(0xFFC62828);
         break;
       default:
         label = statut;

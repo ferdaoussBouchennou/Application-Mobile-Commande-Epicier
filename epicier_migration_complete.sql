@@ -17,11 +17,12 @@ ALTER TABLE detailscommande ADD COLUMN rupture TINYINT(1) DEFAULT 0;
 -- 3. Produit remis en stock : en attente acceptation client
 ALTER TABLE detailscommande ADD COLUMN en_attente_acceptation_client TINYINT(1) DEFAULT 0;
 
--- 4. Notifications épicier
+-- 4. Notifications épicier (nouvelles commandes, avis, réclamations, accept/refus produit)
 CREATE TABLE IF NOT EXISTS notifications_epicier (
   id INT AUTO_INCREMENT PRIMARY KEY,
   epicier_id INT NOT NULL,
   message VARCHAR(500) NOT NULL,
   lue TINYINT(1) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_epicier_lue (epicier_id, lue)
 );

@@ -1,28 +1,30 @@
-const path = require('path');
-const fs = require('fs');
-const sequelize = require('../config/db');
-const { QueryTypes } = require('sequelize');
-const Commande = require('../models/Commande');
-const DetailCommande = require('../models/DetailCommande');
-const User = require('../models/User');
-const { Op } = require('sequelize');
-const Product = require('../models/Product');
-const Category = require('../models/Category');
-const EpicierProduct = require('../models/EpicierProduct');
-const Store = require('../models/Store');
-const Availability = require('../models/Availability');
+const path = require("path");
+const fs = require("fs");
+const sequelize = require("../config/db");
+const { QueryTypes } = require("sequelize");
+const Commande = require("../models/Commande");
+const DetailCommande = require("../models/DetailCommande");
+const User = require("../models/User");
+const { Op } = require("sequelize");
+const Product = require("../models/Product");
+const Category = require("../models/Category");
+const EpicierProduct = require("../models/EpicierProduct");
+const Store = require("../models/Store");
+const Availability = require("../models/Availability");
 
 /** Sanitise une chaîne pour en faire un nom de dossier ou de fichier (sans espaces ni caractères spéciaux). */
 function sanitizeName(str) {
-  if (!str || typeof str !== 'string') return '';
-  return str
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/[\s]+/g, '_')
-    .replace(/[^a-zA-Z0-9_-]/g, '')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 80) || 'image';
+  if (!str || typeof str !== "string") return "";
+  return (
+    str
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[\s]+/g, "_")
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "")
+      .slice(0, 80) || "image"
+  );
 }
 
 /**
@@ -33,17 +35,26 @@ function sanitizeName(str) {
  */
 async function renameImageToProductName(product) {
   const img = product.image_principale;
-  if (!img || typeof img !== 'string' || !img.startsWith('uploads/')) return null;
+  if (!img || typeof img !== "string" || !img.startsWith("uploads/"))
+    return null;
   const base = path.basename(img);
   const ext = path.extname(base);
   const nameWithoutExt = base.slice(0, -ext.length);
-  const isGeneric = nameWithoutExt === 'image' || /^image-\d+$/.test(nameWithoutExt) || nameWithoutExt.startsWith('temp_');
+  const isGeneric =
+    nameWithoutExt === "image" ||
+    /^image-\d+$/.test(nameWithoutExt) ||
+    nameWithoutExt.startsWith("temp_");
   if (!isGeneric) return null;
-  const fullPath = path.join(__dirname, '..', '..', img.replace(/\//g, path.sep));
+  const fullPath = path.join(
+    __dirname,
+    "..",
+    "..",
+    img.replace(/\//g, path.sep),
+  );
   if (!fs.existsSync(fullPath)) return null;
   const dir = path.dirname(fullPath);
   const folderName = path.basename(dir);
-  const baseName = sanitizeName(product.nom) || 'produit';
+  const baseName = sanitizeName(product.nom) || "produit";
   let newFilename = `${baseName}${ext}`;
   let newPath = path.join(dir, newFilename);
   if (newPath === fullPath) return img;
@@ -51,7 +62,9 @@ async function renameImageToProductName(product) {
     fs.unlinkSync(newPath);
   }
   fs.renameSync(fullPath, newPath);
-  const newRelative = path.join('uploads', folderName, newFilename).replace(/\\/g, '/');
+  const newRelative = path
+    .join("uploads", folderName, newFilename)
+    .replace(/\\/g, "/");
   product.image_principale = newRelative;
   await product.save();
   return newRelative;
@@ -73,23 +86,31 @@ function toCatalogueItem(epicierProduct, product) {
   };
 }
 
-async function _sendNotificationToClient(clientId, commandeId, action, message) {
+async function _sendNotificationToClient(
+  clientId,
+  commandeId,
+  action,
+  message,
+) {
   try {
-    const { sendNotification } = require('../utils/notification');
+    const { sendNotification } = require("../utils/notification");
     const details = await sequelize.query(
       `SELECT fcm_token FROM utilisateurs WHERE id = :clientId`,
-      { replacements: { clientId }, type: QueryTypes.SELECT }
+      { replacements: { clientId }, type: QueryTypes.SELECT },
     );
     const msg = message || `Votre commande #${commandeId} a été ${action}.`;
     if (details.length > 0 && details[0].fcm_token) {
-      await sendNotification(details[0].fcm_token, 'Mise à jour commande', msg);
+      await sendNotification(details[0].fcm_token, "Mise à jour commande", msg);
     }
     await sequelize.query(
-      'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, CURDATE(), 0)',
-      { replacements: { client_id: clientId, message: msg }, type: QueryTypes.INSERT }
+      "INSERT INTO notifications (utilisateur_id, message, date_envoi, lue) VALUES (:utilisateur_id, :message, NOW(), 0)",
+      {
+        replacements: { utilisateur_id: clientId, message: msg },
+        type: QueryTypes.INSERT,
+      },
     );
   } catch (e) {
-    console.error('Notification error:', e);
+    console.error("Notification error:", e);
   }
 }
 
@@ -99,14 +120,18 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
-      const categorieId = req.query.categorie_id ? parseInt(req.query.categorie_id, 10) : null;
+      const categorieId = req.query.categorie_id
+        ? parseInt(req.query.categorie_id, 10)
+        : null;
       const where = { epicier_id: epicierId, is_active: true };
       const produitInclude = {
         model: Product,
-        as: 'produit',
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
+        as: "produit",
+        include: [
+          { model: Category, as: "categorie", attributes: ["id", "nom"] },
+        ],
       };
       if (categorieId && !Number.isNaN(categorieId)) {
         produitInclude.where = { categorie_id: categorieId };
@@ -116,13 +141,18 @@ const grocerController = {
       const linkList = await EpicierProduct.findAll({
         where,
         include: epInclude,
-        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
+        order: [[{ model: Product, as: "produit" }, "nom", "ASC"]],
       });
       const list = linkList.map((ep) => toCatalogueItem(ep));
       res.status(200).json(list);
     } catch (error) {
-      console.error('Erreur getMyProducts:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération du catalogue', error: error.message });
+      console.error("Erreur getMyProducts:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération du catalogue",
+          error: error.message,
+        });
     }
   },
 
@@ -130,11 +160,14 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
-      const { nom, prix, description, categorie_id, image_principale } = req.body;
+      const { nom, prix, description, categorie_id, image_principale } =
+        req.body;
       if (!nom || prix == null || !categorie_id) {
-        return res.status(400).json({ message: 'Nom, prix et catégorie sont requis.' });
+        return res
+          .status(400)
+          .json({ message: "Nom, prix et catégorie sont requis." });
       }
       const [product] = await Product.findOrCreate({
         where: { nom: nom.trim(), categorie_id: parseInt(categorie_id, 10) },
@@ -148,7 +181,12 @@ const grocerController = {
       await renameImageToProductName(product);
       const [epicierProduct, created] = await EpicierProduct.findOrCreate({
         where: { epicier_id: epicierId, produit_id: product.id },
-        defaults: { epicier_id: epicierId, produit_id: product.id, prix: parseFloat(prix), is_active: true },
+        defaults: {
+          epicier_id: epicierId,
+          produit_id: product.id,
+          prix: parseFloat(prix),
+          is_active: true,
+        },
       });
       if (!created) {
         epicierProduct.prix = parseFloat(prix);
@@ -156,7 +194,9 @@ const grocerController = {
         await epicierProduct.save();
       }
       const withCategory = await Product.findByPk(product.id, {
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
+        include: [
+          { model: Category, as: "categorie", attributes: ["id", "nom"] },
+        ],
       });
       res.status(201).json({
         id: withCategory.id,
@@ -169,8 +209,13 @@ const grocerController = {
         image_principale: withCategory.image_principale,
       });
     } catch (error) {
-      console.error('Erreur createProduct:', error);
-      res.status(500).json({ message: 'Erreur lors de la création du produit', error: error.message });
+      console.error("Erreur createProduct:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la création du produit",
+          error: error.message,
+        });
     }
   },
 
@@ -178,30 +223,51 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const produitId = parseInt(req.params.id, 10);
       const epicierProduct = await EpicierProduct.findOne({
-        where: { epicier_id: epicierId, produit_id: produitId, is_active: true },
-        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+        where: {
+          epicier_id: epicierId,
+          produit_id: produitId,
+          is_active: true,
+        },
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            include: [
+              { model: Category, as: "categorie", attributes: ["id", "nom"] },
+            ],
+          },
+        ],
       });
       if (!epicierProduct || !epicierProduct.produit) {
-        return res.status(404).json({ message: 'Produit introuvable.' });
+        return res.status(404).json({ message: "Produit introuvable." });
       }
       const product = epicierProduct.produit;
-      const { nom, prix, description, categorie_id, image_principale } = req.body;
+      const { nom, prix, description, categorie_id, image_principale } =
+        req.body;
       if (nom != null) product.nom = nom.trim();
-      if (description !== undefined) product.description = description?.trim() || null;
-      if (categorie_id != null) product.categorie_id = parseInt(categorie_id, 10);
-      if (image_principale !== undefined) product.image_principale = image_principale?.trim() || null;
+      if (description !== undefined)
+        product.description = description?.trim() || null;
+      if (categorie_id != null)
+        product.categorie_id = parseInt(categorie_id, 10);
+      if (image_principale !== undefined)
+        product.image_principale = image_principale?.trim() || null;
       if (prix != null) epicierProduct.prix = parseFloat(prix);
       await product.save();
       await epicierProduct.save();
       await renameImageToProductName(product);
       res.status(200).json(toCatalogueItem(epicierProduct));
     } catch (error) {
-      console.error('Erreur updateProduct:', error);
-      res.status(500).json({ message: 'Erreur lors de la mise à jour du produit', error: error.message });
+      console.error("Erreur updateProduct:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la mise à jour du produit",
+          error: error.message,
+        });
     }
   },
 
@@ -209,23 +275,29 @@ const grocerController = {
   uploadProductImage: async (req, res) => {
     try {
       if (!req.file || !req.file.buffer) {
-        return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+        return res.status(400).json({ message: "Aucun fichier image envoyé." });
       }
       const categorieId = req.body.categorie_id;
       if (!categorieId) {
-        return res.status(400).json({ message: 'categorie_id est requis.' });
+        return res.status(400).json({ message: "categorie_id est requis." });
       }
       const category = await Category.findByPk(categorieId);
       if (!category) {
-        return res.status(400).json({ message: 'Catégorie introuvable.' });
+        return res.status(400).json({ message: "Catégorie introuvable." });
       }
-      const folderName = sanitizeName(category.nom) || 'categorie';
-      const dir = path.join(__dirname, '..', '..', 'uploads', folderName);
+      const folderName = sanitizeName(category.nom) || "categorie";
+      const dir = path.join(__dirname, "..", "..", "uploads", folderName);
       fs.mkdirSync(dir, { recursive: true });
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext.toLowerCase()) ? ext : '.jpg';
-      const productName = req.body.nom ? String(req.body.nom).trim() : '';
-      const baseName = sanitizeName(productName) || `temp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      const ext = path.extname(req.file.originalname) || ".jpg";
+      const safeExt = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(
+        ext.toLowerCase(),
+      )
+        ? ext
+        : ".jpg";
+      const productName = req.body.nom ? String(req.body.nom).trim() : "";
+      const baseName =
+        sanitizeName(productName) ||
+        `temp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
       let filename = `${baseName}${safeExt}`;
       let filePath = path.join(dir, filename);
       let suffix = 0;
@@ -235,11 +307,18 @@ const grocerController = {
         filePath = path.join(dir, filename);
       }
       fs.writeFileSync(filePath, req.file.buffer);
-      const relativePath = path.join('uploads', folderName, filename).replace(/\\/g, '/');
+      const relativePath = path
+        .join("uploads", folderName, filename)
+        .replace(/\\/g, "/");
       res.status(200).json({ image_principale: relativePath });
     } catch (error) {
-      console.error('Erreur uploadProductImage:', error);
-      res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
+      console.error("Erreur uploadProductImage:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de l'upload de l'image",
+          error: error.message,
+        });
     }
   },
 
@@ -248,20 +327,25 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const produitId = parseInt(req.params.id, 10);
       const [updated] = await EpicierProduct.update(
         { is_active: false },
-        { where: { epicier_id: epicierId, produit_id: produitId } }
+        { where: { epicier_id: epicierId, produit_id: produitId } },
       );
       if (!updated) {
-        return res.status(404).json({ message: 'Produit introuvable.' });
+        return res.status(404).json({ message: "Produit introuvable." });
       }
-      res.status(200).json({ message: 'Produit retiré du catalogue.' });
+      res.status(200).json({ message: "Produit retiré du catalogue." });
     } catch (error) {
-      console.error('Erreur deleteProduct:', error);
-      res.status(500).json({ message: 'Erreur lors du retrait du produit', error: error.message });
+      console.error("Erreur deleteProduct:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors du retrait du produit",
+          error: error.message,
+        });
     }
   },
 
@@ -270,47 +354,88 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const categoryId = parseInt(req.params.categoryId, 10);
       if (Number.isNaN(categoryId)) {
-        return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de catégorie invalide." });
       }
       const myActive = await EpicierProduct.findAll({
         where: { epicier_id: epicierId, is_active: true },
-        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, attributes: ['nom'] }],
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            where: { categorie_id: categoryId },
+            attributes: ["nom"],
+          },
+        ],
       });
-      const myNoms = myActive.map((ep) => ep.produit?.nom?.trim().toLowerCase()).filter(Boolean);
+      const myNoms = myActive
+        .map((ep) => ep.produit?.nom?.trim().toLowerCase())
+        .filter(Boolean);
       const others = await EpicierProduct.findAll({
         where: { epicier_id: { [Op.ne]: epicierId }, is_active: true },
-        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
-        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            where: { categorie_id: categoryId },
+            include: [
+              { model: Category, as: "categorie", attributes: ["id", "nom"] },
+            ],
+          },
+        ],
+        order: [[{ model: Product, as: "produit" }, "nom", "ASC"]],
       });
       const myRetired = await EpicierProduct.findAll({
         where: { epicier_id: epicierId, is_active: false },
-        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
-        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            where: { categorie_id: categoryId },
+            include: [
+              { model: Category, as: "categorie", attributes: ["id", "nom"] },
+            ],
+          },
+        ],
+        order: [[{ model: Product, as: "produit" }, "nom", "ASC"]],
       });
       const toItem = (ep, isRetiredMine) => ({
         ...toCatalogueItem(ep),
         is_retired_mine: isRetiredMine,
       });
       const byNom = new Map();
-      myRetired.filter((ep) => ep.produit).forEach((ep) => {
-        const key = ep.produit.nom.trim().toLowerCase();
-        if (!byNom.has(key)) byNom.set(key, toItem(ep, true));
-      });
+      myRetired
+        .filter((ep) => ep.produit)
+        .forEach((ep) => {
+          const key = ep.produit.nom.trim().toLowerCase();
+          if (!byNom.has(key)) byNom.set(key, toItem(ep, true));
+        });
       others
-        .filter((ep) => ep.produit && !myNoms.includes(ep.produit.nom.trim().toLowerCase()))
+        .filter(
+          (ep) =>
+            ep.produit && !myNoms.includes(ep.produit.nom.trim().toLowerCase()),
+        )
         .forEach((ep) => {
           const key = ep.produit.nom.trim().toLowerCase();
           if (!byNom.has(key)) byNom.set(key, toItem(ep, false));
         });
-      const list = Array.from(byNom.values()).sort((a, b) => a.nom.localeCompare(b.nom));
+      const list = Array.from(byNom.values()).sort((a, b) =>
+        a.nom.localeCompare(b.nom),
+      );
       res.status(200).json(list);
     } catch (error) {
-      console.error('Erreur getAvailableProductsForCategory:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération des produits disponibles', error: error.message });
+      console.error("Erreur getAvailableProductsForCategory:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération des produits disponibles",
+          error: error.message,
+        });
     }
   },
 
@@ -319,29 +444,44 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const productId = parseInt(req.params.id, 10);
       if (Number.isNaN(productId)) {
-        return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de produit invalide." });
       }
       const epicierProduct = await EpicierProduct.findOne({
         where: { epicier_id: epicierId, produit_id: productId },
-        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            include: [
+              { model: Category, as: "categorie", attributes: ["id", "nom"] },
+            ],
+          },
+        ],
       });
       if (!epicierProduct || !epicierProduct.produit) {
-        return res.status(404).json({ message: 'Produit introuvable.' });
+        return res.status(404).json({ message: "Produit introuvable." });
       }
       const { prix } = req.body || {};
       epicierProduct.is_active = true;
-      if (typeof prix === 'number' && !Number.isNaN(prix)) {
+      if (typeof prix === "number" && !Number.isNaN(prix)) {
         epicierProduct.prix = prix;
       }
       await epicierProduct.save();
       res.status(200).json(toCatalogueItem(epicierProduct));
     } catch (error) {
-      console.error('Erreur restoreProductToCatalogue:', error);
-      res.status(500).json({ message: 'Erreur lors de la réintégration du produit', error: error.message });
+      console.error("Erreur restoreProductToCatalogue:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la réintégration du produit",
+          error: error.message,
+        });
     }
   },
 
@@ -350,29 +490,40 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const sourceProductId = parseInt(req.params.productId, 10);
       if (Number.isNaN(sourceProductId)) {
-        return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de produit invalide." });
       }
       const sourceProduct = await Product.findByPk(sourceProductId, {
-        include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }],
+        include: [
+          { model: Category, as: "categorie", attributes: ["id", "nom"] },
+        ],
       });
       if (!sourceProduct) {
-        return res.status(404).json({ message: 'Produit source introuvable.' });
+        return res.status(404).json({ message: "Produit source introuvable." });
       }
-      const existingLink = await EpicierProduct.findOne({ where: { epicier_id: epicierId, produit_id: sourceProductId } });
+      const existingLink = await EpicierProduct.findOne({
+        where: { epicier_id: epicierId, produit_id: sourceProductId },
+      });
       if (existingLink) {
-        return res.status(400).json({ message: 'Ce produit appartient déjà à votre catalogue.' });
+        return res
+          .status(400)
+          .json({ message: "Ce produit appartient déjà à votre catalogue." });
       }
-      const sourceLink = await EpicierProduct.findOne({ where: { produit_id: sourceProductId } });
+      const sourceLink = await EpicierProduct.findOne({
+        where: { produit_id: sourceProductId },
+      });
       const prixSource = sourceLink ? parseFloat(sourceLink.prix) : 0;
       const { prix } = req.body || {};
       const epicierProduct = await EpicierProduct.create({
         epicier_id: epicierId,
         produit_id: sourceProduct.id,
-        prix: typeof prix === 'number' && !Number.isNaN(prix) ? prix : prixSource,
+        prix:
+          typeof prix === "number" && !Number.isNaN(prix) ? prix : prixSource,
         is_active: true,
       });
       res.status(201).json({
@@ -386,8 +537,13 @@ const grocerController = {
         image_principale: sourceProduct.image_principale,
       });
     } catch (error) {
-      console.error('Erreur copyProductToCatalogue:', error);
-      res.status(500).json({ message: 'Erreur lors de l\'ajout du produit au catalogue', error: error.message });
+      console.error("Erreur copyProductToCatalogue:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de l'ajout du produit au catalogue",
+          error: error.message,
+        });
     }
   },
 
@@ -396,22 +552,40 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const categoryId = parseInt(req.params.categoryId, 10);
       if (Number.isNaN(categoryId)) {
-        return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de catégorie invalide." });
       }
       const linkList = await EpicierProduct.findAll({
         where: { epicier_id: epicierId, is_active: false },
-        include: [{ model: Product, as: 'produit', where: { categorie_id: categoryId }, include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
-        order: [[{ model: Product, as: 'produit' }, 'nom', 'ASC']],
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            where: { categorie_id: categoryId },
+            include: [
+              { model: Category, as: "categorie", attributes: ["id", "nom"] },
+            ],
+          },
+        ],
+        order: [[{ model: Product, as: "produit" }, "nom", "ASC"]],
       });
-      const list = linkList.filter((ep) => ep.produit).map((ep) => toCatalogueItem(ep));
+      const list = linkList
+        .filter((ep) => ep.produit)
+        .map((ep) => toCatalogueItem(ep));
       res.status(200).json(list);
     } catch (error) {
-      console.error('Erreur getInactiveProductsForCategory:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération des produits inactifs', error: error.message });
+      console.error("Erreur getInactiveProductsForCategory:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération des produits inactifs",
+          error: error.message,
+        });
     }
   },
 
@@ -420,28 +594,39 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const categoryId = parseInt(req.params.categoryId, 10);
       if (Number.isNaN(categoryId)) {
-        return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de catégorie invalide." });
       }
       const productIds = req.body.product_ids;
       if (!Array.isArray(productIds) || productIds.length === 0) {
-        return res.status(400).json({ message: 'Sélectionnez au moins un produit (product_ids).' });
+        return res
+          .status(400)
+          .json({ message: "Sélectionnez au moins un produit (product_ids)." });
       }
-      const ids = productIds.map((id) => parseInt(id, 10)).filter((id) => !Number.isNaN(id));
+      const ids = productIds
+        .map((id) => parseInt(id, 10))
+        .filter((id) => !Number.isNaN(id));
       const [updatedCount] = await EpicierProduct.update(
         { is_active: true },
-        { where: { epicier_id: epicierId, produit_id: ids, is_active: false } }
+        { where: { epicier_id: epicierId, produit_id: ids, is_active: false } },
       );
       res.status(200).json({
-        message: 'Catégorie restaurée avec les produits sélectionnés.',
+        message: "Catégorie restaurée avec les produits sélectionnés.",
         restoredCount: updatedCount,
       });
     } catch (error) {
-      console.error('Erreur restoreCategoryWithProducts:', error);
-      res.status(500).json({ message: 'Erreur lors de la restauration', error: error.message });
+      console.error("Erreur restoreCategoryWithProducts:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la restauration",
+          error: error.message,
+        });
     }
   },
 
@@ -450,23 +635,36 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const categoryId = parseInt(req.params.categoryId, 10);
       if (Number.isNaN(categoryId)) {
-        return res.status(400).json({ message: 'Identifiant de catégorie invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de catégorie invalide." });
       }
-      const productIds = await Product.findAll({ where: { categorie_id: categoryId }, attributes: ['id'] }).then((rows) => rows.map((r) => r.id));
+      const productIds = await Product.findAll({
+        where: { categorie_id: categoryId },
+        attributes: ["id"],
+      }).then((rows) => rows.map((r) => r.id));
       const [updatedCount] = productIds.length
-        ? await EpicierProduct.update({ is_active: false }, { where: { epicier_id: epicierId, produit_id: productIds } })
+        ? await EpicierProduct.update(
+            { is_active: false },
+            { where: { epicier_id: epicierId, produit_id: productIds } },
+          )
         : [0];
       res.status(200).json({
-        message: 'Catégorie retirée du catalogue.',
+        message: "Catégorie retirée du catalogue.",
         deletedCount: updatedCount,
       });
     } catch (error) {
-      console.error('Erreur removeCategoryFromCatalogue:', error);
-      res.status(500).json({ message: 'Erreur lors du retrait de la catégorie', error: error.message });
+      console.error("Erreur removeCategoryFromCatalogue:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors du retrait de la catégorie",
+          error: error.message,
+        });
     }
   },
 
@@ -474,25 +672,44 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const produitId = parseInt(req.params.id, 10);
       if (Number.isNaN(produitId)) {
-        return res.status(400).json({ message: 'Identifiant de produit invalide.' });
+        return res
+          .status(400)
+          .json({ message: "Identifiant de produit invalide." });
       }
       const epicierProduct = await EpicierProduct.findOne({
-        where: { epicier_id: epicierId, produit_id: produitId, is_active: true },
-        include: [{ model: Product, as: 'produit', include: [{ model: Category, as: 'categorie', attributes: ['id', 'nom'] }] }],
+        where: {
+          epicier_id: epicierId,
+          produit_id: produitId,
+          is_active: true,
+        },
+        include: [
+          {
+            model: Product,
+            as: "produit",
+            include: [
+              { model: Category, as: "categorie", attributes: ["id", "nom"] },
+            ],
+          },
+        ],
       });
       if (!epicierProduct || !epicierProduct.produit) {
-        return res.status(404).json({ message: 'Produit introuvable.' });
+        return res.status(404).json({ message: "Produit introuvable." });
       }
       epicierProduct.rupture_stock = !epicierProduct.rupture_stock;
       await epicierProduct.save();
       res.status(200).json(toCatalogueItem(epicierProduct));
     } catch (error) {
-      console.error('Erreur toggleRuptureStock:', error);
-      res.status(500).json({ message: 'Erreur lors du changement de statut de stock', error: error.message });
+      console.error("Erreur toggleRuptureStock:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors du changement de statut de stock",
+          error: error.message,
+        });
     }
   },
 
@@ -500,18 +717,23 @@ const grocerController = {
     try {
       const storeId = req.user.storeId;
       if (!storeId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const store = await Store.findByPk(storeId, {
-        include: [{ model: Availability, as: 'disponibilites' }],
+        include: [{ model: Availability, as: "disponibilites" }],
       });
       if (!store) {
-        return res.status(404).json({ message: 'Boutique introuvable.' });
+        return res.status(404).json({ message: "Boutique introuvable." });
       }
       res.status(200).json(store);
     } catch (error) {
-      console.error('Erreur getStoreProfile:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération du profil', error: error.message });
+      console.error("Erreur getStoreProfile:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération du profil",
+          error: error.message,
+        });
     }
   },
 
@@ -519,36 +741,42 @@ const grocerController = {
     try {
       const storeId = req.user.storeId;
       if (!storeId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
 
       const store = await Store.findByPk(storeId);
       if (!store) {
-        return res.status(404).json({ message: 'Boutique introuvable.' });
+        return res.status(404).json({ message: "Boutique introuvable." });
       }
 
-      if (store.statut_inscription !== 'ACCEPTE') {
+      if (store.statut_inscription !== "ACCEPTE") {
         return res.status(400).json({
-          message: 'Votre compte doit être accepté par un administrateur avant de compléter votre profil.'
+          message:
+            "Votre compte doit être accepté par un administrateur avant de compléter votre profil.",
         });
       }
 
       const {
-        nom_boutique, description, telephone,
-        adresse, latitude, longitude,
+        nom_boutique,
+        description,
+        telephone,
+        adresse,
+        latitude,
+        longitude,
         horaires,
         image_url,
       } = req.body;
 
       if (nom_boutique) store.nom_boutique = nom_boutique.trim();
-      if (description !== undefined) store.description = description?.trim() || null;
+      if (description !== undefined)
+        store.description = description?.trim() || null;
       if (telephone) store.telephone = telephone.trim();
       if (adresse) store.adresse = adresse.trim();
       if (latitude != null) store.latitude = parseFloat(latitude);
       if (longitude != null) store.longitude = parseFloat(longitude);
       if (image_url) store.image_url = image_url.trim();
 
-      store.statut_inscription = 'COMPLETE';
+      store.statut_inscription = "COMPLETE";
       await store.save();
 
       if (horaires && Array.isArray(horaires)) {
@@ -567,28 +795,124 @@ const grocerController = {
       }
 
       const updatedStore = await Store.findByPk(storeId, {
+        include: [{ model: Availability, as: "disponibilites" }],
+      });
+
+      res.status(200).json({
+        message: "Inscription complétée avec succès !",
+        store: updatedStore,
+      });
+    } catch (error) {
+      console.error("Erreur completeRegistration:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la finalisation de l'inscription",
+          error: error.message,
+        });
+    }
+  },
+
+  // PUT /epicier/profile — modify epicier profile after admin validation
+  // Allows statut_inscription = "ACCEPTE" or "COMPLETE" and updates store + availability.
+  updateProfile: async (req, res) => {
+    try {
+      const storeId = req.user.storeId;
+      if (!storeId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+
+      const store = await Store.findByPk(storeId);
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique introuvable.' });
+      }
+
+      if (!['ACCEPTE', 'COMPLETE'].includes(store.statut_inscription)) {
+        return res.status(400).json({
+          message:
+            'Votre compte n’est pas dans un état permettant la modification du profil.',
+        });
+      }
+
+      const {
+        nom_boutique,
+        description,
+        telephone,
+        adresse,
+        latitude,
+        longitude,
+        horaires,
+        image_url,
+      } = req.body;
+
+      if (nom_boutique !== undefined && nom_boutique !== null)
+        store.nom_boutique = String(nom_boutique).trim();
+      if (description !== undefined)
+        store.description =
+          description != null ? String(description).trim() : null;
+      if (telephone !== undefined && telephone !== null)
+        store.telephone = String(telephone).trim();
+      if (adresse !== undefined && adresse !== null)
+        store.adresse = String(adresse).trim();
+
+      if (latitude != null) store.latitude = parseFloat(latitude);
+      if (longitude != null) store.longitude = parseFloat(longitude);
+      if (image_url) store.image_url = String(image_url).trim();
+
+      // After modifications, keep the store as COMPLETE for a ready-to-use profile.
+      store.statut_inscription = 'COMPLETE';
+      await store.save();
+
+      if (horaires && Array.isArray(horaires)) {
+        await Availability.destroy({ where: { epicier_id: storeId } });
+
+        for (const h of horaires) {
+          if (
+            h?.jour &&
+            h?.heure_debut &&
+            h?.heure_fin &&
+            h?.is_open !== false
+          ) {
+            await Availability.create({
+              epicier_id: storeId,
+              jour: h.jour,
+              heure_debut: h.heure_debut,
+              heure_fin: h.heure_fin,
+            });
+          }
+        }
+      }
+
+      const updatedStore = await Store.findByPk(storeId, {
         include: [{ model: Availability, as: 'disponibilites' }],
       });
 
       res.status(200).json({
-        message: 'Inscription complétée avec succès !',
+        message: 'Profil mis à jour avec succès !',
         store: updatedStore,
       });
     } catch (error) {
-      console.error('Erreur completeRegistration:', error);
-      res.status(500).json({ message: 'Erreur lors de la finalisation de l\'inscription', error: error.message });
+      console.error('Erreur updateProfile:', error);
+      res.status(500).json({
+        message: 'Erreur lors de la mise à jour du profil',
+        error: error.message,
+      });
     }
   },
 
   uploadStoreImage: async (req, res) => {
     try {
       if (!req.file || !req.file.buffer) {
-        return res.status(400).json({ message: 'Aucun fichier image envoyé.' });
+        return res.status(400).json({ message: "Aucun fichier image envoyé." });
       }
-      const dir = path.join(__dirname, '..', '..', 'uploads', 'stores');
+      const dir = path.join(__dirname, "..", "..", "uploads", "stores");
       fs.mkdirSync(dir, { recursive: true });
-      const ext = path.extname(req.file.originalname) || '.jpg';
-      const safeExt = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext.toLowerCase()) ? ext : '.jpg';
+      const ext = path.extname(req.file.originalname) || ".jpg";
+      const safeExt = [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(
+        ext.toLowerCase(),
+      )
+        ? ext
+        : ".jpg";
       const storeId = req.user.storeId || Date.now();
       const filename = `store_${storeId}_${Date.now()}${safeExt}`;
       const filePath = path.join(dir, filename);
@@ -596,8 +920,13 @@ const grocerController = {
       const relativePath = `uploads/stores/${filename}`;
       res.status(200).json({ image_url: relativePath });
     } catch (error) {
-      console.error('Erreur uploadStoreImage:', error);
-      res.status(500).json({ message: 'Erreur lors de l\'upload de l\'image', error: error.message });
+      console.error("Erreur uploadStoreImage:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de l'upload de l'image",
+          error: error.message,
+        });
     }
   },
 
@@ -605,7 +934,7 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
 
       const periodDays = 30;
@@ -613,11 +942,43 @@ const grocerController = {
       const kpiRows = await sequelize.query(
         `SELECT
           (SELECT COUNT(*) FROM commandes WHERE epicier_id = :epicierId AND date_commande >= DATE_SUB(CURDATE(), INTERVAL :periodDays DAY)) AS total_commandes,
-          (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE epicier_id = :epicierId AND date_commande >= DATE_SUB(CURDATE(), INTERVAL :periodDays DAY)) AS ca_total,
-          (SELECT COALESCE(AVG(note), 0) FROM avis WHERE epicier_id = :epicierId) AS note_moyenne`,
-        { replacements: { epicierId, periodDays }, type: QueryTypes.SELECT }
+          (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE epicier_id = :epicierId AND date_commande >= DATE_SUB(CURDATE(), INTERVAL :periodDays DAY) AND statut != 'refusee') AS ca_total,
+          (SELECT COALESCE(AVG(note), 0) FROM avis WHERE epicier_id = :epicierId) AS note_moyenne,
+          (SELECT COUNT(*) FROM commandes WHERE epicier_id = :epicierId) AS total_commandes_all,
+          (SELECT COUNT(*) FROM epicier_produits WHERE epicier_id = :epicierId AND is_active = 1) AS nb_produits,
+          (SELECT COUNT(*) FROM epicier_produits WHERE epicier_id = :epicierId AND is_active = 1 AND rupture_stock = 1) AS produits_rupture,
+          (SELECT COUNT(DISTINCT client_id) FROM commandes WHERE epicier_id = :epicierId) AS nb_clients,
+          (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE epicier_id = :epicierId AND DATE(date_commande) = CURDATE() AND statut != 'refusee') AS ca_jour,
+          (SELECT COALESCE(SUM(montant_total), 0) FROM commandes WHERE epicier_id = :epicierId AND YEAR(date_commande) = YEAR(CURDATE()) AND MONTH(date_commande) = MONTH(CURDATE()) AND statut != 'refusee') AS ca_mois,
+          (SELECT COUNT(*) FROM commandes WHERE epicier_id = :epicierId AND statut = 'refusee' AND date_commande >= DATE_SUB(CURDATE(), INTERVAL :periodDays DAY)) AS annulations`,
+        { replacements: { epicierId, periodDays }, type: QueryTypes.SELECT },
       );
-      const kpis = Array.isArray(kpiRows) && kpiRows.length > 0 ? kpiRows[0] : {};
+      const kpis =
+        Array.isArray(kpiRows) && kpiRows.length > 0 ? kpiRows[0] : {};
+
+      const cmdParStatut = await sequelize.query(
+        `SELECT statut, COUNT(*) AS n FROM commandes WHERE epicier_id = :epicierId GROUP BY statut`,
+        { replacements: { epicierId }, type: QueryTypes.SELECT },
+      );
+      const commandesParStatut = {};
+      cmdParStatut.forEach((r) => {
+        commandesParStatut[r.statut] = Number(r.n);
+      });
+
+      const recParStatut = await sequelize.query(
+        `SELECT r.statut, COUNT(*) AS n
+         FROM reclamations r
+         INNER JOIN commandes c ON c.id = r.commande_id AND c.epicier_id = :epicierId
+         GROUP BY r.statut`,
+        { replacements: { epicierId }, type: QueryTypes.SELECT },
+      );
+      const reclamationsParStatut = {};
+      let reclamationsTotal = 0;
+      recParStatut.forEach((r) => {
+        const n = Number(r.n);
+        reclamationsParStatut[r.statut] = n;
+        reclamationsTotal += n;
+      });
 
       const commandesParJour = await sequelize.query(
         `SELECT DATE(date_commande) AS jour, COUNT(*) AS nb
@@ -625,7 +986,7 @@ const grocerController = {
          WHERE epicier_id = :epicierId AND date_commande >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
          GROUP BY DATE(date_commande)
          ORDER BY jour`,
-        { replacements: { epicierId }, type: QueryTypes.SELECT }
+        { replacements: { epicierId }, type: QueryTypes.SELECT },
       );
 
       const topProduits = await sequelize.query(
@@ -637,25 +998,33 @@ const grocerController = {
          GROUP BY p.id, p.nom
          ORDER BY total_quantite DESC
          LIMIT 5`,
-        { replacements: { epicierId, periodDays }, type: QueryTypes.SELECT }
+        { replacements: { epicierId, periodDays }, type: QueryTypes.SELECT },
       );
 
-      const totalQuantite = topProduits.reduce((acc, row) => acc + Number(row.total_quantite), 0);
+      const totalQuantite = topProduits.reduce(
+        (acc, row) => acc + Number(row.total_quantite),
+        0,
+      );
 
       const topProductsWithPct = topProduits.map((row) => ({
         id: row.id,
         nom: row.nom,
         quantite: Number(row.total_quantite),
-        percentage: totalQuantite > 0 ? Math.round((Number(row.total_quantite) / totalQuantite) * 100) : 0,
+        percentage:
+          totalQuantite > 0
+            ? Math.round((Number(row.total_quantite) / totalQuantite) * 100)
+            : 0,
       }));
 
-      const joursLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+      const joursLabels = ["L", "M", "M", "J", "V", "S", "D"];
       const last7Days = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dateStr = d.toISOString().slice(0, 10);
-        const found = commandesParJour.find((r) => r.jour && String(r.jour).slice(0, 10) === dateStr);
+        const found = commandesParJour.find(
+          (r) => r.jour && String(r.jour).slice(0, 10) === dateStr,
+        );
         last7Days.push({
           jour: dateStr,
           label: joursLabels[6 - i],
@@ -666,16 +1035,30 @@ const grocerController = {
       res.status(200).json({
         kpis: {
           totalCommandes: Number(kpis?.total_commandes ?? 0),
+          totalCommandesAll: Number(kpis?.total_commandes_all ?? 0),
           caTotal: Number(kpis?.ca_total ?? 0),
+          caJournalier: Number(kpis?.ca_jour ?? 0),
+          caMensuel: Number(kpis?.ca_mois ?? 0),
           noteMoyenne: Number(Number(kpis?.note_moyenne ?? 0).toFixed(1)),
-          annulations: 0,
+          annulations: Number(kpis?.annulations ?? 0),
+          nbProduits: Number(kpis?.nb_produits ?? 0),
+          produitsEnRupture: Number(kpis?.produits_rupture ?? 0),
+          nbClients: Number(kpis?.nb_clients ?? 0),
+          reclamationsTotal,
+          reclamationsParStatut,
+          commandesParStatut,
         },
         chartData: last7Days,
         topProducts: topProductsWithPct,
       });
     } catch (error) {
-      console.error('Erreur getDashboard:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération du tableau de bord', error: error.message });
+      console.error("Erreur getDashboard:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération du tableau de bord",
+          error: error.message,
+        });
     }
   },
 
@@ -683,19 +1066,19 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const statut = req.query.statut; // 'reçue' | 'prête' | 'livrée' | 'refusee' | 'historique'
       const where = { epicier_id: epicierId };
-      if (statut === 'historique') {
-        where.statut = ['livrée', 'refusee'];
+      if (statut === "historique") {
+        where.statut = ["livrée", "refusee"];
       } else if (statut) {
         where.statut = statut;
       }
       const commandes = await Commande.findAll({
         where,
-        include: [{ model: User, as: 'client', attributes: ['nom', 'prenom'] }],
-        order: [['date_commande', 'DESC']],
+        include: [{ model: User, as: "client", attributes: ["nom", "prenom"] }],
+        order: [["date_commande", "DESC"]],
       });
       const ids = commandes.map((c) => c.id);
       const countMap = {};
@@ -703,33 +1086,39 @@ const grocerController = {
       const pendingMap = {};
       if (ids.length > 0) {
         const rows = await sequelize.query(
-          `SELECT commande_id, SUM(quantite) AS total FROM detailscommande WHERE commande_id IN (${ids.join(',')}) GROUP BY commande_id`,
-          { type: QueryTypes.SELECT }
+          `SELECT commande_id, SUM(quantite) AS total FROM detailscommande WHERE commande_id IN (${ids.join(",")}) GROUP BY commande_id`,
+          { type: QueryTypes.SELECT },
         );
-        rows.forEach((r) => { countMap[r.commande_id] = Number(r.total ?? 0); });
+        rows.forEach((r) => {
+          countMap[r.commande_id] = Number(r.total ?? 0);
+        });
         const ruptureRows = await sequelize.query(
-          `SELECT commande_id FROM detailscommande WHERE commande_id IN (${ids.join(',')}) AND rupture = 1`,
-          { type: QueryTypes.SELECT }
+          `SELECT commande_id FROM detailscommande WHERE commande_id IN (${ids.join(",")}) AND rupture = 1`,
+          { type: QueryTypes.SELECT },
         );
-        ruptureRows.forEach((r) => { ruptureMap[r.commande_id] = true; });
+        ruptureRows.forEach((r) => {
+          ruptureMap[r.commande_id] = true;
+        });
         const pendingRows = await sequelize.query(
-          `SELECT commande_id FROM detailscommande WHERE commande_id IN (${ids.join(',')}) AND en_attente_acceptation_client = 1`,
-          { type: QueryTypes.SELECT }
+          `SELECT commande_id FROM detailscommande WHERE commande_id IN (${ids.join(",")}) AND en_attente_acceptation_client = 1`,
+          { type: QueryTypes.SELECT },
         );
-        pendingRows.forEach((r) => { pendingMap[r.commande_id] = true; });
+        pendingRows.forEach((r) => {
+          pendingMap[r.commande_id] = true;
+        });
       }
       const result = commandes.map((c) => {
-        let creneau = '';
+        let creneau = "";
         if (c.date_recuperation) {
           const d = new Date(c.date_recuperation);
           const h = d.getHours();
           const m = d.getMinutes();
-          creneau = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} – ${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          creneau = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} – ${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
         }
         return {
           id: c.id,
-          client_nom: c.client?.nom ?? '',
-          client_prenom: c.client?.prenom ?? '',
+          client_nom: c.client?.nom ?? "",
+          client_prenom: c.client?.prenom ?? "",
           date_commande: c.date_commande,
           date_recuperation: c.date_recuperation,
           creneau,
@@ -744,8 +1133,13 @@ const grocerController = {
       });
       res.status(200).json(result);
     } catch (error) {
-      console.error('Erreur getCommandes:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération des commandes', error: error.message });
+      console.error("Erreur getCommandes:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération des commandes",
+          error: error.message,
+        });
     }
   },
 
@@ -753,15 +1147,17 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const count = await Commande.count({
-        where: { epicier_id: epicierId, statut: 'reçue' },
+        where: { epicier_id: epicierId, statut: "reçue" },
       });
       res.status(200).json({ count });
     } catch (error) {
-      console.error('Erreur getCommandesCountNew:', error);
-      res.status(500).json({ message: 'Erreur lors du comptage', error: error.message });
+      console.error("Erreur getCommandesCountNew:", error);
+      res
+        .status(500)
+        .json({ message: "Erreur lors du comptage", error: error.message });
     }
   },
 
@@ -770,31 +1166,41 @@ const grocerController = {
       const epicierId = req.user.storeId;
       const { id } = req.params;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
         include: [
-          { model: User, as: 'client', attributes: ['nom', 'prenom', 'email', 'telephone'] },
-          { model: DetailCommande, include: [{ model: Product, attributes: ['id', 'nom', 'image_principale'] }] },
+          {
+            model: User,
+            as: "client",
+            attributes: ["nom", "prenom", "email", "telephone"],
+          },
+          {
+            model: DetailCommande,
+            include: [
+              { model: Product, attributes: ["id", "nom", "image_principale"] },
+            ],
+          },
         ],
       });
       if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
+        return res.status(404).json({ message: "Commande introuvable" });
       }
-      let creneau = '';
+      let creneau = "";
       if (commande.date_recuperation) {
         const d = new Date(commande.date_recuperation);
         const h = d.getHours();
         const m = d.getMinutes();
-        creneau = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} – ${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        creneau = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} – ${String(h + 1).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
       }
       const detailList = commande.DetailCommandes || commande.details || [];
       const details = detailList.map((d) => ({
         id: d.id,
         produit_id: d.produit_id,
-        nom: d.Product?.nom ?? d.produit?.nom ?? '',
-        image_principale: d.Product?.image_principale ?? d.produit?.image_principale ?? null,
+        nom: d.Product?.nom ?? d.produit?.nom ?? "",
+        image_principale:
+          d.Product?.image_principale ?? d.produit?.image_principale ?? null,
         quantite: d.quantite,
         prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
         total_ligne: parseFloat(d.total_ligne ?? 0),
@@ -803,10 +1209,10 @@ const grocerController = {
       }));
       res.status(200).json({
         id: commande.id,
-        client_nom: commande.client?.nom ?? '',
-        client_prenom: commande.client?.prenom ?? '',
-        client_email: commande.client?.email ?? '',
-        client_telephone: commande.client?.telephone ?? '',
+        client_nom: commande.client?.nom ?? "",
+        client_prenom: commande.client?.prenom ?? "",
+        client_email: commande.client?.email ?? "",
+        client_telephone: commande.client?.telephone ?? "",
         date_commande: commande.date_commande,
         date_recuperation: commande.date_recuperation,
         creneau,
@@ -818,8 +1224,13 @@ const grocerController = {
         details,
       });
     } catch (error) {
-      console.error('Erreur getCommandeById:', error);
-      res.status(500).json({ message: 'Erreur lors de la récupération de la commande', error: error.message });
+      console.error("Erreur getCommandeById:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la récupération de la commande",
+          error: error.message,
+        });
     }
   },
 
@@ -828,25 +1239,32 @@ const grocerController = {
       const epicierId = req.user.storeId;
       const { id, detailId } = req.params;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
       });
       if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
+        return res.status(404).json({ message: "Commande introuvable" });
       }
-      if (!['reçue', 'prête'].includes(commande.statut)) {
-        return res.status(400).json({ message: 'Seules les commandes reçues ou prêtes peuvent être modifiées.' });
+      if (!["reçue", "prête"].includes(commande.statut)) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Seules les commandes reçues ou prêtes peuvent être modifiées.",
+          });
       }
       const detail = await DetailCommande.findOne({
         where: { id: detailId, commande_id: id },
-        include: [{ model: Product, attributes: ['nom'] }],
+        include: [{ model: Product, attributes: ["nom"] }],
       });
       if (!detail) {
-        return res.status(404).json({ message: 'Ligne de commande introuvable' });
+        return res
+          .status(404)
+          .json({ message: "Ligne de commande introuvable" });
       }
-      const produitNom = detail.Product?.nom ?? 'Un produit';
+      const produitNom = detail.Product?.nom ?? "Un produit";
       const wasRupture = !!detail.rupture;
       const setRupture = wasRupture ? 0 : 1;
 
@@ -879,26 +1297,41 @@ const grocerController = {
         const msg = clientAccepte
           ? `Le produit "${produitNom}" est à nouveau disponible. Souhaitez-vous l'ajouter à votre commande #${id}? (nouveau total: ${newTotal.toFixed(2)} MAD)`
           : `Le produit "${produitNom}" est à nouveau disponible dans votre commande #${id} (nouveau total: ${newTotal.toFixed(2)} MAD).`;
-        _sendNotificationToClient(commande.client_id, commande.id, 'produit_disponible', msg);
+        _sendNotificationToClient(
+          commande.client_id,
+          commande.id,
+          "produit_disponible",
+          msg,
+        );
         return res.status(200).json({
           message: clientAccepte
-            ? 'Produit retiré de la rupture. Client notifié. En attente de son acceptation.'
-            : 'Produit retiré de la rupture. Client notifié. Vous pouvez accepter la commande.',
+            ? "Produit retiré de la rupture. Client notifié. En attente de son acceptation."
+            : "Produit retiré de la rupture. Client notifié. Vous pouvez accepter la commande.",
           montant_total: newTotal,
           rupture: false,
         });
       }
 
       const msg = `Le produit "${produitNom}" est en rupture de stock dans votre commande #${id}. La commande a été modifiée (nouveau total: ${newTotal.toFixed(2)} MAD). Souhaitez-vous continuer? Contactez l'épicier pour plus d'infos.`;
-      _sendNotificationToClient(commande.client_id, commande.id, 'rupture', msg);
+      _sendNotificationToClient(
+        commande.client_id,
+        commande.id,
+        "rupture",
+        msg,
+      );
       res.status(200).json({
-        message: 'Produit marqué en rupture. Client notifié.',
+        message: "Produit marqué en rupture. Client notifié.",
         montant_total: newTotal,
         rupture: true,
       });
     } catch (error) {
-      console.error('Erreur markRuptureDetail:', error);
-      res.status(500).json({ message: 'Erreur lors du marquage rupture', error: error.message });
+      console.error("Erreur markRuptureDetail:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors du marquage rupture",
+          error: error.message,
+        });
     }
   },
 
@@ -907,20 +1340,30 @@ const grocerController = {
       const epicierId = req.user.storeId;
       const { id } = req.params;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
       });
       if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
+        return res.status(404).json({ message: "Commande introuvable" });
       }
       commande.client_accepte_modification = 1;
       await commande.save();
-      res.status(200).json({ message: 'Acceptation client enregistrée', client_accepte_modification: true });
+      res
+        .status(200)
+        .json({
+          message: "Acceptation client enregistrée",
+          client_accepte_modification: true,
+        });
     } catch (error) {
-      console.error('Erreur confirmerAcceptationClient:', error);
-      res.status(500).json({ message: 'Erreur lors de la confirmation', error: error.message });
+      console.error("Erreur confirmerAcceptationClient:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la confirmation",
+          error: error.message,
+        });
     }
   },
 
@@ -929,33 +1372,50 @@ const grocerController = {
       const epicierId = req.user.storeId;
       const { id } = req.params;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
       });
       if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
+        return res.status(404).json({ message: "Commande introuvable" });
       }
-      if (commande.statut !== 'reçue') {
-        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être acceptées.' });
+      if (commande.statut !== "reçue") {
+        return res
+          .status(400)
+          .json({
+            message: "Seules les commandes reçues peuvent être acceptées.",
+          });
       }
       const pendingCount = await DetailCommande.count({
         where: { commande_id: id, en_attente_acceptation_client: 1 },
       });
       if (pendingCount > 0) {
         return res.status(400).json({
-          message: 'En attente de l\'acceptation du client pour des produits remis en stock. Vous ne pouvez pas accepter la commande tant que le client n\'a pas répondu.',
+          message:
+            "En attente de l'acceptation du client pour des produits remis en stock. Vous ne pouvez pas accepter la commande tant que le client n'a pas répondu.",
         });
       }
-      commande.statut = 'prête';
+      commande.statut = "prête";
       commande.lu_epicier = 1;
       await commande.save();
-      _sendNotificationToClient(commande.client_id, commande.id, 'acceptée', 'Votre commande a été acceptée et est prête à être récupérée.');
-      res.status(200).json({ message: 'Commande acceptée', statut: commande.statut });
+      _sendNotificationToClient(
+        commande.client_id,
+        commande.id,
+        "acceptée",
+        "Votre commande a été acceptée et est prête à être récupérée.",
+      );
+      res
+        .status(200)
+        .json({ message: "Commande acceptée", statut: commande.statut });
     } catch (error) {
-      console.error('Erreur acceptCommande:', error);
-      res.status(500).json({ message: 'Erreur lors de l\'acceptation', error: error.message });
+      console.error("Erreur acceptCommande:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de l'acceptation",
+          error: error.message,
+        });
     }
   },
 
@@ -963,28 +1423,48 @@ const grocerController = {
     try {
       const epicierId = req.user.storeId;
       const { id } = req.params;
-      const { message } = req.body || {};
+      const message = req.body?.message;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
+      }
+      const motif = typeof message === "string" ? message.trim() : "";
+      if (!motif) {
+        return res
+          .status(400)
+          .json({ message: "Le motif de refus est obligatoire." });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
       });
       if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
+        return res.status(404).json({ message: "Commande introuvable" });
       }
-      if (commande.statut !== 'reçue') {
-        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être refusées.' });
+      if (commande.statut !== "reçue" && commande.statut !== "prête") {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Seules les commandes reçues ou prêtes peuvent être refusées.",
+          });
       }
-      commande.statut = 'refusee';
-      commande.message_refus = (message && String(message).trim()) || 'Commande refusée par l\'épicier.';
+      commande.statut = "refusee";
+      commande.message_refus = motif;
       commande.lu_epicier = 1;
       await commande.save();
-      _sendNotificationToClient(commande.client_id, commande.id, 'refusée', commande.message_refus);
-      res.status(200).json({ message: 'Commande refusée', statut: commande.statut });
+      _sendNotificationToClient(
+        commande.client_id,
+        commande.id,
+        "refusée",
+        commande.message_refus,
+      );
+      res
+        .status(200)
+        .json({ message: "Commande refusée", statut: commande.statut });
     } catch (error) {
-      console.error('Erreur refuseCommande:', error);
-      res.status(500).json({ message: 'Erreur lors du refus', error: error.message });
+      console.error("Erreur refuseCommande:", error);
+      res
+        .status(500)
+        .json({ message: "Erreur lors du refus", error: error.message });
     }
   },
 
@@ -994,32 +1474,44 @@ const grocerController = {
       const { id } = req.params;
       const { statut } = req.body;
       if (!epicierId) {
-        return res.status(403).json({ message: 'Store ID manquant' });
+        return res.status(403).json({ message: "Store ID manquant" });
       }
-      if (!['prête', 'livrée'].includes(statut)) {
-        return res.status(400).json({ message: 'Statut invalide. Utilisez "prête" ou "livrée".' });
+      if (!["prête", "livrée"].includes(statut)) {
+        return res
+          .status(400)
+          .json({ message: 'Statut invalide. Utilisez "prête" ou "livrée".' });
       }
       const commande = await Commande.findOne({
         where: { id, epicier_id: epicierId },
       });
       if (!commande) {
-        return res.status(404).json({ message: 'Commande introuvable' });
+        return res.status(404).json({ message: "Commande introuvable" });
       }
       const current = commande.statut;
-      if (statut === 'prête' && current !== 'reçue') {
-        return res.status(400).json({ message: 'Seules les commandes reçues peuvent être marquées prêtes. Utilisez accepter.' });
+      if (statut === "prête" && current !== "reçue") {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Seules les commandes reçues peuvent être marquées prêtes. Utilisez accepter.",
+          });
       }
-      if (statut === 'livrée' && current !== 'prête') {
-        return res.status(400).json({ message: 'Seules les commandes prêtes peuvent être marquées livrées (récupérées).' });
+      if (statut === "livrée" && current !== "prête") {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Seules les commandes prêtes peuvent être marquées livrées (récupérées).",
+          });
       }
       commande.statut = statut;
       await commande.save();
 
       // --- NOTIFICATION LOGIC ---
       try {
-        const { QueryTypes } = require('sequelize');
-        const sequelize = require('../config/db');
-        const { sendNotification } = require('../utils/notification');
+        const { QueryTypes } = require("sequelize");
+        const sequelize = require("../config/db");
+        const { sendNotification } = require("../utils/notification");
 
         // Fetch client and store details
         const details = await sequelize.query(
@@ -1029,36 +1521,43 @@ const grocerController = {
            JOIN stores s ON co.epicier_id = s.id
            LEFT JOIN utilisateurs c ON co.client_id = c.id
            WHERE co.id = :id`,
-          { replacements: { id }, type: QueryTypes.SELECT }
+          { replacements: { id }, type: QueryTypes.SELECT },
         );
 
         if (details.length > 0) {
           const { fcm_token, store_nom } = details[0];
-          const message = `Votre commande chez ${store_nom || 'votre épicier'} est ${statut}.`;
+          const message = `Votre commande chez ${store_nom || "votre épicier"} est ${statut}.`;
 
           // 1. Save to Database
           await sequelize.query(
-            'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, NOW(), 0)',
+            "INSERT INTO notifications (utilisateur_id, message, date_envoi, lue) VALUES (:utilisateur_id, :message, NOW(), 0)",
             {
-              replacements: { client_id: commande.client_id, message },
-              type: QueryTypes.INSERT
-            }
+              replacements: { utilisateur_id: commande.client_id, message },
+              type: QueryTypes.INSERT,
+            },
           );
 
           // 2. Send Push Notification if token exists
           if (fcm_token) {
-            await sendNotification(fcm_token, 'Mise à jour commande', message);
+            await sendNotification(fcm_token, "Mise à jour commande", message);
           }
         }
       } catch (notifError) {
-        console.error('Failed to send notification:', notifError);
+        console.error("Failed to send notification:", notifError);
       }
       // --------------------------
 
-      res.status(200).json({ message: 'Statut mis à jour', statut: commande.statut });
+      res
+        .status(200)
+        .json({ message: "Statut mis à jour", statut: commande.statut });
     } catch (error) {
-      console.error('Erreur updateCommandeStatut:', error);
-      res.status(500).json({ message: 'Erreur lors de la mise à jour du statut', error: error.message });
+      console.error("Erreur updateCommandeStatut:", error);
+      res
+        .status(500)
+        .json({
+          message: "Erreur lors de la mise à jour du statut",
+          error: error.message,
+        });
     }
   },
 };

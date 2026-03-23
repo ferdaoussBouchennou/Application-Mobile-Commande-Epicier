@@ -99,6 +99,24 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     if (res == true) _load();
   }
 
+  Future<void> _toggleCategoryActive(model.Category cat, bool active) async {
+    final token = _token;
+    if (token == null) return;
+    try {
+      await _api.put(
+        '/admin/categories/${cat.id}',
+        {'is_active': active},
+        token: token,
+      );
+      if (!mounted) return;
+      _snack(active ? 'Catégorie activée' : 'Catégorie désactivée');
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      _snack(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
   void _snack(String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
@@ -111,6 +129,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
             _buildHeader(),
             if (!_loading && _error == null) _buildSearchBar(),
             Expanded(child: _buildBody()),
+            if (!_loading && _error == null && _totalPages > 1) _buildPagination(),
           ],
         ),
       ),
@@ -248,88 +267,145 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         ),
       );
     }
-    
+
     return RefreshIndicator(
       onRefresh: _load,
       color: _primary,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.85,
-          crossAxisSpacing: 15,
-          mainAxisSpacing: 15,
-        ),
-        itemCount: _filtered.length,
-        itemBuilder: (context, index) => _buildCategoryCard(_filtered[index]),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        itemCount: _pageItems.length,
+        itemBuilder: (context, index) => _buildCategoryRow(_pageItems[index]),
       ),
     );
   }
 
-  Widget _buildCategoryCard(model.Category cat) {
+  Widget _buildCategoryRow(model.Category cat) {
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
       ),
-      child: InkWell(
-        onTap: () => _navigateToForm(category: cat),
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFDF6F0),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: cat.imageUrl != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: Image.network('${ApiConstants.baseUrl}${cat.imageUrl}', fit: BoxFit.cover),
-                    )
-                  : const Icon(Icons.category_outlined, size: 30, color: Color(0xFF2D5016)),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                cat.nom,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2D1A0E)),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                '${cat.productCount} produits',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5EDDA),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 14, color: Color(0xFFB99D6B)),
-                        SizedBox(width: 4),
-                        Text('Gérer', style: TextStyle(color: Color(0xFFB99D6B), fontSize: 12, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminCategoryProductsScreen(
+              categoryId: cat.id,
+              categoryName: cat.nom,
+            ),
+          ),
+        ),
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFDF6F0),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: cat.imageUrl != null && cat.imageUrl!.isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.network(
+                    '${ApiConstants.baseUrl}${cat.imageUrl}',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.category_outlined, size: 22),
                   ),
-                ],
+                )
+              : const Icon(Icons.category_outlined, size: 22, color: Color(0xFF2D5016)),
+        ),
+        title: Text(
+          cat.nom,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E)),
+        ),
+        subtitle: Text(
+          '${cat.productCount} produits',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+        ),
+        trailing: SizedBox(
+          width: 160,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, color: Color(0xFFB99D6B)),
+                onPressed: () => _navigateToForm(category: cat),
+                tooltip: 'Modifier la catégorie',
               ),
+              const SizedBox(width: 4),
+              ActiveToggle(
+                value: cat.isActive,
+                onChanged: (v) => _toggleCategoryActive(cat, v),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: Colors.grey),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPagination() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, -2))],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: _page > 0 ? () => setState(() => _page--) : null,
+            color: _primary,
+          ),
+          const SizedBox(width: 4),
+          ...List.generate(_totalPages, (i) {
+            final isActive = i == _page;
+            if (_totalPages > 7 && (i - _page).abs() > 2 && i != 0 && i != _totalPages - 1) {
+              if (i == 1 || i == _totalPages - 2) return const Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text('…'));
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: InkWell(
+                onTap: () => setState(() => _page = i),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isActive ? _primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${i + 1}',
+                    style: TextStyle(
+                      color: isActive ? Colors.white : _primary,
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: _page < _totalPages - 1 ? () => setState(() => _page++) : null,
+            color: _primary,
+          ),
+        ],
       ),
     );
   }
