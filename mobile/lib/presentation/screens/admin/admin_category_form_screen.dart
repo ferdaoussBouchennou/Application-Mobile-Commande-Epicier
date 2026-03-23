@@ -19,8 +19,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
 
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  
-  bool _isActive = true;
+
   bool _isSubmitting = false;
 
   @override
@@ -28,7 +27,6 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.category?.nom);
     _descriptionController = TextEditingController(text: widget.category?.description);
-    _isActive = widget.category?.isActive ?? true;
   }
 
   Future<void> _submit() async {
@@ -42,7 +40,6 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
       final data = {
         'nom': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'is_active': _isActive,
       };
 
       if (widget.category == null) {
@@ -81,9 +78,6 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
                       _buildTextField('Nom de la catégorie *', _nameController, isRequired: true),
                       const SizedBox(height: 15),
                       _buildTextField('Description', _descriptionController, maxLines: 3),
-                      const SizedBox(height: 15),
-                      const SizedBox(height: 20),
-                      _buildVisibilityToggle(),
                       const SizedBox(height: 30),
                       _buildActionButtons(primaryColor),
                     ],
@@ -155,23 +149,6 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2D5016))),
             contentPadding: const EdgeInsets.all(16),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVisibilityToggle() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          'Catégorie visible (réactiver/désactiver)',
-          style: TextStyle(fontSize: 16, color: Color(0xFF2D1A0E)),
-        ),
-        Switch(
-          value: _isActive,
-          activeColor: const Color(0xFF2D5016),
-          onChanged: (v) => setState(() => _isActive = v),
         ),
       ],
     );

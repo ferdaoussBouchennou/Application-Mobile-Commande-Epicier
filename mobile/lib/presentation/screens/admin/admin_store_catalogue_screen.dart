@@ -493,13 +493,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xFFF0F7EC),
-                  child: cat.imageUrl != null
-                      ? ClipOval(child: Image.network(
-                          ApiConstants.formatImageUrl(cat.imageUrl),
-                          fit: BoxFit.cover, width: 40, height: 40,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.category_outlined, color: Color(0xFF2D5016), size: 20),
-                        ))
-                      : const Icon(Icons.category_outlined, color: Color(0xFF2D5016), size: 20),
+                  child: const Icon(Icons.category_outlined, color: Color(0xFF2D5016), size: 20),
                 ),
                 title: Text(cat.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF2D5016)),
@@ -556,12 +550,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                       color: const Color(0xFFFDF6F0),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: cat.imageUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: Image.network(ApiConstants.formatImageUrl(cat.imageUrl), fit: BoxFit.cover),
-                        )
-                      : const Icon(Icons.category_outlined, size: 30, color: Color(0xFF2D5016)),
+                    child: const Icon(Icons.category_outlined, size: 30, color: Color(0xFF2D5016)),
                   ),
                   const SizedBox(height: 10),
                   Text(
