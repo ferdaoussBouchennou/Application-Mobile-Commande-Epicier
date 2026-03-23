@@ -4,14 +4,14 @@ class NotificationModel {
   final int id;
   final String message;
   final DateTime dateEnvoi;
-  final int clientId;
+  final int utilisateurId;
   bool lue;
 
   NotificationModel({
     required this.id,
     required this.message,
     required this.dateEnvoi,
-    required this.clientId,
+    required this.utilisateurId,
     required this.lue,
   });
 
@@ -20,7 +20,7 @@ class NotificationModel {
       id: json['id'],
       message: json['message'] ?? '',
       dateEnvoi: DateTime.tryParse(json['date_envoi'] ?? '') ?? DateTime.now(),
-      clientId: json['client_id'],
+      utilisateurId: json['utilisateur_id'] ?? json['client_id'] ?? 0,
       lue: json['lue'] == 1 || json['lue'] == true,
     );
   }

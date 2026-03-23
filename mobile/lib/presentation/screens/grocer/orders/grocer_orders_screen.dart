@@ -11,8 +11,17 @@ import '../grocer_theme.dart';
 /// Badge nouvelles commandes, acceptation/refus, bon de préparation, confirmation récupération.
 class GrocerOrdersScreen extends StatefulWidget {
   final void Function(int)? onNewOrdersCount;
+  final int? orderIdToOpen;
+  final VoidCallback? onOpenOrderHandled;
+  final void Function(VoidCallback fn)? onRegisterRefresh;
 
-  const GrocerOrdersScreen({super.key, this.onNewOrdersCount});
+  const GrocerOrdersScreen({
+    super.key,
+    this.onNewOrdersCount,
+    this.orderIdToOpen,
+    this.onOpenOrderHandled,
+    this.onRegisterRefresh,
+  });
 
   @override
   State<GrocerOrdersScreen> createState() => _GrocerOrdersScreenState();
@@ -37,6 +46,39 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
     _tabController = TabController(length: 3, initialIndex: 0, vsync: this);
     _fetchNewCount();
     _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchNewCount());
+    widget.onRegisterRefresh?.call(_fetchNewCount);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openTicketIfNeeded());
+  }
+
+  @override
+  void didUpdateWidget(covariant GrocerOrdersScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.orderIdToOpen != oldWidget.orderIdToOpen && widget.orderIdToOpen != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openTicketIfNeeded());
+    }
+  }
+
+  Future<void> _openTicketIfNeeded() async {
+    final orderId = widget.orderIdToOpen;
+    if (orderId == null || !mounted) return;
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    widget.onOpenOrderHandled?.call();
+    final detail = await _fetchOrderDetail(token, orderId);
+    if (!mounted || detail == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _TicketSheet(
+        orderId: orderId,
+        initialDetail: detail,
+        fetchDetail: (id) => _fetchOrderDetail(token, id),
+        markRupture: (id, detailId) => _markRupture(token, id, detailId),
+        onAction: _onOrderAction,
+      ),
+    );
+    _onOrderAction();
   }
 
   @override
@@ -119,51 +161,154 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
   @override
   Widget build(BuildContext context) {
     final token = context.watch<AuthProvider>().token;
-    return Scaffold(
-      backgroundColor: GrocerTheme.background,
-      appBar: AppBar(
-        backgroundColor: GrocerTheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
+    // On évite un Scaffold/AppBar interne pour ne pas ajouter une hauteur
+    // supplémentaire (GrocerMainScreen a déjà un AppBar).
+    return SafeArea(
+      top: false,
+      child: Container(
+        color: GrocerTheme.background,
+        child: Column(
           children: [
-            const Icon(Icons.receipt_long_outlined, size: 22),
-            const SizedBox(width: 8),
-            const Text(
-              'Mes Commandes',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            Material(
+              color: GrocerTheme.primary,
+              elevation: 0,
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                tabs: _tabLabels.map((l) => Tab(text: l)).toList(),
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _OrdersList(
+                    token: token,
+                    statut: 'reçue',
+                    fetchOrders: () => _fetchOrders(token, 'reçue'),
+                    fetchDetail: (id) => _fetchOrderDetail(token, id),
+                    acceptOrder: (id) => _acceptOrder(token, id),
+                    refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+                    updateStatut: (id, s) => _updateStatut(token, id, s),
+                    markRupture: (id, detailId) =>
+                        _markRupture(token, id, detailId),
+                    onAction: _onOrderAction,
+                  ),
+                  _OrdersList(
+                    token: token,
+                    statut: 'prête',
+                    fetchOrders: () => _fetchOrders(token, 'prête'),
+                    fetchDetail: (id) => _fetchOrderDetail(token, id),
+                    acceptOrder: (id) => _acceptOrder(token, id),
+                    refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+                    updateStatut: (id, s) => _updateStatut(token, id, s),
+                    markRupture: (id, detailId) =>
+                        _markRupture(token, id, detailId),
+                    onAction: _onOrderAction,
+                  ),
+                  _HistoriqueWithFilter(
+                    token: token,
+                    fetchOrders: (statut) => _fetchOrders(token, statut),
+                    fetchDetail: (id) => _fetchOrderDetail(token, id),
+                    acceptOrder: (id) => _acceptOrder(token, id),
+                    refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+                    updateStatut: (id, s) => _updateStatut(token, id, s),
+                    markRupture: (id, detailId) =>
+                        _markRupture(token, id, detailId),
+                    onAction: _onOrderAction,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+      ),
+    );
+  }
+}
+
+class _HistoriqueWithFilter extends StatefulWidget {
+  final String? token;
+  final Future<List<GrocerOrder>> Function(String statut) fetchOrders;
+  final Future<GrocerOrderDetail?> Function(int) fetchDetail;
+  final Future<void> Function(int orderId) acceptOrder;
+  final Future<void> Function(int, String) refuseOrder;
+  final Future<void> Function(int, String) updateStatut;
+  final Future<void> Function(int, int) markRupture;
+  final VoidCallback onAction;
+
+  const _HistoriqueWithFilter({
+    required this.token,
+    required this.fetchOrders,
+    required this.fetchDetail,
+    required this.acceptOrder,
+    required this.refuseOrder,
+    required this.updateStatut,
+    required this.markRupture,
+    required this.onAction,
+  });
+
+  @override
+  State<_HistoriqueWithFilter> createState() => _HistoriqueWithFilterState();
+}
+
+class _HistoriqueWithFilterState extends State<_HistoriqueWithFilter> {
+  int _filterIndex = 0; // 0=tous, 1=refusee, 2=recuperer
+  static const List<String> _filterLabels = ['Tous', 'Refusée', 'Récupérées'];
+  static const List<String> _filterStatuts = ['historique', 'refusee', 'livrée'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Row(
+            children: List.generate(_filterLabels.length, (i) {
+              final selected = _filterIndex == i;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: FilterChip(
+                  label: Text(_filterLabels[i]),
+                  selected: selected,
+                  onSelected: (_) => setState(() {
+                    _filterIndex = i;
+                  }),
+                  backgroundColor: Colors.white,
+                  selectedColor: GrocerTheme.primary.withOpacity(0.2),
+                  checkmarkColor: GrocerTheme.primary,
+                  labelStyle: TextStyle(
+                    color: selected ? GrocerTheme.primary : GrocerTheme.textMuted,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              );
+            }),
           ),
-          tabs: _tabLabels.map((l) => Tab(text: l)).toList(),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _statuts.map((statut) => _OrdersList(
-          token: token,
-          statut: statut,
-          fetchOrders: () => _fetchOrders(token, statut),
-          fetchDetail: (id) => _fetchOrderDetail(token, id),
-          acceptOrder: (id) => _acceptOrder(token, id),
-          refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
-          updateStatut: (id, s) => _updateStatut(token, id, s),
-          markRupture: (id, detailId) => _markRupture(token, id, detailId),
-          onAction: _onOrderAction,
-        )).toList(),
-      ),
+        Expanded(
+          child: _OrdersList(
+            key: ValueKey(_filterStatuts[_filterIndex]),
+            token: widget.token,
+            statut: _filterStatuts[_filterIndex],
+            fetchOrders: () => widget.fetchOrders(_filterStatuts[_filterIndex]),
+            fetchDetail: widget.fetchDetail,
+            acceptOrder: widget.acceptOrder,
+            refuseOrder: widget.refuseOrder,
+            updateStatut: widget.updateStatut,
+            markRupture: widget.markRupture,
+            onAction: widget.onAction,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -180,6 +325,7 @@ class _OrdersList extends StatefulWidget {
   final VoidCallback onAction;
 
   const _OrdersList({
+    super.key,
     required this.token,
     required this.statut,
     required this.fetchOrders,
@@ -737,7 +883,7 @@ class _TicketSheetState extends State<_TicketSheet> {
                 ),
               ),
             ],
-            if (_hasRupture) ...[
+            if (_hasRupture && _detail.statut == 'reçue') ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),

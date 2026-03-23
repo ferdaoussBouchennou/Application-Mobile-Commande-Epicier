@@ -13,4 +13,11 @@ class GrocerTheme {
   static const Color cardBackground = Colors.white;
   static const Color trendPositive = Color(0xFF2D5016); // Vert comme primary
   static const Color trendNegative = Color(0xFFC0392B); // Rouge annulations
+
+  /// Surfaces dashboard (style apps e-commerce)
+  static const Color surfaceMuted = Color(0xFFF3EDE6);
+  static const Color primarySoft = Color(0xFFE4EDE0);
+  static const Color accentBlue = Color(0xFF1565C0);
+  static const Color accentAmber = Color(0xFFE65100);
+  static const Color accentPurple = Color(0xFF6A1B9A);
 }
