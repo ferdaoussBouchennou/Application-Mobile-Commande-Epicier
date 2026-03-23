@@ -361,11 +361,27 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
 
   Widget _buildDisputeCard(dynamic d) {
     final idNum = d['id'];
-    final description = d['description'];
-    final clientName =
+    final type = (d['type']?.toString().toUpperCase() ?? 'COMMANDE').trim();
+    final isAvis = type == 'AVIS';
+    final description = (d['description'] ?? '').toString();
+    final clientFromReclamation =
         '${d['client']?['prenom'] ?? ''} ${d['client']?['nom'] ?? ''}'.trim();
-    final shopName = d['commande']?['epicier']?['nom_boutique'] ?? 'Inconnu';
-    final amount = '${d['commande']?['montant_total'] ?? '0'} DH';
+    final clientFromAvis =
+        '${d['avis']?['client']?['prenom'] ?? ''} ${d['avis']?['client']?['nom'] ?? ''}'.trim();
+    final clientName = isAvis
+        ? (clientFromAvis.isNotEmpty ? clientFromAvis : clientFromReclamation)
+        : clientFromReclamation;
+    final shopName = isAvis
+        ? (d['avis']?['Store']?['nom_boutique'] ??
+            d['avis']?['store']?['nom_boutique'] ??
+            'Inconnu')
+        : (d['commande']?['epicier']?['nom_boutique'] ?? 'Inconnu');
+    final amount = isAvis
+        ? ''
+        : '${d['commande']?['montant_total'] ?? '0'} DH';
+    final avisNote = d['avis']?['note'];
+    final avisCommentaire = (d['avis']?['commentaire'] ?? '').toString();
+    final motif = (d['motif'] ?? '').toString();
     final createdAt = d['date_creation'] != null
         ? DateTime.parse(d['date_creation'])
         : DateTime.now();
@@ -449,9 +465,39 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            description,
+            isAvis ? 'Signalement avis' : description,
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
+          if (isAvis) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.star_rounded, size: 16, color: Color(0xFFE8B923)),
+                const SizedBox(width: 4),
+                Text(
+                  'Note: ${avisNote ?? '-'}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Motif: ${motif.isNotEmpty ? motif : '-'}',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Description: ${description.isNotEmpty ? description : '-'}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            if (avisCommentaire.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Avis client: $avisCommentaire',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ],
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -486,14 +532,24 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                amount,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D5016),
+              if (!isAvis)
+                Text(
+                  amount,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D5016),
+                  ),
+                )
+              else
+                Text(
+                  'Type: AVIS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
               Text(
                 timeStr,
                 style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
