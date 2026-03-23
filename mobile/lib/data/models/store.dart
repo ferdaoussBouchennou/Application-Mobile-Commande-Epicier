@@ -97,6 +97,13 @@ class Store {
     return defaultValue;
   }
 
+  /// Vitrine épicerie (`epiciers.image_url`) — chaîne vide traitée comme absent.
+  static String? _optionalImagePath(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
   factory Store.fromJson(Map<String, dynamic> json) {
     var rawDispos = json['disponibilites'] as List?;
     List<Availability>? dispos = rawDispos != null 
@@ -115,7 +122,7 @@ class Store {
       adresse: json['adresse'],
       telephone: json['telephone'],
       description: json['description'],
-      imageUrl: json['image_url'],
+      imageUrl: _optionalImagePath(json['image_url']),
       rating: double.tryParse(json['rating'].toString()) ?? 0.0,
       latitude: json['latitude'] != null ? double.tryParse(json['latitude'].toString()) : null,
       longitude: json['longitude'] != null ? double.tryParse(json['longitude'].toString()) : null,

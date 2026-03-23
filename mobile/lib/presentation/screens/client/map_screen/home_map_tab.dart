@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../providers/store_provider.dart';
+import '../../../../core/constants/api_constants.dart';
 import '../store_details_screen.dart';
 import '../../../../screens/auth/welcome_screen.dart';
 import '../../../../providers/auth_provider.dart';
@@ -479,10 +480,24 @@ class _HomeMapTabState extends State<HomeMapTab> {
                                           tag: 'store-image-${store.id}',
                                           child: ClipRRect(
                                             borderRadius: BorderRadius.circular(14),
-                                            child: store.imageUrl != null 
-                                              ? Image.network(store.imageUrl!, width: 75, height: 75, fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) => Container(color: Colors.grey[100], child: const Icon(Icons.store, color: Colors.grey)),)
-                                              : Container(color: Colors.grey[100], width: 75, height: 75, child: const Icon(Icons.store, color: Colors.grey)),
+                                            child: store.imageUrl != null &&
+                                                    store.imageUrl!.trim().isNotEmpty
+                                              ? Image.network(
+                                                  ApiConstants.formatImageUrl(store.imageUrl),
+                                                  width: 75,
+                                                  height: 75,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Container(
+                                                    color: Colors.grey[100],
+                                                    child: const Icon(Icons.store, color: Colors.grey),
+                                                  ),
+                                                )
+                                              : Container(
+                                                  color: Colors.grey[100],
+                                                  width: 75,
+                                                  height: 75,
+                                                  child: const Icon(Icons.store, color: Colors.grey),
+                                                ),
                                           ),
                                         ),
                                         const SizedBox(width: 12),
