@@ -70,6 +70,7 @@ class ClientOrderLine {
   final double totalLigne;
   final bool rupture;
   final bool enAttenteAcceptationClient;
+  final String? imagePrincipale;
 
   ClientOrderLine({
     required this.detailId,
@@ -80,6 +81,7 @@ class ClientOrderLine {
     required this.totalLigne,
     this.rupture = false,
     this.enAttenteAcceptationClient = false,
+    this.imagePrincipale,
   });
 
   static ClientOrderLine fromJson(Map<String, dynamic> json) {
@@ -92,6 +94,7 @@ class ClientOrderLine {
       totalLigne: double.tryParse(json['total_ligne']?.toString() ?? '0') ?? 0,
       rupture: json['rupture'] == true,
       enAttenteAcceptationClient: json['en_attente_acceptation_client'] == true,
+      imagePrincipale: json['image_principale']?.toString(),
     );
   }
 }
