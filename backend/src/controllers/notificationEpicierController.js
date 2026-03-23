@@ -3,7 +3,7 @@ const sequelize = require('../config/db');
 
 exports.getNotifications = async (req, res) => {
   try {
-    const utilisateurId = req.user.id;
+    const clientId = req.user.id;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(50, Math.max(10, parseInt(req.query.limit, 10) || 20));
     const offset = (page - 1) * limit;
@@ -11,8 +11,8 @@ exports.getNotifications = async (req, res) => {
     const onlyUnread = lueParam === '0' || lueParam === 'false';
     const onlyRead = lueParam === '1' || lueParam === 'true';
 
-    let whereClause = 'WHERE utilisateur_id = :utilisateurId';
-    const replacements = { utilisateurId };
+    let whereClause = 'WHERE client_id = :clientId';
+    const replacements = { clientId };
     if (onlyUnread) {
       whereClause += ' AND lue = 0';
     } else if (onlyRead) {
@@ -20,7 +20,7 @@ exports.getNotifications = async (req, res) => {
     }
 
     const notifications = await sequelize.query(
-      `SELECT id, utilisateur_id, message, lue, date_envoi FROM notifications ${whereClause} ORDER BY date_envoi DESC LIMIT :limit OFFSET :offset`,
+      `SELECT id, client_id, message, lue, date_envoi FROM notifications ${whereClause} ORDER BY date_envoi DESC LIMIT :limit OFFSET :offset`,
       { replacements: { ...replacements, limit, offset }, type: QueryTypes.SELECT }
     );
 
@@ -43,10 +43,10 @@ exports.getNotifications = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const utilisateurId = req.user.id;
+    const clientId = req.user.id;
     await sequelize.query(
-      'UPDATE notifications SET lue = 1 WHERE id = :id AND utilisateur_id = :utilisateurId',
-      { replacements: { id, utilisateurId }, type: QueryTypes.UPDATE }
+      'UPDATE notifications SET lue = 1 WHERE id = :id AND client_id = :clientId',
+      { replacements: { id, clientId }, type: QueryTypes.UPDATE }
     );
     res.json({ success: true });
   } catch (err) {
@@ -57,10 +57,10 @@ exports.markAsRead = async (req, res) => {
 
 exports.markAllAsRead = async (req, res) => {
   try {
-    const utilisateurId = req.user.id;
+    const clientId = req.user.id;
     await sequelize.query(
-      'UPDATE notifications SET lue = 1 WHERE utilisateur_id = :utilisateurId',
-      { replacements: { utilisateurId }, type: QueryTypes.UPDATE }
+      'UPDATE notifications SET lue = 1 WHERE client_id = :clientId',
+      { replacements: { clientId }, type: QueryTypes.UPDATE }
     );
     res.json({ success: true });
   } catch (err) {
@@ -71,10 +71,10 @@ exports.markAllAsRead = async (req, res) => {
 
 exports.getUnreadCount = async (req, res) => {
   try {
-    const utilisateurId = req.user.id;
+    const clientId = req.user.id;
     const [row] = await sequelize.query(
-      'SELECT COUNT(*) as count FROM notifications WHERE utilisateur_id = :utilisateurId AND lue = 0',
-      { replacements: { utilisateurId }, type: QueryTypes.SELECT }
+      'SELECT COUNT(*) as count FROM notifications WHERE client_id = :clientId AND lue = 0',
+      { replacements: { clientId }, type: QueryTypes.SELECT }
     );
     res.json({ count: row?.count ?? 0 });
   } catch (err) {

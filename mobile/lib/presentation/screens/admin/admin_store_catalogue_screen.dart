@@ -29,6 +29,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
   List<model.Category> _allCategories = [];    // ALL platform categories
   int? _selectedCategoryId;
   bool _showCategories = true;
+  bool _showInactive = false;
   bool _isLoading = true;
 
   @override
@@ -62,6 +63,7 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
           // Only show categories that have at least one product
           _categories = data
               .map((json) => model.Category.fromJson(json))
+              .where((c) => c.productCount > 0)
               .toList();
           _allCategories = allData.map((json) => model.Category.fromJson(json)).toList();
         });
@@ -87,6 +89,9 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       }
       if (query.isNotEmpty) {
         url += '?${query.substring(0, query.length - 1)}';
+        url += '&includeInactive=$_showInactive';
+      } else {
+        url += '?includeInactive=$_showInactive';
       }
 
       final List<dynamic> data = await _apiService.get(url, token: token);
@@ -124,6 +129,18 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
       }
+    }
+  }
+
+  Future<void> _activateProduct(int productId) async {
+    final token = Provider.of<AuthProvider>(context, listen: false).token;
+    try {
+      await _apiService.patch('/admin/products/$productId/activate', {
+        'epicier_id': widget.storeOwner.store?['id']
+      }, token: token);
+      _fetchProducts();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
     }
   }
 
@@ -602,9 +619,29 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
   }
 
   Widget _buildTitleRow() {
-    return const Text(
-      'Produits',
-      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Produits',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D1A0E), fontFamily: 'Outfit'),
+        ),
+        Row(
+          children: [
+            const Text('Archives', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            Switch(
+              value: _showInactive,
+              activeColor: const Color(0xFF2D5016),
+              onChanged: (val) {
+                setState(() {
+                  _showInactive = val;
+                });
+                _fetchProducts();
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -672,9 +709,14 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Unité: ${product.description ?? "N/A"}', // Example, normally unit/type
+                  'Unité: ${product.unite ?? ""} ${product.typeUnite ?? ""}',
                   style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                 ),
+                if (product.stock > 0)
+                  Text(
+                    'Stock: ${product.stock}',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                  ),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -728,7 +770,10 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                     });
                   }),
                   const SizedBox(width: 8),
-                  _buildIconButton(Icons.delete_outline, const Color(0xFFFFEBEE), Colors.red, () => _deleteProduct(product.id)),
+                  if (product.isRetiredMine)
+                    _buildIconButton(Icons.restore_from_trash_outlined, const Color(0xFFE3F2FD), Colors.blue, () => _activateProduct(product.id))
+                  else
+                    _buildIconButton(Icons.delete_outline, const Color(0xFFFFEBEE), Colors.red, () => _deleteProduct(product.id)),
                 ],
               ),
             ],

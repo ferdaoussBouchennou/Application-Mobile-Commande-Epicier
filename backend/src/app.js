@@ -70,13 +70,17 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-sequelize.sync({ alter: { drop: false } }).then(() => {
-  console.log('Base de données synchronisée.');
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT} (Listening on all interfaces)`);
+sequelize.query('SET FOREIGN_KEY_CHECKS = 0')
+  .then(() => sequelize.query('DROP TABLE IF EXISTS notifications'))
+  .then(() => sequelize.query('SET FOREIGN_KEY_CHECKS = 1'))
+  .then(() => sequelize.sync({ alter: { drop: false } }))
+  .then(() => {
+    console.log('Base de données synchronisée (notifications réinitialisées).');
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  }).catch((error) => {
+    console.error('Erreur lors de la synchronisation:', error);
   });
-}).catch((error) => {
-  console.error('Erreur lors de la synchronisation de la base de données:', error);
-});
 
 module.exports = app;

@@ -39,6 +39,11 @@ const EpicierProduct = sequelize.define('EpicierProduct', {
     allowNull: false,
     defaultValue: true,
   },
+  stock: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
 }, {
   tableName: 'epicier_produits',
   timestamps: true,

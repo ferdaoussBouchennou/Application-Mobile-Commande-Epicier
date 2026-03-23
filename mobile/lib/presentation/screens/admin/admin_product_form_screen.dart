@@ -44,9 +44,9 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.product?.nom);
     _priceController = TextEditingController(text: widget.product?.prix.toString());
-    _stockController = TextEditingController(text: '24'); // Example default
-    _unitController = TextEditingController(text: '1 Litre'); // Example default
-    _unitTypeController = TextEditingController(text: 'Bouteille'); // Example default
+    _stockController = TextEditingController(text: widget.product?.stock.toString() ?? '0'); 
+    _unitController = TextEditingController(text: widget.product?.unite ?? ''); 
+    _unitTypeController = TextEditingController(text: widget.product?.typeUnite ?? ''); 
     _descriptionController = TextEditingController(text: widget.product?.description);
     _selectedCategoryId = widget.product?.categoryId ?? widget.initialCategoryId;
     _isVisible = widget.product?.isRetiredMine == false;
@@ -94,6 +94,9 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
         'categorie_id': _selectedCategoryId,
         'epicier_id': widget.storeOwner.store?['id'],
         'is_active': _isVisible,
+        'stock': int.tryParse(_stockController.text) ?? 0,
+        'unite': _unitController.text,
+        'type_unite': _unitTypeController.text,
       };
 
       if (token == null) throw Exception('Non authentifié');
