@@ -402,7 +402,7 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, description, image_url } = req.body;
+    const { nom, description } = req.body;
     const category = await Category.findByPk(id);
     if (!category) {
       return res.status(404).json({ message: "Catégorie non trouvée." });
@@ -419,7 +419,6 @@ exports.updateCategory = async (req, res) => {
       category.nom = nom.trim();
     }
     if (description !== undefined) category.description = description?.trim();
-    if (image_url !== undefined) category.image_url = image_url?.trim();
 
     await category.save();
     res.json(category);
