@@ -2,6 +2,8 @@ const path = require('path');
 const fs = require('fs');
 const Reclamation = require('../models/Reclamation');
 const Order = require('../models/Order');
+const User = require('../models/User');
+const { notifyAdmins } = require('../utils/notification');
 
 /** Sanitise une chaîne pour en faire un nom de fichier. */
 function sanitizeName(str) {
@@ -42,6 +44,17 @@ exports.createReclamation = async (req, res) => {
       photo: photoPath,
       statut: 'Ouverte'
     });
+
+    // Notifier les admins
+    try {
+      const client = await User.findByPk(client_id);
+      notifyAdmins('Nouveau Litige', `Un client (${client?.prenom} ${client?.nom}) a ouvert une réclamation : ${motif}`, { 
+        type: 'NEW_DISPUTE',
+        reclamation_id: reclamation.id.toString()
+      });
+    } catch (err) {
+      console.error('Erreur notification admin litige:', err);
+    }
 
     res.status(201).json(reclamation);
   } catch (error) {

@@ -4,6 +4,7 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Store = require('../models/Store');
 const { generateOTP, sendOTP } = require('../utils/emailService');
+const { notifyAdmins } = require('../utils/notification');
 const path = require('path');
 const fs = require('fs');
 
@@ -117,6 +118,9 @@ const authController = {
 
       // Envoyer l'email de vérification
       await sendOTP(email, otp, 'verify');
+
+      // Notifier les admins
+      notifyAdmins('Nouvelle Inscription', `Un nouvel épicier (${prenom} ${nom}) est en attente de validation.`, { type: 'NEW_REGISTRATION' });
 
       res.status(201).json({
         message: 'Epicier créé avec succès. Vérifiez votre email.',
@@ -442,6 +446,9 @@ const authController = {
             statut_inscription: 'EN_ATTENTE',
             is_active: true
           });
+
+          // Notifier les admins
+          notifyAdmins('Nouvelle Inscription (Google)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Google et attend sa validation.`, { type: 'NEW_REGISTRATION' });
         } else {
           user = await User.create({
             nom: family_name || name || 'Inconnu',
@@ -588,6 +595,9 @@ const authController = {
             statut_inscription: 'EN_ATTENTE',
             is_active: true
           });
+
+          // Notifier les admins
+          notifyAdmins('Nouvelle Inscription (Facebook)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Facebook et attend sa validation.`, { type: 'NEW_REGISTRATION' });
         } else {
           user = await User.create({
             nom: last_name || name || 'Inconnu',
@@ -727,6 +737,9 @@ const authController = {
             telephone: telephone || '',
             statut_inscription: 'EN_ATTENTE'
           });
+
+          // Notifier les admins
+          notifyAdmins('Nouvelle Inscription (Instagram)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Instagram et attend sa validation.`, { type: 'NEW_REGISTRATION' });
         } else {
           user = await User.create({
             nom,

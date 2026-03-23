@@ -13,6 +13,8 @@ import 'admin_disputes_screen.dart';
 import 'admin_store_catalogue_screen.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
+import 'admin_notifications_screen.dart';
+import '../../../providers/notification_provider.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -47,6 +49,9 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
     await Future.wait([
       _fetchStats(),
       _fetchUsers(),
+      Provider.of<NotificationProvider>(context, listen: false).fetchNotifications(
+        Provider.of<AuthProvider>(context, listen: false).token
+      ),
     ]);
     if (mounted) setState(() => _isLoading = false);
   }
@@ -217,10 +222,48 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
                     child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
                   ),
                   const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.orange, size: 26),
-                    onPressed: () {},
-                    visualDensity: VisualDensity.compact,
+                  Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_none_rounded, color: Colors.orange, size: 26),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AdminNotificationsScreen()),
+                          );
+                        },
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      Consumer<NotificationProvider>(
+                        builder: (context, provider, _) {
+                          if (provider.unreadCount == 0) return const SizedBox.shrink();
+                          return Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 14,
+                                minHeight: 14,
+                              ),
+                              child: Text(
+                                '${provider.unreadCount}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 8),
                   IconButton(

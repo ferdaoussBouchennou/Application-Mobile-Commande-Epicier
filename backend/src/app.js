@@ -22,7 +22,11 @@ const reclamationRoutes = require('./routes/reclamationRoutes');
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(
   helmet({
     crossOriginResourcePolicy: false,

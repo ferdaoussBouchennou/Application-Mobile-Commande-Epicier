@@ -10,7 +10,13 @@ class ApiService {
 
   Map<String, String> _headers({String? token, bool omitContentType = false}) {
     final map = <String, String>{};
-    if (token != null) map['Authorization'] = 'Bearer $token';
+    if (token != null) {
+      if (token.startsWith('Bearer ')) {
+        map['Authorization'] = token;
+      } else {
+        map['Authorization'] = 'Bearer $token';
+      }
+    }
     if (!omitContentType) map['Content-Type'] = 'application/json';
     return map;
   }
