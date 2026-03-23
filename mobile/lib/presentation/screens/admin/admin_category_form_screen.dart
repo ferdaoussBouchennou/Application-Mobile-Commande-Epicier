@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:typed_data';
-import 'package:image_picker/image_picker.dart';
 import '../../../data/models/category.dart';
 import '../../../data/services/api_service.dart';
-import '../../../core/constants/api_constants.dart';
 import '../../../providers/auth_provider.dart';
-import 'admin_category_products_screen.dart';
 
 class AdminCategoryFormScreen extends StatefulWidget {
   final Category? category;
@@ -20,16 +16,11 @@ class AdminCategoryFormScreen extends StatefulWidget {
 class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
-  final ImagePicker _picker = ImagePicker();
 
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  late TextEditingController _orderController;
   
   bool _isActive = true;
-  String? _imageUrl;
-  Uint8List? _imageBytes;
-  XFile? _pickedFile;
   bool _isSubmitting = false;
 
   @override
@@ -37,20 +28,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.category?.nom);
     _descriptionController = TextEditingController(text: widget.category?.description);
-    _orderController = TextEditingController(text: widget.category?.displayOrder.toString() ?? '0');
     _isActive = widget.category?.isActive ?? true;
-    _imageUrl = widget.category?.imageUrl;
-  }
-
-  Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        _pickedFile = image;
-        _imageBytes = bytes;
-      });
-    }
   }
 
   Future<void> _submit() async {
@@ -61,22 +39,9 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
       final token = Provider.of<AuthProvider>(context, listen: false).token;
       if (token == null) throw Exception('Non authentifié');
 
-      String? finalImageUrl = _imageUrl;
-
-      // Upload icon if picked
-      if (_imageBytes != null) {
-        finalImageUrl = await _apiService.uploadCategoryIconAdmin(
-          token: token,
-          bytes: _imageBytes!,
-          filename: _pickedFile?.name ?? 'category_${DateTime.now().millisecondsSinceEpoch}.png',
-        );
-      }
-
       final data = {
         'nom': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
-        'image_url': finalImageUrl,
-        'display_order': int.tryParse(_orderController.text) ?? 0,
         'is_active': _isActive,
       };
 
@@ -91,36 +56,6 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  Future<void> _deleteCategory() async {
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer la catégorie'),
-        content: const Text('Voulez-vous vraiment supprimer cette catégorie ? Tous les produits associés seront désactivés.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true), 
-            child: const Text('Supprimer', style: TextStyle(color: Colors.red))
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      setState(() => _isSubmitting = true);
-      try {
-        final token = Provider.of<AuthProvider>(context, listen: false).token;
-        await _apiService.delete('/admin/categories/${widget.category!.id}', token: token);
-        if (mounted) Navigator.pop(context, true);
-      } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-      } finally {
-        if (mounted) setState(() => _isSubmitting = false);
-      }
     }
   }
 
@@ -142,23 +77,15 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      _buildIconPicker(),
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 10),
                       _buildTextField('Nom de la catégorie *', _nameController, isRequired: true),
                       const SizedBox(height: 15),
                       _buildTextField('Description', _descriptionController, maxLines: 3),
                       const SizedBox(height: 15),
-                      _buildTextField('Ordre d\'affichage', _orderController, keyboardType: TextInputType.number),
-                      const SizedBox(height: 25),
-                      if (widget.category != null) _buildStatsSection(),
                       const SizedBox(height: 20),
                       _buildVisibilityToggle(),
                       const SizedBox(height: 30),
                       _buildActionButtons(primaryColor),
-                      if (widget.category != null) ...[
-                        const SizedBox(height: 20),
-                        _buildDeleteButton(),
-                      ],
                     ],
                   ),
                 ),
@@ -208,34 +135,6 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
     );
   }
 
-  Widget _buildIconPicker() {
-    return Column(
-      children: [
-        Container(
-          width: 120,
-          height: 120,
-          decoration: BoxDecoration(
-            color: const Color(0xFFEFE6D5),
-            borderRadius: BorderRadius.circular(30),
-            image: _imageBytes != null
-              ? DecorationImage(image: MemoryImage(_imageBytes!), fit: BoxFit.cover)
-              : _imageUrl != null
-                ? DecorationImage(image: NetworkImage('${ApiConstants.baseUrl}$_imageUrl'), fit: BoxFit.cover)
-                : null,
-          ),
-          child: (_imageBytes == null && _imageUrl == null)
-            ? const Icon(Icons.category_outlined, size: 50, color: Color(0xFF2D5016))
-            : null,
-        ),
-        const SizedBox(height: 12),
-        TextButton(
-          onPressed: _pickImage,
-          child: const Text('Changer l\'icône', style: TextStyle(color: Color(0xFFB99D6B), fontWeight: FontWeight.bold, fontSize: 16)),
-        ),
-      ],
-    );
-  }
-
   Widget _buildTextField(String label, TextEditingController controller, {bool isRequired = false, int maxLines = 1, TextInputType? keyboardType}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,68 +160,14 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
     );
   }
 
-  Widget _buildStatsSection() {
-    return InkWell(
-      onTap: () {
-        if (widget.category != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AdminCategoryProductsScreen(
-                categoryId: widget.category!.id,
-                categoryName: widget.category!.nom,
-              ),
-            ),
-          );
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5EDDA).withOpacity(0.5),
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Image.asset('assets/images/shop_icon.png', width: 20, errorBuilder: (_, __, ___) => const Icon(Icons.bar_chart, size: 20)),
-                const SizedBox(width: 8),
-                const Text('Statistiques', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(widget.category?.productCount.toString() ?? '0', 'Produits'),
-                _buildStatItem(widget.category?.storeCount.toString() ?? '0', 'Épiceries'),
-                _buildStatItem(widget.category?.ruptureCount.toString() ?? '0', 'Ruptures'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String count, String label) {
-    return Column(
-      children: [
-        Text(count, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFB99D6B))),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      ],
-    );
-  }
-
   Widget _buildVisibilityToggle() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Catégorie visible', style: TextStyle(fontSize: 16, color: Color(0xFF2D1A0E))),
+        const Text(
+          'Catégorie visible (réactiver/désactiver)',
+          style: TextStyle(fontSize: 16, color: Color(0xFF2D1A0E)),
+        ),
         Switch(
           value: _isActive,
           activeColor: const Color(0xFF2D5016),
@@ -365,11 +210,4 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
     );
   }
 
-  Widget _buildDeleteButton() {
-    return TextButton.icon(
-      onPressed: _isSubmitting ? null : _deleteCategory,
-      icon: const Icon(Icons.delete_outline, color: Color(0xFFE57373)),
-      label: const Text('Supprimer cette catégorie', style: TextStyle(color: Color(0xFFE57373), fontWeight: FontWeight.bold, fontSize: 16)),
-    );
-  }
 }
