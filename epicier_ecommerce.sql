@@ -3,6 +3,7 @@
 -- Aligné sur les modèles Sequelize (backend/src/models).
 --
 -- Schéma cible (pas de colonnes fantômes) :
+--   Inscription épicier : statut_inscription uniquement sur epiciers (pas sur utilisateurs).
 --   categories     : id, nom, description (pas display_order, is_active, image_url)
 --   produits       : id, nom, description, categorie_id, image_principale, date_ajout, date_modif
 --                    (pas prix sur produits — le prix est dans epicier_produits.prix ; pas unite / type_unite)
