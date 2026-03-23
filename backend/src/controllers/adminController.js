@@ -148,8 +148,18 @@ exports.updateUserStatus = async (req, res) => {
     if (statut_inscription && user.role === "EPICIER") {
       const store = await Store.findOne({ where: { utilisateur_id: id } });
       if (store) {
+        const previousStatus = store.statut_inscription;
         store.statut_inscription = statut_inscription;
         await store.save();
+
+        if (previousStatus !== statut_inscription) {
+          const { sendEpicierStatusEmail } = require("../utils/emailService");
+          if (statut_inscription === "ACCEPTE" || statut_inscription === "COMPLETE") {
+            await sendEpicierStatusEmail(user.email, user.nom, "ACCEPTE");
+          } else if (statut_inscription === "REFUSE") {
+            await sendEpicierStatusEmail(user.email, user.nom, "REFUSE");
+          }
+        }
       }
     }
 
