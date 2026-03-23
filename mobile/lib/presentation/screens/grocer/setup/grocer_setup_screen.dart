@@ -391,8 +391,12 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
 
       await _apiService.put(widget.submitEndpoint, body, token: token);
 
-      if (!widget.isEditing) {
-        auth.markSetupComplete();
+      try {
+        await auth.refreshSession();
+      } catch (_) {
+        if (!widget.isEditing) {
+          auth.markSetupComplete();
+        }
       }
 
       if (mounted) {
