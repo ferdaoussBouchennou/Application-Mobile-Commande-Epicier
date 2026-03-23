@@ -70,10 +70,53 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
+/**
+ * Sequelize sync({ alter }) ajoute/aligne les colonnes des modèles, mais ne supprime en général
+ * pas les colonnes déjà présentes en base qui ne sont plus dans le modèle. D'où des champs
+ * « fantômes » (ex. unite, type_unite, prix sur produits — le prix vit dans epicier_produits).
+ */
+async function dropLegacyProduitColumnsIfPresent() {
+  if (sequelize.getDialect() !== 'mysql') return;
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'produits'
+       AND COLUMN_NAME IN ('unite', 'type_unite', 'prix')`,
+    );
+    const names = (rows || []).map((r) => r.COLUMN_NAME || r.column_name).filter(Boolean);
+    if (names.length === 0) return;
+    const dropSql = names.map((n) => `DROP COLUMN \`${n}\``).join(', ');
+    await sequelize.query(`ALTER TABLE produits ${dropSql}`);
+    console.log(`Colonnes obsolètes retirées (produits): ${names.join(', ')}`);
+  } catch (e) {
+    console.warn('Nettoyage colonnes produits (legacy):', e.message);
+  }
+}
+
+async function dropLegacyCategoryColumnsIfPresent() {
+  if (sequelize.getDialect() !== 'mysql') return;
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'categories'
+       AND COLUMN_NAME IN ('display_order', 'is_active', 'image_url')`,
+    );
+    const names = (rows || []).map((r) => r.COLUMN_NAME || r.column_name).filter(Boolean);
+    if (names.length === 0) return;
+    const dropSql = names.map((n) => `DROP COLUMN \`${n}\``).join(', ');
+    await sequelize.query(`ALTER TABLE categories ${dropSql}`);
+    console.log(`Colonnes obsolètes retirées (categories): ${names.join(', ')}`);
+  } catch (e) {
+    console.warn('Nettoyage colonnes categories (legacy):', e.message);
+  }
+}
+
 sequelize.query('SET FOREIGN_KEY_CHECKS = 0')
   .then(() => sequelize.query('DROP TABLE IF EXISTS notifications'))
   .then(() => sequelize.query('SET FOREIGN_KEY_CHECKS = 1'))
   .then(() => sequelize.sync({ alter: { drop: false } }))
+  .then(() => dropLegacyProduitColumnsIfPresent())
+  .then(() => dropLegacyCategoryColumnsIfPresent())
   .then(() => {
     console.log('Base de données synchronisée (notifications réinitialisées).');
     app.listen(PORT, '0.0.0.0', () => {
