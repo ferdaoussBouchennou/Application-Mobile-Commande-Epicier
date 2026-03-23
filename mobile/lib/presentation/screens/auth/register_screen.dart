@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../client/map_screen/map_screen.dart';
 import '../grocer/grocer_main_screen.dart';
+import '../grocer/setup/grocer_setup_screen.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:file_picker/file_picker.dart';
@@ -29,6 +30,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   PlatformFile? _docFile;
   
   bool _obscureText = true;
+
+  void _navigateEpicierAfterOAuth(AuthProvider auth) {
+    if (!mounted) return;
+    if (auth.needsSetup) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const GrocerSetupScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const GrocerMainScreen()),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -489,15 +505,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 docFilename: _docFile?.name,
                               );
                               if (success && mounted) {
-                                // Redirection dynamique basée sur le rôle retourné par le backend
                                 final role = authProvider.user?['role'] as String?;
-                                final isAcceptedEpicier = role == 'EPICIER';
-                                
-                                if (isAcceptedEpicier) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => GrocerMainScreen()),
-                                  );
+                                if (role == 'EPICIER') {
+                                  _navigateEpicierAfterOAuth(authProvider);
                                 } else {
                                   Navigator.pushReplacement(
                                     context,
@@ -571,7 +581,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 if (role == 'ADMIN') {
                                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen())); // Redirect to login for admin validation
                                 } else if (role == 'EPICIER') {
-                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GrocerMainScreen()));
+                                  _navigateEpicierAfterOAuth(authProvider);
                                 } else {
                                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MapScreen()));
                                 }
@@ -643,7 +653,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 if (role == 'ADMIN') {
                                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
                                 } else if (role == 'EPICIER') {
-                                  Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const GrocerMainScreen()));
+                                  _navigateEpicierAfterOAuth(authProvider);
                                 } else {
                                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MapScreen()));
                                 }

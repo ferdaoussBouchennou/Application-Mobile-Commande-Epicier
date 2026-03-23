@@ -58,6 +58,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Recharge profil utilisateur et boutique (ex. après complétion de l’inscription épicier).
+  Future<void> refreshSession() async {
+    if (_token == null) return;
+    final response = await _apiService.get('/auth/me', token: _token);
+    _user = response['user'];
+    _store = response['store'];
+    notifyListeners();
+  }
+
   Future<bool> login(String email, String mdp) async {
     _setLoading(true);
     try {
@@ -380,10 +389,9 @@ class AuthProvider with ChangeNotifier {
   }
 
   void markSetupComplete() {
-    if (_store != null) {
-      _store!['statut_inscription'] = 'COMPLETE';
-      notifyListeners();
-    }
+    _store ??= <String, dynamic>{};
+    _store!['statut_inscription'] = 'COMPLETE';
+    notifyListeners();
   }
 
   void logout() async {
