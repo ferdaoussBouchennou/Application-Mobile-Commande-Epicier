@@ -6,7 +6,7 @@ const Store = require("../models/Store");
 const Category = require("../models/Category");
 const Product = require("../models/Product");
 const EpicierProduct = require("../models/EpicierProduct");
-const Order = require("../models/Order");
+const Commande = require("../models/Commande");
 const Avis = require("../models/Avis");
 const Reclamation = require("../models/Reclamation");
 const { Op } = require("sequelize");
@@ -303,12 +303,7 @@ exports.getCategories = async (req, res) => {
   try {
     const { storeId } = req.query;
     const categories = await Category.findAll({
-      // En espace admin on doit aussi afficher les catégories inactives
-      // pour pouvoir les activer/désactiver depuis l'UI.
-      order: [
-        ["display_order", "ASC"],
-        ["nom", "ASC"],
-      ],
+      order: [["nom", "ASC"]],
     });
     const list = await Promise.all(
       categories.map(async (c) => {
@@ -382,7 +377,7 @@ exports.getCategories = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
   try {
-    const { nom, description, image_url, display_order } = req.body;
+    const { nom, description } = req.body;
     if (!nom || typeof nom !== "string" || !nom.trim()) {
       return res
         .status(400)
@@ -397,8 +392,6 @@ exports.createCategory = async (req, res) => {
     const category = await Category.create({
       nom: nom.trim(),
       description: description?.trim(),
-      image_url: image_url?.trim(),
-      display_order: display_order || 0,
     });
     res.status(201).json(category);
   } catch (error) {
@@ -409,7 +402,7 @@ exports.createCategory = async (req, res) => {
 exports.updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, description, image_url, display_order, is_active } = req.body;
+    const { nom, description, image_url } = req.body;
     const category = await Category.findByPk(id);
     if (!category) {
       return res.status(404).json({ message: "Catégorie non trouvée." });
@@ -427,8 +420,6 @@ exports.updateCategory = async (req, res) => {
     }
     if (description !== undefined) category.description = description?.trim();
     if (image_url !== undefined) category.image_url = image_url?.trim();
-    if (display_order !== undefined) category.display_order = display_order;
-    if (is_active !== undefined) category.is_active = is_active;
 
     await category.save();
     res.json(category);
@@ -454,10 +445,8 @@ exports.deleteCategory = async (req, res) => {
         { is_active: false },
         { where: { produit_id: productIds } },
       );
-      category.is_active = false;
-      await category.save();
       return res.json({
-        message: `Catégorie désactivée : ${productCount} produit(s) ont été retirés du catalogue pour tous les épiciers.`,
+        message: `${productCount} produit(s) de cette catégorie ont été retirés du catalogue pour tous les épiciers. La catégorie n’a pas été supprimée (des produits y sont encore rattachés).`,
         deactivated: true,
         productCount,
       });
@@ -465,39 +454,6 @@ exports.deleteCategory = async (req, res) => {
     await category.destroy();
     res.json({ message: "Catégorie supprimée." });
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.activateCategory = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const category = await Category.findByPk(id);
-    if (!category) {
-      return res.status(404).json({ message: "Catégorie non trouvée." });
-    }
-    category.is_active = true;
-    await category.save();
-    res.json({ message: "Catégorie réactivée." });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.uploadCategoryIcon = async (req, res) => {
-  try {
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).json({ message: "Aucun fichier image envoyé." });
-    }
-    const dir = path.join(__dirname, "..", "..", "uploads", "categories");
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const ext = path.extname(req.file.originalname) || ".png";
-    const filename = `cat-${Date.now()}${ext}`;
-    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
-    const relativePath = `uploads/categories/${filename}`;
-    res.status(200).json({ image_url: relativePath });
-  } catch (error) {
-    console.error("Error uploadCategoryIcon:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -937,13 +893,13 @@ exports.getOrderStats = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const totalToday = await Order.count({
+    const totalToday = await Commande.count({
       where: {
         date_commande: { [Op.gte]: today },
       },
     });
 
-    const ongoingCount = await Order.count({
+    const ongoingCount = await Commande.count({
       where: {
         statut: { [Op.in]: ["reçue", "prête"] },
       },
@@ -965,7 +921,7 @@ exports.getOrderStats = async (req, res) => {
 
 exports.getRecentOrders = async (req, res) => {
   try {
-    const orders = await Order.findAll({
+    const orders = await Commande.findAll({
       limit: 50,
       order: [["date_commande", "DESC"]],
       include: [{ model: User, as: "client", attributes: ["nom", "prenom"] },
@@ -984,7 +940,7 @@ exports.getDisputes = async (req, res) => {
       include: [
         { model: User, as: "client", attributes: ["nom", "prenom"] },
         {
-          model: Order,
+          model: Commande,
           as: "commande",
           required: false,
           include: [
@@ -1043,7 +999,7 @@ exports.resolveDispute = async (req, res) => {
       if (dispute.type === "AVIS") {
         epicierIdToNotify = dispute.epicier_id || null;
       } else if (dispute.commande_id) {
-        const order = await Order.findByPk(dispute.commande_id);
+        const order = await Commande.findByPk(dispute.commande_id);
         epicierIdToNotify = order?.epicier_id || null;
       }
 
@@ -1098,11 +1054,11 @@ exports.getDashboardStats = async (req, res) => {
     });
 
     // 2. Orders Trend (Last 7 Days)
-    const orderTrend = await Order.findAll({
+    const orderTrend = await Commande.findAll({
       attributes: [
         [sequelize.fn("DATE", sequelize.col("date_commande")), "day"],
         "statut",
-        [sequelize.fn("COUNT", sequelize.col("Order.id")), "count"],
+        [sequelize.fn("COUNT", sequelize.col("Commande.id")), "count"],
       ],
       where: { date_commande: { [Op.gte]: sevenDaysAgo } },
       group: [sequelize.fn("DATE", sequelize.col("date_commande")), "statut"],
@@ -1110,7 +1066,7 @@ exports.getDashboardStats = async (req, res) => {
     });
 
     // 3. Status Distribution
-    const statusDist = await Order.findAll({
+    const statusDist = await Commande.findAll({
       attributes: [
         "statut",
         [sequelize.fn("COUNT", sequelize.col("id")), "count"],
@@ -1133,10 +1089,10 @@ exports.getDashboardStats = async (req, res) => {
     );
 
     // 5. Top Stores (Last 30 Days)
-    const topStores = await Order.findAll({
+    const topStores = await Commande.findAll({
       attributes: [
         "epicier_id",
-        [sequelize.fn("COUNT", sequelize.col("Order.id")), "orderCount"],
+        [sequelize.fn("COUNT", sequelize.col("Commande.id")), "orderCount"],
       ],
       include: [
         {
@@ -1172,7 +1128,7 @@ exports.getDashboardStats = async (req, res) => {
         epiciers: { total: totalEpiciers, growth: epiciersThisMonth },
         disputes: disputesOpen,
         ordersPerDay: Math.round(
-          (await Order.count({
+          (await Commande.count({
             where: { date_commande: { [Op.gte]: sevenDaysAgo } },
           })) / 7,
         ),
