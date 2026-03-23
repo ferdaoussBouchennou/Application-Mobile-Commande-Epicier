@@ -11,6 +11,7 @@ import 'admin_category_form_screen.dart';
 import '../../../data/models/category.dart' as model;
 import 'admin_category_products_screen.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
@@ -107,7 +108,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            if (!_loading && _error == null) _buildSearchBar(),
             Expanded(child: _buildBody()),
             if (!_loading && _error == null && _totalPages > 1) _buildPagination(),
           ],
@@ -126,56 +126,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      decoration: const BoxDecoration(
-        color: _primary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Catégories',
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF26444),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
-                onPressed: () {
-                  context.read<AuthProvider>().logout();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => WelcomeScreen()),
-                    (route) => false,
-                  );
-                },
-                tooltip: 'Déconnexion',
-              ),
-            ],
-          ),
-        ],
-      ),
+    return const AdminHeader(
+      title: 'Catégories',
     );
   }
 
@@ -198,23 +150,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Rechercher une catégorie...',
-          prefixIcon: const Icon(Icons.search, color: _primary),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () { _searchController.clear(); })
-              : null,
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _buildBody() {

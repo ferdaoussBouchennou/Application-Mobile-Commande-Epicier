@@ -8,6 +8,7 @@ import 'admin_validation_screen.dart';
 import 'admin_orders_screen.dart';
 import 'admin_categories_screen.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AdminDisputesScreen extends StatefulWidget {
   const AdminDisputesScreen({super.key});
@@ -152,69 +153,8 @@ class _AdminDisputesScreenState extends State<AdminDisputesScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFCC33), // Golden yellow for attention
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.warning_amber_rounded,
-                  color: Color(0xFF2D1A0E),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Litiges',
-                    style: TextStyle(
-                      color: Color(0xFF2D1A0E),
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Réclamations clients',
-                    style: TextStyle(color: Color(0xFF6B4F3F), fontSize: 14),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.logout_rounded,
-              color: Color(0xFF2D1A0E),
-              size: 24,
-            ),
-            onPressed: () {
-              context.read<AuthProvider>().logout();
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => WelcomeScreen()),
-                (route) => false,
-              );
-            },
-          ),
-        ],
-      ),
+    return const AdminHeader(
+      title: 'Litiges',
     );
   }
 
