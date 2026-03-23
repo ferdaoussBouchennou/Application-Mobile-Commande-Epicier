@@ -24,8 +24,6 @@ DROP TABLE IF EXISTS `reclamations`;
 DROP TABLE IF EXISTS `avis`;
 DROP TABLE IF EXISTS `detailsCommande`;
 DROP TABLE IF EXISTS `commandes`;
-DROP TABLE IF EXISTS `panier_produits`;
-DROP TABLE IF EXISTS `paniers`;
 DROP TABLE IF EXISTS `epicier_produits`;
 DROP TABLE IF EXISTS `disponibilites`;
 DROP TABLE IF EXISTS `produits`;
@@ -405,33 +403,6 @@ INSERT INTO `detailsCommande` (`id`, `commande_id`, `produit_id`, `quantite`, `p
 (8, 6, 9, 1, 13.00, 13.00, 0, 0),
 (9, 6, 18, 5, 1.50, 7.50, 0, 0);
 
--- --------------------------------------------------------------------------- paniers
-CREATE TABLE `paniers` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `client_id` int NOT NULL,
-  `date_creation` date NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `client_id` (`client_id`),
-  CONSTRAINT `paniers_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `utilisateurs` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO `paniers` (`id`, `client_id`, `date_creation`) VALUES (1, 7, '2026-03-20');
-
--- --------------------------------------------------------------------------- panier_produits
-CREATE TABLE `panier_produits` (
-  `panier_id` int NOT NULL,
-  `produit_id` int NOT NULL,
-  `epicier_id` int DEFAULT NULL,
-  `quantite` int NOT NULL DEFAULT '1',
-  PRIMARY KEY (`panier_id`,`produit_id`),
-  KEY `produit_id` (`produit_id`),
-  KEY `epicier_id` (`epicier_id`),
-  CONSTRAINT `panier_produits_ibfk_1` FOREIGN KEY (`panier_id`) REFERENCES `paniers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `panier_produits_ibfk_2` FOREIGN KEY (`produit_id`) REFERENCES `produits` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `panier_produits_ibfk_3` FOREIGN KEY (`epicier_id`) REFERENCES `epiciers` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO `panier_produits` (`panier_id`, `produit_id`, `epicier_id`, `quantite`) VALUES (1, 14, 1, 2), (1, 18, 1, 3);
 
 -- --------------------------------------------------------------------------- avis
 CREATE TABLE `avis` (
@@ -510,7 +481,6 @@ ALTER TABLE `categories` AUTO_INCREMENT = 10;
 ALTER TABLE `produits` AUTO_INCREMENT = 27;
 ALTER TABLE `commandes` AUTO_INCREMENT = 7;
 ALTER TABLE `detailsCommande` AUTO_INCREMENT = 10;
-ALTER TABLE `paniers` AUTO_INCREMENT = 2;
 ALTER TABLE `avis` AUTO_INCREMENT = 4;
 ALTER TABLE `reclamations` AUTO_INCREMENT = 3;
 ALTER TABLE `notifications` AUTO_INCREMENT = 6;
