@@ -7,6 +7,7 @@ import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/constants/api_constants.dart';
 import '../auth/login_screen.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AddEpicierScreen extends StatefulWidget {
   const AddEpicierScreen({super.key});
@@ -128,18 +129,15 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
-      appBar: AppBar(
-        title: const Text('Nouvel Épicier', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF2D5016),
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
+      body: SafeArea(
         child: Column(
           children: [
             _buildHeader(),
-            Padding(
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Padding(
               padding: const EdgeInsets.all(20),
               child: Form(
                 key: _formKey,
@@ -196,39 +194,17 @@ class _AddEpicierScreenState extends State<AddEpicierScreen> {
           ],
         ),
       ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(bottom: 30, left: 20, right: 20, top: 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFF2D5016),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
-        ),
-      ),
-      child: const Column(
-        children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundColor: Color(0xFFB5D39D),
-            child: Icon(Icons.person_add_rounded, size: 40, color: Color(0xFF2D5016)),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Enregistrement Manuel',
-            style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Ajoutez un épicier de confiance à la plateforme',
-            style: TextStyle(color: Color(0xFFB5D39D), fontSize: 14),
-          ),
-        ],
-      ),
+    return const AdminHeader(
+      title: 'Nouvel Épicier',
+      showBackButton: true,
     );
   }
 

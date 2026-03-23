@@ -15,6 +15,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
 import 'admin_notifications_screen.dart';
 import '../../../providers/notification_provider.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AdminValidationScreen extends StatefulWidget {
   const AdminValidationScreen({super.key});
@@ -187,137 +188,15 @@ class _AdminValidationScreenState extends State<AdminValidationScreen> {
   }
 
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 20),
-      decoration: const BoxDecoration(
-        color: Color(0xFF2D5016),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Image.asset('assets/images/shop_icon.png', height: 26, errorBuilder: (_,__,___) => const Icon(Icons.store, color: Colors.white, size: 26)),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'MyHanut',
-                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF26444),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-                  ),
-                  const SizedBox(width: 4),
-                  Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_none_rounded, color: Colors.orange, size: 26),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const AdminNotificationsScreen()),
-                          );
-                        },
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      Consumer<NotificationProvider>(
-                        builder: (context, provider, _) {
-                          if (provider.unreadCount == 0) return const SizedBox.shrink();
-                          return Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 14,
-                                minHeight: 14,
-                              ),
-                              child: Text(
-                                '${provider.unreadCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
-                    onPressed: () {
-                      context.read<AuthProvider>().logout();
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => WelcomeScreen()),
-                        (route) => false,
-                      );
-                    },
-                    tooltip: 'Déconnexion',
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _selectedRole == 'Client' ? 'Gestion des clients' : 'Gestion des épiceries',
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildSearchBar(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
-      ),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) {
-          setState(() => _currentPage = 0);
-          _fetchUsers();
-        },
-        decoration: InputDecoration(
-          hintText: _selectedRole == 'Client' ? 'Rechercher un client...' : 'Rechercher une épicerie...',
-          hintStyle: TextStyle(color: Colors.grey.shade400),
-          prefixIcon: const Icon(Icons.search, color: Colors.blue),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-        ),
-      ),
+    return AdminHeader(
+      title: _selectedRole == 'Client' ? 'Gestion des clients' : 'Gestion des épiceries',
+      showSearchBar: true,
+      searchHint: _selectedRole == 'Client' ? 'Rechercher un client...' : 'Rechercher une épicerie...',
+      searchController: _searchController,
+      onSearch: (val) {
+        setState(() => _currentPage = 0);
+        _fetchUsers();
+      },
     );
   }
 

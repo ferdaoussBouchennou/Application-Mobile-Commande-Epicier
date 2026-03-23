@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../data/models/category.dart';
 import '../../../data/services/api_service.dart';
 import '../../../providers/auth_provider.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AdminCategoryFormScreen extends StatefulWidget {
   final Category? category;
@@ -92,40 +93,9 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
   }
 
   Widget _buildHeader(Color primary) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: primary,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.pop(context),
-              ),
-              Text(
-                widget.category == null ? 'Nouvelle catégorie' : 'Modifier catégorie',
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF26444),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-          ),
-        ],
-      ),
+    return AdminHeader(
+      title: widget.category == null ? 'Nouvelle catégorie' : 'Modifier catégorie',
+      showBackButton: true,
     );
   }
 

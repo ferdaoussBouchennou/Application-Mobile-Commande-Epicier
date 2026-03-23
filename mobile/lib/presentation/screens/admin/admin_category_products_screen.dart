@@ -9,6 +9,7 @@ import '../../widgets/active_toggle.dart';
 import '../../../screens/auth/welcome_screen.dart';
 import 'admin_categories_screen.dart';
 import 'admin_orders_screen.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AdminCategoryProductsScreen extends StatefulWidget {
   final int categoryId;
@@ -227,7 +228,7 @@ class _AdminCategoryProductsScreenState
         child: Column(
           children: [
             _buildHeader(),
-            if (!_loading && _error == null) _buildSearch(),
+            if (!_loading && _error == null) _buildStats(),
             Expanded(child: _buildBody()),
             if (!_loading && _error == null && _totalPages > 1) _buildPagination(),
           ],
@@ -276,70 +277,9 @@ class _AdminCategoryProductsScreenState
   }
 
   Widget _buildHeader() {
-    final total = _grouped.length;
-    final active = _activeProducts;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-      decoration: const BoxDecoration(
-        color: _primary,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.categoryName,
-                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Catégories > Produits',
-                      style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
-                onPressed: () {
-                  context.read<AuthProvider>().logout();
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-                    (route) => false,
-                  );
-                },
-                tooltip: 'Déconnexion',
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _statChip('$total', 'Produits', Colors.white),
-              const SizedBox(width: 10),
-              _statChip('$active', 'Actifs', const Color(0xFF4CBB5E)),
-              const SizedBox(width: 10),
-              _statChip('${total - active}', 'Inactifs', const Color(0xFFF2A93B)),
-            ],
-          ),
-        ],
-      ),
+    return AdminHeader(
+      title: widget.categoryName,
+      showBackButton: true,
     );
   }
 
@@ -361,22 +301,19 @@ class _AdminCategoryProductsScreenState
     );
   }
 
-  Widget _buildSearch() {
+  Widget _buildStats() {
+    final total = _grouped.length;
+    final active = _activeProducts;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: TextField(
-        controller: _searchCtrl,
-        decoration: InputDecoration(
-          hintText: 'Rechercher un produit...',
-          prefixIcon: const Icon(Icons.search, color: _primary),
-          suffixIcon: _searchCtrl.text.isNotEmpty
-              ? IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () => _searchCtrl.clear())
-              : null,
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-        ),
+      child: Row(
+        children: [
+          _statChip('$total', 'Produits', Colors.black87),
+          const SizedBox(width: 10),
+          _statChip('$active', 'Actifs', const Color(0xFF4CBB5E)),
+          const SizedBox(width: 10),
+          _statChip('${total - active}', 'Inactifs', const Color(0xFFF2A93B)),
+        ],
       ),
     );
   }

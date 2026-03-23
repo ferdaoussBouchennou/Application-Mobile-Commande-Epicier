@@ -10,6 +10,7 @@ import 'admin_product_form_screen.dart';
 import 'admin_category_form_screen.dart';
 import '../../../screens/auth/welcome_screen.dart';
 import '../../widgets/admin/admin_bottom_nav.dart';
+import '../../widgets/admin/admin_header.dart';
 
 class AdminStoreCatalogueScreen extends StatefulWidget {
   final UserModel storeOwner;
@@ -223,101 +224,26 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
 
   Widget _buildHeader() {
     final String storeName = widget.storeOwner.store?['nom_boutique'] ?? widget.storeOwner.fullName;
-    
-    return Container(
-      padding: const EdgeInsets.only(left: 8, right: 16, top: 12, bottom: 20),
-      decoration: const BoxDecoration(
-        color: Color(0xFF2D5016),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(25),
-          bottomRight: Radius.circular(25),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      if (!_showCategories) {
-                        setState(() {
-                          _showCategories = true;
-                          _selectedCategoryId = null;
-                        });
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _showCategories ? 'Catalogue' : (_categories.firstWhere((c) => c.id == _selectedCategoryId, orElse: () => model.Category(id: 0, nom: 'Produits', productCount: 0, storeCount: 0, ruptureCount: 0)).nom),
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Outfit'),
-                      ),
-                      Text(
-                        _showCategories ? storeName : storeName,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF26444),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
-                    onPressed: () {
-                      context.read<AuthProvider>().logout();
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => WelcomeScreen()),
-                        (route) => false,
-                      );
-                    },
-                    tooltip: 'Déconnexion',
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => _fetchProducts(),
-                decoration: InputDecoration(
-                  hintText: 'Rechercher un produit...',
-                  hintStyle: TextStyle(color: Colors.grey.shade400),
-                  prefixIcon: const Icon(Icons.search, color: Colors.blue),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    final title = _showCategories
+        ? 'Catalogue : $storeName'
+        : _categories.firstWhere(
+            (c) => c.id == _selectedCategoryId,
+            orElse: () => model.Category(id: 0, nom: 'Produits', productCount: 0, storeCount: 0, ruptureCount: 0)
+          ).nom;
+
+    return AdminHeader(
+      title: title,
+      showBackButton: true,
+      onBack: () {
+        if (!_showCategories) {
+          setState(() {
+            _showCategories = true;
+            _selectedCategoryId = null;
+          });
+        } else {
+          Navigator.pop(context);
+        }
+      },
     );
   }
 
