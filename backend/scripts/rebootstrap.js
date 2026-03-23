@@ -33,7 +33,7 @@ async function rebootstrap() {
     await connection.query(`USE \`${process.env.DB_NAME}\``);
 
     // 2. Execute SQL file
-    const sqlPath = path.resolve(__dirname, '../../epicier_ecommerce_corrigee.sql');
+    const sqlPath = path.resolve(__dirname, '../../epicier_ecommerce.sql');
     if (fs.existsSync(sqlPath)) {
       console.log(`📜 Importing SQL from ${sqlPath}...`);
       const sql = fs.readFileSync(sqlPath, 'utf8');
