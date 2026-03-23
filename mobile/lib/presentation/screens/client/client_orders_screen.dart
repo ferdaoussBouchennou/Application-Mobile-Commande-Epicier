@@ -578,6 +578,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         produitId: l.produitId,
         nom: l.nom,
         prix: l.prixUnitaire,
+        imagePrincipale: l.imagePrincipale,
         quantite: l.quantite,
         epicierId: order.epicierId,
       );

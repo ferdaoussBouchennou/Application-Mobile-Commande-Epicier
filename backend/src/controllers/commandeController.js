@@ -100,6 +100,7 @@ const commandeController = {
         detail_id: d.id,
         produit_id: d.produit_id,
         nom: d.Product?.nom ?? '',
+        image_principale: d.Product?.image_principale,
         quantite: d.quantite,
         prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
         total_ligne: parseFloat(d.total_ligne ?? 0),

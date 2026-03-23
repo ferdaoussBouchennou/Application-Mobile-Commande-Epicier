@@ -65,6 +65,7 @@ class ClientOrderLine {
   final int detailId;
   final int produitId;
   final String nom;
+  final String? imagePrincipale;
   final int quantite;
   final double prixUnitaire;
   final double totalLigne;
@@ -75,6 +76,7 @@ class ClientOrderLine {
     required this.detailId,
     required this.produitId,
     required this.nom,
+    this.imagePrincipale,
     required this.quantite,
     required this.prixUnitaire,
     required this.totalLigne,
@@ -87,6 +89,7 @@ class ClientOrderLine {
       detailId: int.tryParse(json['detail_id']?.toString() ?? '0') ?? 0,
       produitId: int.tryParse(json['produit_id']?.toString() ?? '0') ?? 0,
       nom: json['nom']?.toString() ?? '',
+      imagePrincipale: json['image_principale']?.toString(),
       quantite: int.tryParse(json['quantite']?.toString() ?? '0') ?? 0,
       prixUnitaire: double.tryParse(json['prix_unitaire']?.toString() ?? '0') ?? 0,
       totalLigne: double.tryParse(json['total_ligne']?.toString() ?? '0') ?? 0,
