@@ -4,6 +4,7 @@ const grocerController = require("../controllers/grocerController");
 const grocerReportsController = require("../controllers/grocerReportsController");
 const notificationEpicierController = require("../controllers/notificationEpicierController");
 const reclamationController = require("../controllers/reclamationController");
+const avisController = require("../controllers/avisController");
 const { authMiddleware, requireEpicier } = require("../middlewares/auth");
 const uploadProductImage = require("../middlewares/uploadProductImage");
 
@@ -233,6 +234,18 @@ router.get(
   authMiddleware,
   requireEpicier,
   reclamationController.getStoreReclamationById,
+);
+router.get(
+  "/avis",
+  authMiddleware,
+  requireEpicier,
+  avisController.getStoreAvisForEpicier,
+);
+router.post(
+  "/avis/:id/reclamations",
+  authMiddleware,
+  requireEpicier,
+  avisController.createAvisReclamation,
 );
 router.get(
   "/notifications",
