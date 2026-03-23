@@ -721,12 +721,10 @@ exports.deactivateProduct = async (req, res) => {
         .json({ message: "Identifiant de produit invalide." });
     }
     if (epicierId == null || Number.isNaN(epicierId)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "epicier_id est requis pour désactiver un produit pour un épicier spécifique.",
-        });
+      return res.status(400).json({
+        message:
+          "epicier_id est requis pour désactiver un produit pour un épicier spécifique.",
+      });
     }
     const product = await Product.findByPk(produitId);
     if (!product) {
@@ -752,29 +750,34 @@ exports.deactivateStoreCategory = async (req, res) => {
     const cId = parseInt(categoryId, 10);
 
     if (Number.isNaN(sId) || Number.isNaN(cId)) {
-      return res.status(400).json({ message: 'Identifiants de magasin ou de catégorie invalides.' });
+      return res
+        .status(400)
+        .json({
+          message: "Identifiants de magasin ou de catégorie invalides.",
+        });
     }
 
     // Trouver tous les produits de cette catégorie
     const productIds = await Product.findAll({
       where: { categorie_id: cId },
-      attributes: ['id']
-    }).then(rows => rows.map(r => r.id));
+      attributes: ["id"],
+    }).then((rows) => rows.map((r) => r.id));
 
     if (productIds.length > 0) {
       // Désactiver le lien épicier-produit pour ce magasin uniquement
       await EpicierProduct.update(
         { is_active: false },
-        { where: { epicier_id: sId, produit_id: productIds } }
+        { where: { epicier_id: sId, produit_id: productIds } },
       );
     }
 
     res.json({
-      message: 'La catégorie et ses produits ont été retirés de ce catalogue (désactivés).',
-      deactivatedCount: productIds.length
+      message:
+        "La catégorie et ses produits ont été retirés de ce catalogue (désactivés).",
+      deactivatedCount: productIds.length,
     });
   } catch (error) {
-    console.error('Error deactivateStoreCategory:', error);
+    console.error("Error deactivateStoreCategory:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -790,12 +793,10 @@ exports.activateProduct = async (req, res) => {
         .json({ message: "Identifiant de produit invalide." });
     }
     if (epicierId == null || Number.isNaN(epicierId)) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "epicier_id est requis pour activer un produit pour un épicier spécifique.",
-        });
+      return res.status(400).json({
+        message:
+          "epicier_id est requis pour activer un produit pour un épicier spécifique.",
+      });
     }
     const product = await Product.findByPk(produitId);
     if (!product) {
@@ -892,12 +893,10 @@ exports.uploadProductImage = async (req, res) => {
     res.status(200).json({ image_principale: relativePath });
   } catch (error) {
     console.error("Erreur uploadProductImage admin:", error);
-    res
-      .status(500)
-      .json({
-        message: "Erreur lors de l'upload de l'image",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Erreur lors de l'upload de l'image",
+      error: error.message,
+    });
   }
 };
 
@@ -976,7 +975,6 @@ exports.resolveDispute = async (req, res) => {
     console.log(
       `Tentative de mise à jour du litige ${id} vers le statut: ${statut}`,
     );
-    const { statut } = req.body;
 
     const dispute = await Reclamation.findByPk(id);
     if (!dispute)
@@ -984,6 +982,7 @@ exports.resolveDispute = async (req, res) => {
 
     // Validation basique
     const validStatuses = [
+      "En attente",
       "Résolu",
       "En médiation",
       "Remboursé",
@@ -1031,35 +1030,47 @@ exports.getDashboardStats = async (req, res) => {
     thirtyDaysAgo.setHours(0, 0, 0, 0);
 
     // 1. Summary Cards
-    const totalClients = await User.count({ where: { role: 'CLIENT', is_active: true } });
+    const totalClients = await User.count({
+      where: { role: "CLIENT", is_active: true },
+    });
     const totalEpiciers = await Store.count({ where: { is_active: true } });
-    const disputesOpen = await Reclamation.count({ where: { statut: { [Op.ne]: 'Résolu' } } });
+    const disputesOpen = await Reclamation.count({
+      where: { statut: { [Op.ne]: "Résolu" } },
+    });
 
     // Growth (this month)
     const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const clientsThisMonth = await User.count({ where: { role: 'CLIENT', date_creation: { [Op.gte]: firstOfMonth } } });
-    const epiciersThisMonth = await User.count({ where: { role: 'EPICIER', date_creation: { [Op.gte]: firstOfMonth } } });
+    const clientsThisMonth = await User.count({
+      where: { role: "CLIENT", date_creation: { [Op.gte]: firstOfMonth } },
+    });
+    const epiciersThisMonth = await User.count({
+      where: { role: "EPICIER", date_creation: { [Op.gte]: firstOfMonth } },
+    });
 
     // 2. Orders Trend (Last 7 Days)
     const orderTrend = await Order.findAll({
       attributes: [
-        [sequelize.fn('DATE', sequelize.col('date_commande')), 'day'],
-        'statut',
-        [sequelize.fn('COUNT', sequelize.col('Order.id')), 'count']
+        [sequelize.fn("DATE", sequelize.col("date_commande")), "day"],
+        "statut",
+        [sequelize.fn("COUNT", sequelize.col("Order.id")), "count"],
       ],
       where: { date_commande: { [Op.gte]: sevenDaysAgo } },
-      group: [sequelize.fn('DATE', sequelize.col('date_commande')), 'statut'],
-      order: [[sequelize.literal('day'), 'ASC']]
+      group: [sequelize.fn("DATE", sequelize.col("date_commande")), "statut"],
+      order: [[sequelize.literal("day"), "ASC"]],
     });
 
     // 3. Status Distribution
     const statusDist = await Order.findAll({
-      attributes: ['statut', [sequelize.fn('COUNT', sequelize.col('id')), 'count']],
-      group: ['statut']
+      attributes: [
+        "statut",
+        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+      ],
+      group: ["statut"],
     });
 
     // 4. Top Categories
-    const topCategories = await sequelize.query(`
+    const topCategories = await sequelize.query(
+      `
       SELECT c.nom, SUM(dc.quantite) as total_qty
       FROM detailscommande dc
       JOIN produits p ON dc.produit_id = p.id
@@ -1067,38 +1078,42 @@ exports.getDashboardStats = async (req, res) => {
       GROUP BY c.id
       ORDER BY total_qty DESC
       LIMIT 6
-    `, { type: sequelize.QueryTypes.SELECT });
+    `,
+      { type: sequelize.QueryTypes.SELECT },
+    );
 
     // 5. Top Stores (Last 30 Days)
     const topStores = await Order.findAll({
       attributes: [
-        'epicier_id',
-        [sequelize.fn('COUNT', sequelize.col('Order.id')), 'orderCount']
+        "epicier_id",
+        [sequelize.fn("COUNT", sequelize.col("Order.id")), "orderCount"],
       ],
-      include: [{
-        model: Store,
-        as: 'epicier',
-        attributes: ['nom_boutique', 'rating']
-      }],
+      include: [
+        {
+          model: Store,
+          as: "epicier",
+          attributes: ["nom_boutique", "rating"],
+        },
+      ],
       where: { date_commande: { [Op.gte]: thirtyDaysAgo } },
-      group: ['epicier_id', 'epicier.id'],
-      order: [[sequelize.literal('orderCount'), 'DESC']],
-      limit: 5
+      group: ["epicier_id", "epicier.id"],
+      order: [[sequelize.literal("orderCount"), "DESC"]],
+      limit: 5,
     });
 
     // 6. Registration trend (30 days)
     const regTrend = await User.findAll({
       attributes: [
-        [sequelize.fn('DATE', sequelize.col('date_creation')), 'day'],
-        'role',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        [sequelize.fn("DATE", sequelize.col("date_creation")), "day"],
+        "role",
+        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
       ],
       where: {
         date_creation: { [Op.gte]: thirtyDaysAgo },
-        role: { [Op.ne]: 'ADMIN' }
+        role: { [Op.ne]: "ADMIN" },
       },
-      group: [sequelize.fn('DATE', sequelize.col('date_creation')), 'role'],
-      order: [[sequelize.literal('day'), 'ASC']]
+      group: [sequelize.fn("DATE", sequelize.col("date_creation")), "role"],
+      order: [[sequelize.literal("day"), "ASC"]],
     });
 
     res.json({
@@ -1106,31 +1121,35 @@ exports.getDashboardStats = async (req, res) => {
         clients: { total: totalClients, growth: clientsThisMonth },
         epiciers: { total: totalEpiciers, growth: epiciersThisMonth },
         disputes: disputesOpen,
-        ordersPerDay: Math.round((await Order.count({ where: { date_commande: { [Op.gte]: sevenDaysAgo } } })) / 7)
+        ordersPerDay: Math.round(
+          (await Order.count({
+            where: { date_commande: { [Op.gte]: sevenDaysAgo } },
+          })) / 7,
+        ),
       },
-      orderTrend: orderTrend.map(t => ({
+      orderTrend: orderTrend.map((t) => ({
         ...t.toJSON(),
-        count: Number(t.get('count'))
+        count: Number(t.get("count")),
       })),
-      statusDist: statusDist.map(s => ({
+      statusDist: statusDist.map((s) => ({
         ...s.toJSON(),
-        count: Number(s.get('count'))
+        count: Number(s.get("count")),
       })),
-      topCategories: topCategories.map(c => ({
+      topCategories: topCategories.map((c) => ({
         ...c,
-        total_qty: Number(c.total_qty)
+        total_qty: Number(c.total_qty),
       })),
-      topStores: topStores.map(ts => ({
+      topStores: topStores.map((ts) => ({
         ...ts.toJSON(),
-        orderCount: Number(ts.get('orderCount'))
+        orderCount: Number(ts.get("orderCount")),
       })),
-      regTrend: regTrend.map(r => ({
+      regTrend: regTrend.map((r) => ({
         ...r.toJSON(),
-        count: Number(r.get('count'))
-      }))
+        count: Number(r.get("count")),
+      })),
     });
   } catch (error) {
-    console.error('Error getDashboardStats:', error);
+    console.error("Error getDashboardStats:", error);
     res.status(500).json({ error: error.message });
   }
 };

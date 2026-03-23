@@ -54,7 +54,7 @@ exports.createReclamation = async (req, res) => {
       motif,
       description,
       photo: photoPath,
-      statut: "Ouverte",
+      statut: "En attente",
     });
 
     if (commande_id && order) {
@@ -220,7 +220,7 @@ exports.create = async (req, res) => {
       commande_id: id,
       motif: desc.slice(0, 100) || "Réclamation commande",
       description: desc,
-      statut: "Ouverte",
+      statut: "En attente",
     });
     const clientName = commande.client
       ? `${(commande.client.prenom || "").trim()} ${(commande.client.nom || "").trim()}`.trim() ||
