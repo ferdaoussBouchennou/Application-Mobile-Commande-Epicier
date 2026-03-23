@@ -21,7 +21,7 @@ const commandeController = {
       }
       const commandes = await Commande.findAll({
         where,
-        include: [{ model: Store, as: 'store', attributes: ['id', 'nom_boutique'] }],
+        include: [{ model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] }],
         order: [['date_commande', 'DESC']],
       });
       const ids = commandes.map((c) => c.id);
@@ -55,7 +55,7 @@ const commandeController = {
         return {
           id: c.id,
           epicier_id: c.epicier_id,
-          nom_boutique: c.store?.nom_boutique ?? '',
+          nom_boutique: c.epicier?.nom_boutique ?? '',
           date_commande: c.date_commande,
           date_recuperation: c.date_recuperation,
           date_commande_formatted: date_commande_formatted || null,
@@ -78,7 +78,7 @@ const commandeController = {
       const { id } = req.params;
       const commande = await Commande.findOne({
         where: { id, client_id: clientId },
-        include: [{ model: Store, as: 'store', attributes: ['id', 'nom_boutique', 'telephone', 'adresse'] }],
+        include: [{ model: Store, as: 'epicier', attributes: ['id', 'nom_boutique', 'telephone', 'adresse'] }],
       });
       if (!commande) {
         return res.status(404).json({ message: 'Commande introuvable' });
@@ -109,9 +109,9 @@ const commandeController = {
       res.status(200).json({
         id: commande.id,
         epicier_id: commande.epicier_id,
-        nom_boutique: commande.store?.nom_boutique ?? '',
-        telephone_epicier: commande.store?.telephone ?? null,
-        adresse_epicier: commande.store?.adresse ?? null,
+        nom_boutique: commande.epicier?.nom_boutique ?? '',
+        telephone_epicier: commande.epicier?.telephone ?? null,
+        adresse_epicier: commande.epicier?.adresse ?? null,
         date_commande: commande.date_commande,
         date_recuperation: commande.date_recuperation,
         creneau,
