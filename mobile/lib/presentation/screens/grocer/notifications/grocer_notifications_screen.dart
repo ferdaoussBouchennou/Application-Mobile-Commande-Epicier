@@ -13,12 +13,15 @@ class GrocerNotificationsScreen extends StatefulWidget {
     super.key,
     this.onNavigateToOrders,
     this.onNavigateToOrder,
+    this.onNavigateToProfileAvis,
     this.onUnreadCount,
     this.onRegisterRefresh,
   });
 
   final VoidCallback? onNavigateToOrders;
   final void Function(int orderId)? onNavigateToOrder;
+  /// Onglet Profil + scroll vers la section « Avis des clients » (litiges type AVIS).
+  final VoidCallback? onNavigateToProfileAvis;
   final void Function(int count)? onUnreadCount;
   final void Function(VoidCallback fn)? onRegisterRefresh;
 
@@ -462,7 +465,9 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
       child: GestureDetector(
         onTap: () {
           if (!n.lue) _markRead(n.id);
-          if (n.isReclamationRelated && n.reclamationId != null) {
+          if (n.isStatutReclamationAvis) {
+            widget.onNavigateToProfileAvis?.call();
+          } else if (n.isReclamationRelated && n.reclamationId != null) {
             _gotoReclamation(n);
           } else if (n.isOrderRelated) {
             _gotoOrder(n);
@@ -575,7 +580,24 @@ class _GrocerNotificationsScreenState extends State<GrocerNotificationsScreen>
                             color: Colors.grey.shade500,
                           ),
                         ),
-                        if (n.isReclamationRelated &&
+                        if (n.isStatutReclamationAvis) ...[
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () {
+                              if (!n.lue) _markRead(n.id);
+                              widget.onNavigateToProfileAvis?.call();
+                            },
+                            child: const Text(
+                              '→ Voir AVIS',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: GrocerTheme.primary,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ] else if (n.isReclamationRelated &&
                             n.reclamationId != null) ...[
                           const SizedBox(width: 12),
                           GestureDetector(

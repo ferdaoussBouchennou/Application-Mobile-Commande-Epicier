@@ -10,7 +10,10 @@ import 'grocer_avis_details_screen.dart';
 import 'widgets/avis_signal_sheet.dart';
 
 class GrocerProfileViewScreen extends StatefulWidget {
-  const GrocerProfileViewScreen({super.key});
+  const GrocerProfileViewScreen({super.key, this.scrollToAvisTrigger});
+
+  /// Incrémenter depuis l’écran parent pour faire défiler jusqu’à « Avis des clients ».
+  final ValueNotifier<int>? scrollToAvisTrigger;
 
   @override
   State<GrocerProfileViewScreen> createState() =>
@@ -19,6 +22,7 @@ class GrocerProfileViewScreen extends StatefulWidget {
 
 class _GrocerProfileViewScreenState extends State<GrocerProfileViewScreen> {
   final ApiService _api = ApiService();
+  final GlobalKey _avisSectionKey = GlobalKey();
 
   bool _loading = true;
   String? _error;
@@ -35,7 +39,46 @@ class _GrocerProfileViewScreenState extends State<GrocerProfileViewScreen> {
   @override
   void initState() {
     super.initState();
+    widget.scrollToAvisTrigger?.addListener(_onScrollToAvisTrigger);
     _load();
+  }
+
+  @override
+  void dispose() {
+    widget.scrollToAvisTrigger?.removeListener(_onScrollToAvisTrigger);
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant GrocerProfileViewScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scrollToAvisTrigger != widget.scrollToAvisTrigger) {
+      oldWidget.scrollToAvisTrigger?.removeListener(_onScrollToAvisTrigger);
+      widget.scrollToAvisTrigger?.addListener(_onScrollToAvisTrigger);
+    }
+  }
+
+  void _onScrollToAvisTrigger() => _scrollToAvisSection();
+
+  void _scrollToAvisSection([int attempt = 0]) {
+    if (attempt > 8) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final ctx = _avisSectionKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeInOut,
+          alignment: 0.12,
+        );
+      } else {
+        Future<void>.delayed(
+          const Duration(milliseconds: 200),
+          () => _scrollToAvisSection(attempt + 1),
+        );
+      }
+    });
   }
 
   Future<void> _load() async {
@@ -261,42 +304,46 @@ class _GrocerProfileViewScreenState extends State<GrocerProfileViewScreen> {
                           _AvailabilityList(store: store),
                           const SizedBox(height: 24),
 
-                          _SectionTitle(title: 'Avis des clients'),
-                          const SizedBox(height: 8),
-                          if (_avisLoading)
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Center(
-                                child: SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: GrocerTheme.primary,
+                          Column(
+                            key: _avisSectionKey,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SectionTitle(title: 'Avis des clients'),
+                              const SizedBox(height: 8),
+                              if (_avisLoading)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Center(
+                                    child: SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: GrocerTheme.primary,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            )
-                          else if (_avisError != null)
-                            Text(
-                              _avisError!,
-                              style: TextStyle(color: Colors.red.shade700),
-                            )
-                          else if (_avisList.isEmpty)
-                            Text(
-                              'Aucun avis pour le moment.',
-                              style: TextStyle(color: Colors.grey.shade700),
-                            )
-                          else ...[
-                            ..._avisList.map((a) {
-                              final avisId = (a['id'] as num?)?.toInt() ?? 0;
-                              final note = (a['note'] as num?)?.toInt() ?? 0;
-                              final clientNom =
-                                  a['client_nom']?.toString() ?? 'Client';
-                              final commentaire =
-                                  a['commentaire']?.toString() ?? '';
+                                )
+                              else if (_avisError != null)
+                                Text(
+                                  _avisError!,
+                                  style: TextStyle(color: Colors.red.shade700),
+                                )
+                              else if (_avisList.isEmpty)
+                                Text(
+                                  'Aucun avis pour le moment.',
+                                  style: TextStyle(color: Colors.grey.shade700),
+                                )
+                              else ...[
+                                ..._avisList.map((a) {
+                                  final avisId = (a['id'] as num?)?.toInt() ?? 0;
+                                  final note = (a['note'] as num?)?.toInt() ?? 0;
+                                  final clientNom =
+                                      a['client_nom']?.toString() ?? 'Client';
+                                  final commentaire =
+                                      a['commentaire']?.toString() ?? '';
 
-                              return Card(
+                                  return Card(
                                 elevation: 0,
                                 margin: const EdgeInsets.only(bottom: 10),
                                 shape: RoundedRectangleBorder(
@@ -422,6 +469,8 @@ class _GrocerProfileViewScreenState extends State<GrocerProfileViewScreen> {
                               ),
                             ],
                           ],
+                            ],
+                          ),
 
                           SizedBox(
                             width: double.infinity,

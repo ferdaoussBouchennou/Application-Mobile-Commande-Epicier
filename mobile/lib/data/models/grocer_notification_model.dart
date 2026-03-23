@@ -79,14 +79,28 @@ class GrocerNotificationModel {
     return null;
   }
 
-  /// Extrait l'ID de réclamation du message (ex: "réclamation #123")
+  /// Extrait l'ID de réclamation du message.
+  /// Ex: "réclamation #123" ou admin: "Statut réclamation (commande) #123 : …"
   int? get reclamationId {
+    final statut = RegExp(
+      r'Statut\s+r[eé]clamation[^#]*#(\d+)',
+      caseSensitive: false,
+    ).firstMatch(message);
+    if (statut != null) {
+      return int.tryParse(statut.group(1) ?? '');
+    }
     final match = RegExp(
       r'r[eé]clamation\s*#(\d+)',
     ).firstMatch(message.toLowerCase());
     if (match != null) return int.tryParse(match.group(1) ?? '');
     return null;
   }
+
+  /// Admin : « Statut réclamation (avis) #12 : … » — litige sur un avis, pas une commande.
+  bool get isStatutReclamationAvis => RegExp(
+        r'Statut\s+r[eé]clamation\s*\(\s*avis\s*\)',
+        caseSensitive: false,
+      ).hasMatch(message);
 
   bool get isReclamationRelated =>
       message.toLowerCase().contains('réclamation') ||
