@@ -29,11 +29,19 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
   VoidCallback? _ordersRefresh;
   final GlobalKey<NavigatorState> _catalogueNavKey =
       GlobalKey<NavigatorState>();
+  /// Incrémenté pour faire défiler le profil jusqu’à « Avis des clients ».
+  final ValueNotifier<int> _profileScrollToAvis = ValueNotifier<int>(0);
 
   @override
   void initState() {
     super.initState();
     _fetchUnreadCount();
+  }
+
+  @override
+  void dispose() {
+    _profileScrollToAvis.dispose();
+    super.dispose();
   }
 
   List<Widget> _buildScreens() {
@@ -56,7 +64,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
         onRegisterRefresh: (fn) => _ordersRefresh = fn,
       ),
       const GrocerReclamationsListScreen(),
-      const GrocerProfileViewScreen(),
+      GrocerProfileViewScreen(scrollToAvisTrigger: _profileScrollToAvis),
       GrocerNotificationsScreen(
         onNavigateToOrders: () => setState(() => _currentIndex = 2),
         onNavigateToOrder: (orderId) {
@@ -64,6 +72,10 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
             _currentIndex = 2;
             _orderIdToOpen = orderId;
           });
+        },
+        onNavigateToProfileAvis: () {
+          setState(() => _currentIndex = 4);
+          _profileScrollToAvis.value++;
         },
         onUnreadCount: (count) =>
             setState(() => _unreadNotificationsCount = count),
