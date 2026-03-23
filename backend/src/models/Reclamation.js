@@ -54,6 +54,27 @@ const Reclamation = sequelize.define(
         key: "id",
       },
     },
+    epicier_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "epiciers",
+        key: "id",
+      },
+    },
+    avis_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "avis",
+        key: "id",
+      },
+    },
+    type: {
+      type: DataTypes.ENUM("COMMANDE", "AVIS"),
+      allowNull: false,
+      defaultValue: "COMMANDE",
+    },
     date_creation: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

@@ -51,9 +51,12 @@ exports.createReclamation = async (req, res) => {
     const reclamation = await Reclamation.create({
       client_id,
       commande_id: commande_id || null,
+      epicier_id: order?.epicier_id || null,
+      avis_id: null,
       motif,
       description,
       photo: photoPath,
+      type: "COMMANDE",
       statut: "En attente",
     });
 
@@ -218,8 +221,11 @@ exports.create = async (req, res) => {
     const reclamation = await Reclamation.create({
       client_id: clientId,
       commande_id: id,
+      epicier_id: commande.epicier_id,
+      avis_id: null,
       motif: desc.slice(0, 100) || "Réclamation commande",
       description: desc,
+      type: "COMMANDE",
       statut: "En attente",
     });
     const clientName = commande.client
