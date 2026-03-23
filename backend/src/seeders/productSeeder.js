@@ -63,9 +63,9 @@ const seedProducts = async () => {
       { nom: 'Thé Sultan (Grain Vert)', prix: 14.00, description: 'Thé vert de qualité supérieure.', categorie: 'Boissons', image: 'uploads/boissons/the_sultan.jpg' },
 
       // Boulangerie Traditional
-      { nom: 'Pain Batbout (Unité)', prix: 1.50, description: 'Petit pain traditionnel marocain.', categorie: 'Boulangerie', image: 'uploads/boulangerie/batbout.jpg' },
+      { nom: 'Pain Batbout', prix: 1.50, description: 'Petit pain traditionnel marocain.', categorie: 'Boulangerie', image: 'uploads/boulangerie/batbout.jpg' },
       { nom: 'Msemen nature', prix: 2.00, description: 'Crêpe feuilletée marocaine.', categorie: 'Boulangerie', image: 'uploads/boulangerie/msemen.jpg' },
-      { nom: 'Baghrir (Unité)', prix: 1.50, description: 'Crêpe mille trous.', categorie: 'Boulangerie', image: 'uploads/boulangerie/baghrir.jpg' },
+      { nom: 'Baghrir', prix: 1.50, description: 'Crêpe mille trous.', categorie: 'Boulangerie', image: 'uploads/boulangerie/baghrir.jpg' },
 
       // Confiserie
       { nom: 'Biscuits Henry\'s', prix: 1.00, description: 'Biscuits secs traditionnels.', categorie: 'Confiserie', image: 'uploads/confiserie/henrys.jpg' },

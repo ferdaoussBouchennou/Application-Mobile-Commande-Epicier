@@ -17,7 +17,7 @@ const bcrypt = require('bcrypt');
 
 const User        = require('../models/User');
 const Store       = require('../models/Store');
-const Order       = require('../models/Order');
+const Commande    = require('../models/Commande');
 const Reclamation = require('../models/Reclamation');
 const Category    = require('../models/Category');
 const Product     = require('../models/Product');
@@ -72,7 +72,6 @@ const seedDashboard = async () => {
           email,
           mdp: passwordHash,
           role: 'CLIENT',
-          statut_inscription: 'ACCEPTE',
           is_active: true,
           date_creation: daysAgo(Math.floor(Math.random() * 20)),
         },
@@ -92,7 +91,6 @@ const seedDashboard = async () => {
           email,
           mdp: passwordHash,
           role: 'EPICIER',
-          statut_inscription: 'ACCEPTE',
           is_active: true,
           date_creation: daysAgo(Math.floor(Math.random() * 15)),
         },
@@ -115,7 +113,7 @@ const seedDashboard = async () => {
 
         ordersToCreate.push({
           client_id: client.id,
-          epicier_id: store.utilisateur_id,
+          epicier_id: store.id,
           statut,
           montant_total: montant,
           date_commande: date,
@@ -123,7 +121,7 @@ const seedDashboard = async () => {
       }
     }
 
-    const createdOrders = await Order.bulkCreate(ordersToCreate);
+    const createdOrders = await Commande.bulkCreate(ordersToCreate);
     console.log(`  ✅ ${createdOrders.length} orders created (last 7 days)`);
 
     // ── 5. Create DetailCommande (for top-categories chart) ──────────────────
@@ -133,7 +131,7 @@ const seedDashboard = async () => {
       const shuffled = [...products].sort(() => 0.5 - Math.random()).slice(0, numItems);
       for (const product of shuffled) {
         const qty = 1 + Math.floor(Math.random() * 5);
-        const prix = parseFloat(product.prix || 50);
+        const prix = 40 + Math.floor(Math.random() * 60);
         details.push({
           commande_id: order.id,
           produit_id: product.id,
@@ -151,17 +149,22 @@ const seedDashboard = async () => {
     const deliveredOrders = createdOrders.filter(o => o.statut === 'livrée').slice(0, 3);
 
     if (deliveredOrders.length > 0) {
-      const reclamations = disputeStatuses.slice(0, deliveredOrders.length).map((statut, i) => ({
-        description: [
+      const reclamations = disputeStatuses.slice(0, deliveredOrders.length).map((statut, i) => {
+        const desc = [
           'Commande non reçue malgré le statut "livrée"',
           'Produit manquant dans la commande',
           'Article endommagé à la livraison',
-        ][i],
-        statut,
-        client_id: deliveredOrders[i].client_id,
-        commande_id: deliveredOrders[i].id,
-        date_creation: new Date(),
-      }));
+        ][i];
+        return {
+          motif: desc.slice(0, 100),
+          description: desc,
+          statut,
+          client_id: deliveredOrders[i].client_id,
+          commande_id: deliveredOrders[i].id,
+          epicier_id: deliveredOrders[i].epicier_id,
+          date_creation: new Date(),
+        };
+      });
 
       await Reclamation.bulkCreate(reclamations);
       console.log(`  ✅ ${reclamations.length} reclamations created`);
