@@ -5,6 +5,7 @@ import '../../../../data/services/api_service.dart';
 import '../grocer_theme.dart';
 import 'grocer_reports_screen.dart';
 import '../avis/grocer_avis_management_screen.dart';
+import '../profile/grocer_profile_screen.dart';
 
 /// Tableau de bord Épicier — design inspiré des apps e-commerce pro (seller hub).
 class GrocerDashboardScreen extends StatefulWidget {
@@ -323,6 +324,47 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                               const SizedBox(width: 6),
                               Text(
                                 'Rapports',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Material(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => const GrocerProfileScreen(),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                size: 18,
+                                color: Colors.white.withValues(alpha: 0.95),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Profil',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.95),
                                   fontWeight: FontWeight.w700,
