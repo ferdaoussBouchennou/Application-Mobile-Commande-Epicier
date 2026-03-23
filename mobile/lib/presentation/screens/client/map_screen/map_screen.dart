@@ -24,10 +24,12 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   int _currentIndex = 0;
+  late List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
+    _pages = _buildPages();
     Future.microtask(() {
       if (mounted) {
         final token = context.read<AuthProvider>().token;
@@ -85,7 +87,7 @@ class _MapScreenState extends State<MapScreen> {
       });
     }
 
-    final pages = _buildPages();
+    final pages = _pages;
 
     // Pages that manage their own AppBar (index 0 = HomeMapTab, index 1 = StoreListScreen)
     final bool hideAppBar = _currentIndex == 0 || _currentIndex == 1;
