@@ -9,9 +9,6 @@ class Product {
   final String? categoryName;
   final bool isRetiredMine;
   final bool ruptureStock;
-  final String? unite;
-  final String? typeUnite;
-  final int stock;
 
   Product({
     required this.id,
@@ -24,9 +21,6 @@ class Product {
     this.categoryName,
     this.isRetiredMine = false,
     this.ruptureStock = false,
-    this.unite,
-    this.typeUnite,
-    this.stock = 0,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -46,9 +40,6 @@ class Product {
       categoryName: json['categorie_nom'],
       isRetiredMine: json['is_active'] == false, 
       ruptureStock: json['rupture_stock'] == true,
-      unite: json['unite'],
-      typeUnite: json['type_unite'],
-      stock: asInt(json['stock']),
     );
   }
 
@@ -57,9 +48,6 @@ class Product {
         'prix': prix,
         'description': description,
         'categorie_id': categoryId,
-        'unite': unite,
-        'type_unite': typeUnite,
-        'stock': stock,
         if (imagePrincipale != null) 'image_principale': imagePrincipale,
       };
 }

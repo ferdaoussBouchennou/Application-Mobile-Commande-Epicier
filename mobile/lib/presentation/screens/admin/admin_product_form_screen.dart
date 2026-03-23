@@ -26,9 +26,6 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
   
   late TextEditingController _nameController;
   late TextEditingController _priceController;
-  late TextEditingController _stockController;
-  late TextEditingController _unitController;
-  late TextEditingController _unitTypeController;
   late TextEditingController _descriptionController;
   
   int? _selectedCategoryId;
@@ -44,9 +41,6 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
     super.initState();
     _nameController = TextEditingController(text: widget.product?.nom);
     _priceController = TextEditingController(text: widget.product?.prix.toString());
-    _stockController = TextEditingController(text: widget.product?.stock.toString() ?? '0'); 
-    _unitController = TextEditingController(text: widget.product?.unite ?? ''); 
-    _unitTypeController = TextEditingController(text: widget.product?.typeUnite ?? ''); 
     _descriptionController = TextEditingController(text: widget.product?.description);
     _selectedCategoryId = widget.product?.categoryId ?? widget.initialCategoryId;
     _isVisible = widget.product?.isRetiredMine == false;
@@ -94,9 +88,6 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
         'categorie_id': _selectedCategoryId,
         'epicier_id': widget.storeOwner.store?['id'],
         'is_active': _isVisible,
-        'stock': int.tryParse(_stockController.text) ?? 0,
-        'unite': _unitController.text,
-        'type_unite': _unitTypeController.text,
       };
 
       if (token == null) throw Exception('Non authentifié');
@@ -266,36 +257,29 @@ class _AdminProductFormScreenState extends State<AdminProductFormScreen> {
           const SizedBox(height: 16),
           _buildTextField('Nom du produit *', _nameController, 'Ex: Huile d\'olive'),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Prix (DH) *', _priceController, '0', keyboardType: TextInputType.number)),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Stock *', _stockController, '0', keyboardType: TextInputType.number)),
-            ],
-          ),
+          _buildTextField('Prix (DH) *', _priceController, '0', keyboardType: TextInputType.number),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: _buildTextField('Unité *', _unitController, 'Ex: 1 Litre')),
-              const SizedBox(width: 16),
-              Expanded(child: _buildTextField('Type d\'unité', _unitTypeController, 'Ex: Bouteille')),
-            ],
-          ),
           const SizedBox(height: 16),
           const Text('Catégorie *', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDF6F0),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: _selectedCategoryId,
-                isExpanded: true,
-                items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.nom))).toList(),
-                onChanged: (val) => setState(() => _selectedCategoryId = val),
+          IgnorePointer(
+            ignoring: widget.initialCategoryId != null && widget.product == null,
+            child: Opacity(
+              opacity: (widget.initialCategoryId != null && widget.product == null) ? 0.6 : 1.0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFDF6F0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _selectedCategoryId,
+                    isExpanded: true,
+                    items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.nom))).toList(),
+                    onChanged: (val) => setState(() => _selectedCategoryId = val),
+                  ),
+                ),
               ),
             ),
           ),

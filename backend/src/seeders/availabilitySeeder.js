@@ -4,14 +4,11 @@ const sequelize = require('../config/db');
 
 const seedAvailabilities = async () => {
   try {
-    await sequelize.authenticate();
-    console.log('Connexion à la base de données réussie.');
-
     const stores = await Store.findAll();
     
     if (stores.length === 0) {
       console.log('Aucun épicier trouvé dans la base de données. Lancez d\'abord storeSeeder.js');
-      process.exit(0);
+      return;
     }
 
     const jours = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
@@ -40,11 +37,16 @@ const seedAvailabilities = async () => {
     }
 
     console.log('Table disponibilites remplie avec succès ! 🕒');
-    process.exit(0);
   } catch (error) {
     console.error('Erreur lors du remplissage des disponibilités :', error);
-    process.exit(1);
+    throw error;
   }
 };
 
-seedAvailabilities();
+module.exports = seedAvailabilities;
+
+if (require.main === module) {
+  seedAvailabilities()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}

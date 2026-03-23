@@ -6,9 +6,6 @@ const sequelize = require('../config/db');
 
 const seedProducts = async () => {
   try {
-    await sequelize.authenticate();
-    console.log('Connexion réussie.');
-
     // 1. Create Categories from UI Design
     const categoriesData = [
       { nom: 'Huiles' },
@@ -33,7 +30,7 @@ const seedProducts = async () => {
     const stores = await Store.findAll();
     if (stores.length === 0) {
       console.error('Aucune boutique trouvée. Veuillez d\'abord lancer storeSeeder.js');
-      process.exit(1);
+      return;
     }
 
     // 3. Create Products (Moroccan Market Staples)
@@ -41,7 +38,7 @@ const seedProducts = async () => {
       // Huiles
       { nom: 'Huile Lesieur 1L', prix: 19.50, description: 'Huile de table raffinée Lesieur.', categorie: 'Huiles', image: 'uploads/huiles/lesieur.jpg' },
       { nom: 'Huile d\'Olive Oued Souss 1L', prix: 85.00, description: 'Huile d\'olive extra vierge du Maroc.', categorie: 'Huiles', image: 'uploads/huiles/oued_souss.jpg' },
-      { nom: 'Huile Argan Alimentaire 250ml', prix: 120.00, description: 'Huile d\'argan pure et certifiée.', categorie: 'Huiles', image: 'uploads/huiles/argan.jpg' },
+      { nom: 'Huile Argan Alimentaire 250ml', prix: 120.00, description: 'Huile d\'argan pure and certifiée.', categorie: 'Huiles', image: 'uploads/huiles/argan.jpg' },
       
       // Laitiers
       { nom: 'Lait Centrale 1L', prix: 7.00, description: 'Lait frais pasteurisé Centrale Danone.', categorie: 'Laitiers', image: 'uploads/laitiers/centrale.jpg' },
@@ -83,10 +80,11 @@ const seedProducts = async () => {
       { nom: 'Kamoun (Cumin) 50g', prix: 10.00, description: 'Cumin moulu pur.', categorie: 'Épices', image: 'uploads/epices/cumin.jpg' }
     ];
 
-    // Do not destroy existing products to avoid foreign key errors. 
     // findOrCreate will simply ignore duplicates.
     for (const pData of productsData) {
       const category = categories.find(c => c.nom === pData.categorie);
+      if (!category) continue;
+      
       const [product] = await Product.findOrCreate({
         where: { nom: pData.nom, categorie_id: category.id },
         defaults: {
@@ -105,11 +103,16 @@ const seedProducts = async () => {
     }
 
     console.log(`Données du marché marocain injectées avec succès pour ${stores.length} boutiques ! 🇲🇦🥛🥨`);
-    process.exit(0);
   } catch (error) {
     console.error('Erreur lors du seeding des produits:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
-seedProducts();
+module.exports = seedProducts;
+
+if (require.main === module) {
+  seedProducts()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}

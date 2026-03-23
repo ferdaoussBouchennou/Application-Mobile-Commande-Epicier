@@ -22,8 +22,8 @@ async function sendNotificationToEpicier(epicierId, message, title = 'MyHanut') 
         await sendNotification(rows[0].fcm_token, title, message);
       }
       await sequelize.query(
-        'INSERT INTO notifications (client_id, message, date_envoi, lue) VALUES (:client_id, :message, NOW(), 0)',
-        { replacements: { client_id: utilisateurId, message }, type: QueryTypes.INSERT }
+        'INSERT INTO notifications (utilisateur_id, message, date_envoi, lue) VALUES (:utilisateur_id, :message, NOW(), 0)',
+        { replacements: { utilisateur_id: utilisateurId, message }, type: QueryTypes.INSERT }
       );
     }
   } catch (e) {

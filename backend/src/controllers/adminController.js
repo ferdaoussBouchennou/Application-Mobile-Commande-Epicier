@@ -312,10 +312,22 @@ exports.getCategories = async (req, res) => {
     });
     const list = await Promise.all(
       categories.map(async (c) => {
-        let productCount;
+        let productCount = 0;
+        let deactivatedProductCount = 0;
         if (storeId) {
           productCount = await EpicierProduct.count({
             where: { epicier_id: storeId, is_active: true },
+            include: [
+              {
+                model: Product,
+                as: "produit",
+                where: { categorie_id: c.id },
+                attributes: [],
+              },
+            ],
+          });
+          deactivatedProductCount = await EpicierProduct.count({
+            where: { epicier_id: storeId, is_active: false },
             include: [
               {
                 model: Product,
@@ -355,6 +367,7 @@ exports.getCategories = async (req, res) => {
         return {
           ...c.toJSON(),
           productCount,
+          deactivatedProductCount,
           storeCount,
           ruptureCount,
         };
@@ -558,9 +571,6 @@ exports.createProduct = async (req, res) => {
       prix,
       description,
       image_principale,
-      stock,
-      unite,
-      type_unite,
     } = req.body;
     if (!nom || !nom.trim() || prix == null || !categorie_id || !epicier_id) {
       return res
@@ -577,6 +587,7 @@ exports.createProduct = async (req, res) => {
         .status(404)
         .json({ message: "Épicier (boutique) non trouvé." });
     }
+    console.log(`[CREATE PRODUCT] Request for store ${epicier_id}, category ${categorie_id}, name ${nom}`);
     const [product] = await Product.findOrCreate({
       where: { nom: nom.trim(), categorie_id: parseInt(categorie_id, 10) },
       defaults: {
@@ -584,23 +595,21 @@ exports.createProduct = async (req, res) => {
         description: description?.trim() || null,
         categorie_id: parseInt(categorie_id, 10),
         image_principale: image_principale?.trim() || null,
-        unite: unite?.trim() || null,
-        type_unite: type_unite?.trim() || null,
       },
     });
+    console.log(`[CREATE PRODUCT] Product ID: ${product.id}`);
     const [epicierProduct, created] = await EpicierProduct.findOrCreate({
       where: { epicier_id: parseInt(epicier_id, 10), produit_id: product.id },
       defaults: {
         epicier_id: parseInt(epicier_id, 10),
         produit_id: product.id,
         prix: parseFloat(prix),
-        stock: parseInt(stock, 10) || 0,
         is_active: true,
       },
     });
+    console.log(`[CREATE PRODUCT] Link created: ${created}, is_active: true`);
     if (!created) {
       epicierProduct.prix = parseFloat(prix);
-      if (stock !== undefined) epicierProduct.stock = parseInt(stock, 10) || 0;
       epicierProduct.is_active = true;
       await epicierProduct.save();
     }
@@ -617,9 +626,6 @@ exports.createProduct = async (req, res) => {
       categorie_id: withCategory.categorie_id,
       categorie_nom: withCategory.categorie?.nom ?? null,
       image_principale: withCategory.image_principale,
-      unite: withCategory.unite,
-      type_unite: withCategory.type_unite,
-      stock: epicierProduct.stock,
       rupture_stock: !!epicierProduct.rupture_stock,
       is_active: true,
       store_name: store.nom_boutique,
@@ -671,9 +677,6 @@ exports.getStoreProducts = async (req, res) => {
       categorie_id: ep.produit.categorie_id,
       categorie_nom: ep.produit.categorie?.nom,
       image_principale: ep.produit.image_principale,
-      unite: ep.produit.unite,
-      type_unite: ep.produit.type_unite,
-      stock: ep.stock,
       is_active: !!ep.is_active,
       rupture_stock: !!ep.rupture_stock,
     }));
@@ -689,18 +692,14 @@ exports.getStoreProducts = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nom, prix, description, image_principale, epicier_id, stock, unite, type_unite, is_active } = req.body;
+    const { nom, prix, description, image_principale, epicier_id, is_active } = req.body;
     const product = await Product.findByPk(id);
     if (!product) {
       return res.status(404).json({ message: "Produit non trouvé." });
     }
     if (nom != null && typeof nom === "string") product.nom = nom.trim();
-    if (description !== undefined)
-      product.description = description?.trim() || null;
     if (image_principale !== undefined)
       product.image_principale = image_principale?.trim() || null;
-    if (unite !== undefined) product.unite = unite?.trim() || null;
-    if (type_unite !== undefined) product.type_unite = type_unite?.trim() || null;
     
     await product.save();
 
@@ -710,7 +709,6 @@ exports.updateProduct = async (req, res) => {
       });
       if (link) {
         if (prix != null) link.prix = parseFloat(prix);
-        if (stock != null) link.stock = parseInt(stock, 10) || 0;
         if (is_active !== undefined) link.is_active = !!is_active;
         await link.save();
       }
@@ -733,9 +731,6 @@ exports.updateProduct = async (req, res) => {
       epicier_id: epicierId,
       categorie_id: product.categorie_id,
       image_principale: product.image_principale,
-      unite: product.unite,
-      type_unite: product.type_unite,
-      stock: finalLink ? finalLink.stock : 0,
       is_active: finalLink ? !!finalLink.is_active : false,
       store_name: store?.nom_boutique ?? null,
     });

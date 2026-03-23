@@ -22,7 +22,14 @@ const seedAdmin = async () => {
     }
   } catch (error) {
     console.error('❌ Erreur lors du seeding de l\'admin:', error);
+    throw error;
   }
 };
 
 module.exports = seedAdmin;
+
+if (require.main === module) {
+  seedAdmin()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}

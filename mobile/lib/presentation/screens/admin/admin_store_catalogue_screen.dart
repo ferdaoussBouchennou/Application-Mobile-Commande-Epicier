@@ -60,10 +60,10 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
 
       if (mounted) {
         setState(() {
-          // Only show categories that have at least one product
+          // Show categories that have at least one product (active or retired)
           _categories = data
               .map((json) => model.Category.fromJson(json))
-              .where((c) => c.productCount > 0)
+              .where((c) => c.productCount > 0 || c.deactivatedProductCount > 0)
               .toList();
           _allCategories = allData.map((json) => model.Category.fromJson(json)).toList();
         });
@@ -709,14 +709,11 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Unité: ${product.unite ?? ""} ${product.typeUnite ?? ""}',
+                  product.description ?? '',
                   style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (product.stock > 0)
-                  Text(
-                    'Stock: ${product.stock}',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                  ),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

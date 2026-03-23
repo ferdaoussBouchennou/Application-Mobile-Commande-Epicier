@@ -6,6 +6,7 @@ class Category {
   final int displayOrder;
   final bool isActive;
   final int productCount;
+  final int deactivatedProductCount;
   final int storeCount;
   final int ruptureCount;
 
@@ -17,6 +18,7 @@ class Category {
     this.displayOrder = 0,
     this.isActive = true,
     this.productCount = 0,
+    this.deactivatedProductCount = 0,
     this.storeCount = 0,
     this.ruptureCount = 0,
   });
@@ -30,10 +32,11 @@ class Category {
       displayOrder: json['display_order'] ?? 0,
       isActive: json['is_active'] ?? true,
       productCount: json['productCount'] ?? 0,
+      deactivatedProductCount: json['deactivatedProductCount'] ?? 0,
       storeCount: json['storeCount'] ?? 0,
       ruptureCount: json['ruptureCount'] ?? 0,
     );
   }
   bool get isRetired => !isActive;
-  int get retiredCount => 0; // Placeholder for legacy compatibility
+  int get retiredCount => deactivatedProductCount;
 }

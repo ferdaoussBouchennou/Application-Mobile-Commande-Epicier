@@ -46,7 +46,7 @@ const notifyAdmins = async (title, body, data = {}) => {
     admins.forEach(ad => {
       // 1. Sauvegarder en base de données
       dbPromises.push(Notification.create({
-        client_id: ad.id,
+        utilisateur_id: ad.id,
         message: `${title}: ${body}`,
         lue: false
       }));
