@@ -1,7 +1,6 @@
 const path = require("path");
 const fs = require("fs");
 const Reclamation = require("../models/Reclamation");
-const Order = require("../models/Order");
 const Commande = require("../models/Commande");
 const User = require("../models/User");
 const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
@@ -118,7 +117,7 @@ exports.getStoreReclamations = async (req, res) => {
     const reclamations = await Reclamation.findAll({
       include: [
         {
-          model: Order,
+          model: Commande,
           as: "commande",
           where: { epicier_id: storeId },
           required: true,
@@ -146,7 +145,7 @@ exports.getStoreReclamationById = async (req, res) => {
     const reclamation = await Reclamation.findByPk(id, {
       include: [
         {
-          model: Order,
+          model: Commande,
           as: "commande",
           where: { epicier_id: storeId },
           required: true,
