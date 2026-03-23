@@ -73,16 +73,15 @@ class _GrocerReclamationsListScreenState
 
   Color _getStatusColor(String statut) {
     switch (statut) {
-      case 'Résolu':
-      case 'Résolue':
-      case 'Remboursé':
-        return Colors.green.shade700;
-      case 'En cours':
+      case 'En attente':
+        return Colors.amber.shade700;
       case 'En médiation':
         return Colors.blue.shade700;
-      case 'Ouverte':
       case 'Litige ouvert':
         return Colors.orange.shade700;
+      case 'Résolu':
+      case 'Remboursé':
+        return Colors.green.shade700;
       default:
         return Colors.grey;
     }
