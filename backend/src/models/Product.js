@@ -31,14 +31,6 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING(500),
     allowNull: true,
   },
-  unite: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  },
-  type_unite: {
-    type: DataTypes.STRING(50),
-    allowNull: true,
-  },
 }, {
   tableName: 'produits',
   timestamps: true,

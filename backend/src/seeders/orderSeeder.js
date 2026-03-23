@@ -48,7 +48,14 @@ const seedOrders = async () => {
     console.log('Seeding orders and reclamations successful!');
   } catch (error) {
     console.error('Error seeding orders:', error);
+    throw error;
   }
 };
 
 module.exports = seedOrders;
+
+if (require.main === module) {
+  seedOrders()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}

@@ -33,6 +33,7 @@ CREATE TABLE `avis` (
   `commentaire` text DEFAULT NULL,
   `client_id` int(11) NOT NULL,
   `epicier_id` int(11) NOT NULL,
+  `commande_id` int(11) DEFAULT NULL,
   `date_avis` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -600,6 +601,31 @@ INSERT INTO `epicier_produits` (`epicier_id`, `produit_id`, `prix`, `rupture_sto
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `paniers`
+--
+
+CREATE TABLE `paniers` (
+  `id` int(11) NOT NULL,
+  `client_id` int(11) NOT NULL,
+  `date_creation` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Structure de la table `panier_produits`
+--
+
+CREATE TABLE `panier_produits` (
+  `panier_id` int(11) NOT NULL,
+  `produit_id` int(11) NOT NULL,
+  `epicier_id` int(11) DEFAULT NULL,
+  `quantite` int(11) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `notifications`
 --
 
@@ -607,7 +633,7 @@ CREATE TABLE `notifications` (
   `id` int(11) NOT NULL,
   `message` varchar(500) NOT NULL,
   `date_envoi` date NOT NULL,
-  `client_id` int(11) NOT NULL,
+  `utilisateur_id` int(11) NOT NULL,
   `lue` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -615,7 +641,7 @@ CREATE TABLE `notifications` (
 -- Déchargement des données de la table `notifications`
 --
 
-INSERT INTO `notifications` (`id`, `message`, `date_envoi`, `client_id`, `lue`) VALUES
+INSERT INTO `notifications` (`id`, `message`, `date_envoi`, `utilisateur_id`, `lue`) VALUES
 (1, 'Votre commande #2 a été livrée. Merci de votre confiance !', '2026-03-08', 2, 1),
 (2, 'Votre commande #1 est en préparation.', '2026-03-09', 2, 1),
 (3, 'Votre commande #4 est prête à être récupérée.', '2026-03-06', 2, 1);
@@ -681,23 +707,26 @@ INSERT INTO `produits` (`id`, `nom`, `description`, `categorie_id`, `image_princ
 
 CREATE TABLE `reclamations` (
   `id` int(11) NOT NULL,
+  `motif` varchar(255) NOT NULL,
   `description` text NOT NULL,
-  `statut` enum('Résolu','En médiation','Remboursé','Litige ouvert') DEFAULT NULL,
+  `photo` varchar(255) DEFAULT NULL,
+  `statut` enum('En attente','Résolu','En médiation','Remboursé','Litige ouvert') NOT NULL DEFAULT 'En attente',
+  `reponse_epicier` text DEFAULT NULL,
   `client_id` int(11) NOT NULL,
   `commande_id` int(11) DEFAULT NULL,
-  `date_creation` date NOT NULL,
-  `motif` varchar(255) NOT NULL,
-  `photo` varchar(255) DEFAULT NULL,
-  `reponse_epicier` text DEFAULT NULL
+  `epicier_id` int(11) DEFAULT NULL,
+  `avis_id` int(11) DEFAULT NULL,
+  `type` enum('COMMANDE','AVIS') NOT NULL DEFAULT 'COMMANDE',
+  `date_creation` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `reclamations`
 --
 
-INSERT INTO `reclamations` (`id`, `description`, `statut`, `client_id`, `commande_id`, `date_creation`, `motif`, `photo`, `reponse_epicier`) VALUES
-(1, 'Un produit de la commande #3 était légèrement abîmé. Demande d\'échange.', 'Résolu', 2, 3, '2026-03-07', '', NULL, NULL),
-(2, 'Retard de livraison sur la commande #2.', 'Litige ouvert', 2, 2, '2026-03-08', '', NULL, NULL);
+INSERT INTO `reclamations` (`id`, `motif`, `description`, `photo`, `statut`, `reponse_epicier`, `client_id`, `commande_id`, `epicier_id`, `avis_id`, `type`, `date_creation`) VALUES
+(1, 'Produit abîmé', 'Un produit de la commande #3 était légèrement abîmé. Demande d\'échange.', NULL, 'Résolu', NULL, 2, 3, 1, NULL, 'COMMANDE', '2026-03-07 10:00:00'),
+(2, 'Retard de livraison', 'Retard de livraison sur la commande #2.', NULL, 'Litige ouvert', NULL, 2, 2, 1, NULL, 'COMMANDE', '2026-03-08 11:00:00');
 
 -- --------------------------------------------------------
 
@@ -807,7 +836,7 @@ ALTER TABLE `epicier_produits`
 --
 ALTER TABLE `notifications`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `client_id` (`client_id`);
+  ADD KEY `utilisateur_id` (`utilisateur_id`);
 
 --
 -- Index pour la table `paniers`
@@ -1028,7 +1057,7 @@ ALTER TABLE `epicier_produits`
 -- Contraintes pour la table `notifications`
 --
 ALTER TABLE `notifications`
-  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`client_id`) REFERENCES `utilisateurs` (`id`);
+  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`utilisateur_id`) REFERENCES `utilisateurs` (`id`);
 
 --
 -- Contraintes pour la table `paniers`

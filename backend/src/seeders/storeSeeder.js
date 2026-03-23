@@ -6,16 +6,6 @@ const sequelize = require('../config/db');
 
 const seedStores = async () => {
   try {
-    await sequelize.sync(); // Ensure tables exist
-
-    // Clear existing data (optional, be careful)
-    // await Availability.destroy({ where: {} });
-    // await Store.destroy({ where: {} });
-    // await User.destroy({ where: { role: 'EPICIER' } });
-
-    const salt = await bcrypt.genSalt(10);
-    const password = await bcrypt.hash('Password123', salt);
-
     const epiciersData = [
       {
         nom: 'Ben Salah',
@@ -46,7 +36,7 @@ const seedStores = async () => {
         nom_boutique: 'Chez Leila',
         adresse: 'Route de la Plage, Hammamet',
         telephone: '0555778899',
-        description: 'Alimentation générale et produits de première nécessité.',
+        description: 'Alimentation générale and produits de première nécessité.',
         image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 4.8,
       },
@@ -57,7 +47,7 @@ const seedStores = async () => {
         nom_boutique: 'Karim Market',
         adresse: 'Boulevard de l\'Environnement, Sousse',
         telephone: '0555001122',
-        description: 'Épicerie fine, semoule, huile et pain traditionnel.',
+        description: 'Épicerie fine, semoule, huile and pain traditionnel.',
         image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 3.9,
       },
@@ -68,7 +58,7 @@ const seedStores = async () => {
         nom_boutique: 'Mondher Express',
         adresse: 'Cité des Jeunes, Bizerte',
         telephone: '0555334455',
-        description: 'Service rapide : lait, sucre, pain et plus.',
+        description: 'Service rapide : lait, sucre, pain and plus.',
         image_url: 'uploads/Moul-hanoute-epiciers.jpg',
         rating: 4.0,
       }
@@ -120,11 +110,16 @@ const seedStores = async () => {
     }
 
     console.log('Seed completed successfully! 🌱');
-    process.exit(0);
   } catch (error) {
-    console.error('Error during seeding:', error);
-    process.exit(1);
+    console.error('Error during seeding stores:', error);
+    throw error;
   }
 };
 
-seedStores();
+module.exports = seedStores;
+
+if (require.main === module) {
+  seedStores()
+    .then(() => process.exit(0))
+    .catch(() => process.exit(1));
+}
