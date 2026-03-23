@@ -303,7 +303,8 @@ exports.getCategories = async (req, res) => {
   try {
     const { storeId } = req.query;
     const categories = await Category.findAll({
-      where: { is_active: true },
+      // En espace admin on doit aussi afficher les catégories inactives
+      // pour pouvoir les activer/désactiver depuis l'UI.
       order: [
         ["display_order", "ASC"],
         ["nom", "ASC"],
@@ -519,7 +520,9 @@ exports.getCategoryProducts = async (req, res) => {
       return res.status(404).json({ message: "Catégorie non trouvée." });
     }
     const linkList = await EpicierProduct.findAll({
-      where: { is_active: true },
+      // On inclut aussi les liens inactifs pour pouvoir afficher le toggle "off"
+      // dans l'UI admin.
+      where: {},
       include: [
         { model: Product, as: "produit", where: { categorie_id: categoryId } },
         { model: Store, as: "epicier", attributes: ["id", "nom_boutique"] },
