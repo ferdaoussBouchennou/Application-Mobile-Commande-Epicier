@@ -49,6 +49,7 @@ const Store = sequelize.define('Store', {
     type: DataTypes.DECIMAL(11, 8),
     allowNull: true,
   },
+  // Seule table portant le flux d'inscription / validation admin / complétion boutique (épicier).
   statut_inscription: {
     type: DataTypes.ENUM('EN_ATTENTE', 'ACCEPTE', 'REFUSE', 'COMPLETE'),
     allowNull: false,

@@ -111,12 +111,32 @@ async function dropLegacyCategoryColumnsIfPresent() {
   }
 }
 
+/** L'inscription épicier (EN_ATTENTE / ACCEPTE / …) vit uniquement dans epiciers ; une vieille BDD peut avoir statut_inscription sur utilisateurs. */
+async function dropLegacyUtilisateurStatutInscriptionIfPresent() {
+  if (sequelize.getDialect() !== 'mysql') return;
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'utilisateurs'
+       AND COLUMN_NAME = 'statut_inscription'`,
+    );
+    if (!rows || rows.length === 0) return;
+    await sequelize.query('ALTER TABLE `utilisateurs` DROP COLUMN `statut_inscription`');
+    console.log(
+      'Colonne obsolète retirée (utilisateurs): statut_inscription (source de vérité: epiciers.statut_inscription).',
+    );
+  } catch (e) {
+    console.warn('Nettoyage utilisateurs.statut_inscription (legacy):', e.message);
+  }
+}
+
 sequelize.query('SET FOREIGN_KEY_CHECKS = 0')
   .then(() => sequelize.query('DROP TABLE IF EXISTS notifications'))
   .then(() => sequelize.query('SET FOREIGN_KEY_CHECKS = 1'))
   .then(() => sequelize.sync({ alter: { drop: false } }))
   .then(() => dropLegacyProduitColumnsIfPresent())
   .then(() => dropLegacyCategoryColumnsIfPresent())
+  .then(() => dropLegacyUtilisateurStatutInscriptionIfPresent())
   .then(() => {
     console.log('Base de données synchronisée (notifications réinitialisées).');
     app.listen(PORT, '0.0.0.0', () => {
