@@ -62,7 +62,6 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
           // Only show categories that have at least one product
           _categories = data
               .map((json) => model.Category.fromJson(json))
-              .where((c) => c.productCount > 0)
               .toList();
           _allCategories = allData.map((json) => model.Category.fromJson(json)).toList();
         });
