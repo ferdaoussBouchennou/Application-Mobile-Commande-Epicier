@@ -38,7 +38,8 @@ class Product {
       categoryId: asInt(json['categorie_id']),
       imagePrincipale: json['image_principale'],
       categoryName: json['categorie_nom'],
-      isRetiredMine: json['is_active'] == false, 
+      isRetiredMine:
+          json['is_retired_mine'] == true || json['is_active'] == false,
       ruptureStock: json['rupture_stock'] == true,
     );
   }

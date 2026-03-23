@@ -144,38 +144,6 @@ class ApiService {
     }
   }
 
-  /// Upload icône catégorie pour l'admin.
-  Future<String> uploadCategoryIconAdmin({
-    required String token,
-    required List<int> bytes,
-    required String filename,
-  }) async {
-    try {
-      final uri = Uri.parse('$_baseUrl/admin/categories/upload-icon');
-      final request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer $token';
-      request.files.add(http.MultipartFile.fromBytes('image', bytes, filename: filename));
-      final streamed = await request.send();
-      final response = await http.Response.fromStream(streamed);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final body = response.body;
-        String msg = 'Erreur ${response.statusCode}';
-        try {
-          final j = jsonDecode(body) as Map<String, dynamic>;
-          if (j['message'] != null) msg = j['message'] as String;
-        } catch (_) {}
-        throw Exception(msg);
-      }
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final path = data['image_url'] as String?;
-      if (path == null || path.isEmpty) throw Exception('Réponse invalide');
-      return path;
-    } catch (e) {
-      Logger.error('uploadCategoryIconAdmin → $e');
-      rethrow;
-    }
-  }
-
   Future<String> uploadProductImage({
     required String token,
     required int categorieId,
