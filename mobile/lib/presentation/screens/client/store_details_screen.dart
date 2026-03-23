@@ -113,14 +113,21 @@ class _StoreDetailsScreenState extends State<StoreDetailsScreen> {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(
-                        ApiConstants.formatImageUrl(store.imageUrl),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.store, size: 50, color: Colors.grey),
-                        ),
-                      ),
+                      store.imageUrl != null && store.imageUrl!.trim().isNotEmpty
+                          ? Image.network(
+                              ApiConstants.formatImageUrl(store.imageUrl),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.store, size: 50, color: Colors.grey),
+                              ),
+                            )
+                          : Container(
+                              color: Colors.grey.shade300,
+                              child: const Center(
+                                child: Icon(Icons.store, size: 64, color: Colors.grey),
+                              ),
+                            ),
                       const DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(

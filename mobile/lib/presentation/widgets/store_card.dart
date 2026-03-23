@@ -37,18 +37,25 @@ class StoreCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  child: Image.network(
-                    ApiConstants.formatImageUrl(store.imageUrl),
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 180,
-                      width: double.infinity,
-                      color: const Color(0xFFE5DED4),
-                      child: const Icon(Icons.storefront, size: 50, color: Color(0xFF7A5C44)),
-                    ),
-                  ),
+                  child: store.imageUrl != null && store.imageUrl!.trim().isNotEmpty
+                      ? Image.network(
+                          ApiConstants.formatImageUrl(store.imageUrl),
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: 180,
+                            width: double.infinity,
+                            color: const Color(0xFFE5DED4),
+                            child: const Icon(Icons.storefront, size: 50, color: Color(0xFF7A5C44)),
+                          ),
+                        )
+                      : Container(
+                          height: 180,
+                          width: double.infinity,
+                          color: const Color(0xFFE5DED4),
+                          child: const Icon(Icons.storefront, size: 50, color: Color(0xFF7A5C44)),
+                        ),
                 ),
                 // Status Badge (Ouvert/Fermé)
                 Positioned(

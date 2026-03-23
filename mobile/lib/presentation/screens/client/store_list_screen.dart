@@ -96,11 +96,16 @@ class _StoreListScreenState extends State<StoreListScreen> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Statut de l\'épicerie',
+                'Horaires (aujourd\'hui)',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF2D1A0E)),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Selon les créneaux renseignés par l\'épicerie, pas le statut d\'inscription.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
               const SizedBox(height: 16),
-              _buildStatusOption(null, 'Tous les statuts', storeProvider),
+              _buildStatusOption(null, 'Tous', storeProvider),
               _buildStatusOption(true, 'Ouvert seulement', storeProvider),
               _buildStatusOption(false, 'Fermé seulement', storeProvider),
               const SizedBox(height: 20),
@@ -206,8 +211,8 @@ class _StoreListScreenState extends State<StoreListScreen> {
                       Row(
                         children: [
                           _buildFilterChip(
-                            label: storeProvider.statusFilter == null 
-                                ? 'Statut' 
+                            label: storeProvider.statusFilter == null
+                                ? 'Horaires'
                                 : (storeProvider.statusFilter! ? 'Ouvert' : 'Fermé'),
                             isSelected: storeProvider.statusFilter != null,
                             onTap: _showStatusFilter,
