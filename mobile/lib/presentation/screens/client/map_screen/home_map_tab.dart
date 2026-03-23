@@ -76,6 +76,9 @@ class _HomeMapTabState extends State<HomeMapTab> {
           _locationError = e.toString().replaceAll('Exception: ', '');
           _isLoadingLocation = false;
         });
+        
+        // S'assurer de charger les magasins même si la localisation échoue ou est refusée
+        context.read<StoreProvider>().fetchStores();
       }
     }
   }
