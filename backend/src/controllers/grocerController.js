@@ -813,6 +813,93 @@ const grocerController = {
     }
   },
 
+  // PUT /epicier/profile — modify epicier profile after admin validation
+  // Allows statut_inscription = "ACCEPTE" or "COMPLETE" and updates store + availability.
+  updateProfile: async (req, res) => {
+    try {
+      const storeId = req.user.storeId;
+      if (!storeId) {
+        return res.status(403).json({ message: 'Store ID manquant' });
+      }
+
+      const store = await Store.findByPk(storeId);
+      if (!store) {
+        return res.status(404).json({ message: 'Boutique introuvable.' });
+      }
+
+      if (!['ACCEPTE', 'COMPLETE'].includes(store.statut_inscription)) {
+        return res.status(400).json({
+          message:
+            'Votre compte n’est pas dans un état permettant la modification du profil.',
+        });
+      }
+
+      const {
+        nom_boutique,
+        description,
+        telephone,
+        adresse,
+        latitude,
+        longitude,
+        horaires,
+        image_url,
+      } = req.body;
+
+      if (nom_boutique !== undefined && nom_boutique !== null)
+        store.nom_boutique = String(nom_boutique).trim();
+      if (description !== undefined)
+        store.description =
+          description != null ? String(description).trim() : null;
+      if (telephone !== undefined && telephone !== null)
+        store.telephone = String(telephone).trim();
+      if (adresse !== undefined && adresse !== null)
+        store.adresse = String(adresse).trim();
+
+      if (latitude != null) store.latitude = parseFloat(latitude);
+      if (longitude != null) store.longitude = parseFloat(longitude);
+      if (image_url) store.image_url = String(image_url).trim();
+
+      // After modifications, keep the store as COMPLETE for a ready-to-use profile.
+      store.statut_inscription = 'COMPLETE';
+      await store.save();
+
+      if (horaires && Array.isArray(horaires)) {
+        await Availability.destroy({ where: { epicier_id: storeId } });
+
+        for (const h of horaires) {
+          if (
+            h?.jour &&
+            h?.heure_debut &&
+            h?.heure_fin &&
+            h?.is_open !== false
+          ) {
+            await Availability.create({
+              epicier_id: storeId,
+              jour: h.jour,
+              heure_debut: h.heure_debut,
+              heure_fin: h.heure_fin,
+            });
+          }
+        }
+      }
+
+      const updatedStore = await Store.findByPk(storeId, {
+        include: [{ model: Availability, as: 'disponibilites' }],
+      });
+
+      res.status(200).json({
+        message: 'Profil mis à jour avec succès !',
+        store: updatedStore,
+      });
+    } catch (error) {
+      console.error('Erreur updateProfile:', error);
+      res.status(500).json({
+        message: 'Erreur lors de la mise à jour du profil',
+        error: error.message,
+      });
+    }
+  },
+
   uploadStoreImage: async (req, res) => {
     try {
       if (!req.file || !req.file.buffer) {
