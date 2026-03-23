@@ -48,6 +48,7 @@ let sql = `-- ==================================================================
 -- Aligné sur les modèles Sequelize (backend/src/models).
 --
 -- Schéma cible (pas de colonnes fantômes) :
+--   Inscription épicier : statut_inscription uniquement sur epiciers (pas sur utilisateurs).
 --   categories     : id, nom, description (pas display_order, is_active, image_url)
 --   produits       : id, nom, description, categorie_id, image_principale, date_ajout, date_modif
 --                    (pas prix sur produits — le prix est dans epicier_produits.prix ; pas unite / type_unite)
@@ -136,6 +137,9 @@ INSERT INTO \`epiciers\` (\`id\`, \`utilisateur_id\`, \`nom_boutique\`, \`adress
 (3, 4, 'Chez Leila', 'Route de la Plage, Tanger', '0555778899', 'Alimentation générale et produits de première nécessité.', 'uploads/epiciers/hanut3.jpg', 4.8, 35.7594650, -5.8339540, 'COMPLETE', 1, '2026-01-03 08:00:00'),
 (4, 5, 'Karim Market', 'Boulevard de l''Environnement, Casablanca', '0555001122', 'Épicerie fine, semoule, huile et pain traditionnel.', 'uploads/epiciers/hanut4.jpg', 3.9, 33.5731100, -7.5898430, 'COMPLETE', 1, '2026-01-03 08:00:00'),
 (5, 6, 'Mondher Express', 'Cité des Jeunes, Meknès', '0555334455', 'Service rapide : lait, sucre, pain et plus.', 'uploads/epiciers/hanut5.jpg', 4.0, 33.8950000, -5.5547300, 'COMPLETE', 1, '2026-01-03 08:00:00');
+
+-- Données de démo : inscription épicier terminée (boutiques visibles côté client). Réaligne si une ancienne base avait ACCEPTE.
+UPDATE \`epiciers\` SET \`statut_inscription\` = 'COMPLETE' WHERE \`id\` IN (1, 2, 3, 4, 5);
 
 -- --------------------------------------------------------------------------- categories
 CREATE TABLE \`categories\` (
