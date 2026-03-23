@@ -9,6 +9,7 @@ import 'catalogue/grocer_catalogue_screen.dart';
 import 'orders/grocer_orders_screen.dart';
 import 'notifications/grocer_notifications_screen.dart';
 import 'reclamations/grocer_reclamations_list_screen.dart';
+import 'profile/grocer_profile_view_screen.dart';
 
 /// Écran principal de l'espace Épicier — même design que MapScreen (parcourir sans compte).
 class GrocerMainScreen extends StatefulWidget {
@@ -55,6 +56,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
         onRegisterRefresh: (fn) => _ordersRefresh = fn,
       ),
       const GrocerReclamationsListScreen(),
+      const GrocerProfileViewScreen(),
       GrocerNotificationsScreen(
         onNavigateToOrders: () => setState(() => _currentIndex = 2),
         onNavigateToOrder: (orderId) {
@@ -105,6 +107,12 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
       Icons.report_problem_outlined,
       Icons.report_problem,
       'Réclamations',
+      null,
+    ),
+    const _NavItem(
+      Icons.person_outline,
+      Icons.person,
+      'Profil',
       null,
     ),
     _NavItem(
@@ -180,7 +188,7 @@ class _GrocerMainScreenState extends State<GrocerMainScreen> {
             _catalogueNavKey.currentState?.popUntil((route) => route.isFirst);
             _catalogueRefresh?.call();
           }
-          if (index == 4) {
+          if (index == 5) {
             _notificationsRefresh?.call();
           }
         },
