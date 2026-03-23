@@ -103,6 +103,7 @@ const commandeController = {
         quantite: d.quantite,
         prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
         total_ligne: parseFloat(d.total_ligne ?? 0),
+        image_principale: d.Product?.image_principale || null,
         rupture: !!d.rupture,
         en_attente_acceptation_client: !!d.en_attente_acceptation_client,
       }));
