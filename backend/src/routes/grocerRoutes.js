@@ -15,6 +15,12 @@ router.get(
   grocerController.getStoreProfile,
 );
 router.put(
+  "/profile",
+  authMiddleware,
+  requireEpicier,
+  grocerController.updateProfile,
+);
+router.put(
   "/complete-registration",
   authMiddleware,
   requireEpicier,
