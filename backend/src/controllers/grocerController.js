@@ -83,6 +83,7 @@ function toCatalogueItem(epicierProduct, product) {
     categorie_nom: p.categorie?.nom ?? null,
     image_principale: p.image_principale,
     rupture_stock: !!epicierProduct.rupture_stock,
+    is_active: !!epicierProduct.is_active,
   };
 }
 
@@ -207,6 +208,8 @@ const grocerController = {
         categorie_id: withCategory.categorie_id,
         categorie_nom: withCategory.categorie?.nom ?? null,
         image_principale: withCategory.image_principale,
+        rupture_stock: !!epicierProduct.rupture_stock,
+        is_active: !!epicierProduct.is_active,
       });
     } catch (error) {
       console.error("Erreur createProduct:", error);
@@ -527,14 +530,7 @@ const grocerController = {
         is_active: true,
       });
       res.status(201).json({
-        id: sourceProduct.id,
-        nom: sourceProduct.nom,
-        prix: parseFloat(epicierProduct.prix),
-        description: sourceProduct.description,
-        epicier_id: epicierId,
-        categorie_id: sourceProduct.categorie_id,
-        categorie_nom: sourceProduct.categorie?.nom ?? null,
-        image_principale: sourceProduct.image_principale,
+        ...toCatalogueItem(epicierProduct, sourceProduct),
       });
     } catch (error) {
       console.error("Erreur copyProductToCatalogue:", error);
