@@ -2,6 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const User = require("./User");
 const Order = require("./Order");
+const Avis = require("./Avis");
 
 const Reclamation = sequelize.define(
   "Reclamation",
@@ -89,7 +90,9 @@ const Reclamation = sequelize.define(
 // Associations
 Reclamation.belongsTo(User, { foreignKey: "client_id", as: "client" });
 Reclamation.belongsTo(Order, { foreignKey: "commande_id", as: "commande" });
+Reclamation.belongsTo(Avis, { foreignKey: "avis_id", as: "avis" });
 User.hasMany(Reclamation, { foreignKey: "client_id", as: "reclamations" });
 Order.hasMany(Reclamation, { foreignKey: "commande_id", as: "reclamations" });
+Avis.hasMany(Reclamation, { foreignKey: "avis_id", as: "reclamationsAvis" });
 
 module.exports = Reclamation;

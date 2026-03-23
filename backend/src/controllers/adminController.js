@@ -7,6 +7,7 @@ const Category = require("../models/Category");
 const Product = require("../models/Product");
 const EpicierProduct = require("../models/EpicierProduct");
 const Order = require("../models/Order");
+const Avis = require("../models/Avis");
 const Reclamation = require("../models/Reclamation");
 const { Op } = require("sequelize");
 const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
@@ -955,8 +956,19 @@ exports.getDisputes = async (req, res) => {
         {
           model: Order,
           as: "commande",
+          required: false,
           include: [
             { model: Store, as: "epicier", attributes: ["nom_boutique"] },
+          ],
+        },
+        {
+          model: Avis,
+          as: "avis",
+          required: false,
+          attributes: ["id", "note", "commentaire", "date_avis", "epicier_id"],
+          include: [
+            { model: User, as: "client", attributes: ["nom", "prenom"], required: false },
+            { model: Store, attributes: ["id", "nom_boutique"], required: false },
           ],
         },
       ],
@@ -996,12 +1008,20 @@ exports.resolveDispute = async (req, res) => {
     dispute.statut = statut || "Résolu";
     await dispute.save();
 
-    if (dispute.commande_id && previousStatus !== dispute.statut) {
-      const order = await Order.findByPk(dispute.commande_id);
-      if (order?.epicier_id) {
-        const msg = `Statut réclamation #${dispute.id} : ${dispute.statut}`;
+    if (previousStatus !== dispute.statut) {
+      let epicierIdToNotify = null;
+      if (dispute.type === "AVIS") {
+        epicierIdToNotify = dispute.epicier_id || null;
+      } else if (dispute.commande_id) {
+        const order = await Order.findByPk(dispute.commande_id);
+        epicierIdToNotify = order?.epicier_id || null;
+      }
+
+      if (epicierIdToNotify) {
+        const typeLabel = dispute.type === "AVIS" ? "avis" : "commande";
+        const msg = `Statut réclamation (${typeLabel}) #${dispute.id} : ${dispute.statut}`;
         sendNotificationToEpicier(
-          order.epicier_id,
+          epicierIdToNotify,
           msg,
           "Mise à jour réclamation",
         ).catch(() => {});
