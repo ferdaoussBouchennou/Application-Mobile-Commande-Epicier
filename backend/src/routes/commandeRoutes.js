@@ -6,6 +6,7 @@ const { authMiddleware } = require('../middlewares/auth');
 
 router.get('/', authMiddleware, commandeController.getMyCommandes);
 router.get('/:id', authMiddleware, commandeController.getCommandeById);
+router.get('/:id/facture', authMiddleware, commandeController.downloadFacture);
 router.post('/', authMiddleware, commandeController.createFromPanier);
 router.post('/:id/reclamations', authMiddleware, reclamationController.create);
 router.post('/:id/annuler', authMiddleware, commandeController.annulerCommande);

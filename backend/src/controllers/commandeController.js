@@ -6,6 +6,8 @@ const DetailCommande = require('../models/DetailCommande');
 const Product = require('../models/Product');
 const EpicierProduct = require('../models/EpicierProduct');
 const Store = require('../models/Store');
+const User = require('../models/User');
+const { pdfCommandeTicket } = require('../utils/grocerPdf');
 
 const commandeController = {
   getMyCommandes: async (req, res) => {
@@ -376,6 +378,71 @@ const commandeController = {
     } catch (error) {
       console.error('Erreur refuserProduitRemisEnStock:', error);
       res.status(500).json({ message: 'Erreur lors du refus du produit', error: error.message });
+    }
+  },
+
+  downloadFacture: async (req, res) => {
+    try {
+      const clientId = req.user.id;
+      const { id } = req.params;
+      const commande = await Commande.findOne({
+        where: { id, client_id: clientId },
+        include: [
+          { model: Store, as: 'epicier', attributes: ['id', 'nom_boutique'] },
+          { model: User, as: 'client', attributes: ['id', 'nom', 'prenom', 'email'] },
+        ],
+      });
+      if (!commande) {
+        return res.status(404).json({ message: 'Commande introuvable' });
+      }
+      const details = await DetailCommande.findAll({
+        where: { commande_id: commande.id },
+        include: [{ model: Product, as: 'Product', attributes: ['id', 'nom'] }],
+      });
+
+      const lines = details.map((d) => ({
+        nom: d.Product?.nom || 'Produit inconnu',
+        quantite: d.quantite,
+        prix_unitaire: parseFloat(d.prix_unitaire ?? 0),
+        total_ligne: parseFloat(d.total_ligne ?? 0),
+        rupture: !!d.rupture,
+      }));
+
+      const dateStr = new Date(commande.date_commande).toLocaleString('fr-FR');
+      let creneau = '';
+      if (commande.date_recuperation) {
+        const d = new Date(commande.date_recuperation);
+        const h = d.getHours();
+        const m = d.getMinutes();
+        creneau = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} – ${String(h + 1).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      }
+
+      let clientLabel = 'Client';
+      if (commande.client) {
+        if (commande.client.nom || commande.client.prenom) {
+          clientLabel = `${commande.client.prenom || ''} ${commande.client.nom || ''}`.trim();
+        } else {
+          clientLabel = commande.client.email || 'Client';
+        }
+      }
+
+      const pdfBuffer = await pdfCommandeTicket({
+        storeName: commande.epicier?.nom_boutique || 'MyHanut',
+        commandeId: commande.id,
+        clientLabel,
+        dateStr,
+        statut: commande.statut,
+        lignes: lines,
+        montantTotal: parseFloat(commande.montant_total ?? 0),
+        creneau,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Facture_CMD_${commande.id}.pdf`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Erreur downloadFacture:', error);
+      res.status(500).json({ message: 'Erreur lors de la génération de la facture', error: error.message });
     }
   },
 };
