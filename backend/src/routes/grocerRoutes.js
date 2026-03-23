@@ -254,6 +254,12 @@ router.post(
   avisController.createAvisReclamation,
 );
 router.get(
+  "/avis/:id",
+  authMiddleware,
+  requireEpicier,
+  avisController.getAvisDetailsForEpicier,
+);
+router.get(
   "/notifications",
   authMiddleware,
   requireEpicier,
