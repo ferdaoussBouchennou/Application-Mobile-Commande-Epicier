@@ -161,64 +161,74 @@ class _GrocerOrdersScreenState extends State<GrocerOrdersScreen>
   @override
   Widget build(BuildContext context) {
     final token = context.watch<AuthProvider>().token;
-    return Scaffold(
-      backgroundColor: GrocerTheme.background,
-      appBar: AppBar(
-        backgroundColor: GrocerTheme.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        toolbarHeight: 48,
-        title: const SizedBox.shrink(),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-          tabs: _tabLabels.map((l) => Tab(text: l)).toList(),
+    // On évite un Scaffold/AppBar interne pour ne pas ajouter une hauteur
+    // supplémentaire (GrocerMainScreen a déjà un AppBar).
+    return SafeArea(
+      top: false,
+      child: Container(
+        color: GrocerTheme.background,
+        child: Column(
+          children: [
+            Material(
+              color: GrocerTheme.primary,
+              elevation: 0,
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                tabs: _tabLabels.map((l) => Tab(text: l)).toList(),
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _OrdersList(
+                    token: token,
+                    statut: 'reçue',
+                    fetchOrders: () => _fetchOrders(token, 'reçue'),
+                    fetchDetail: (id) => _fetchOrderDetail(token, id),
+                    acceptOrder: (id) => _acceptOrder(token, id),
+                    refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+                    updateStatut: (id, s) => _updateStatut(token, id, s),
+                    markRupture: (id, detailId) =>
+                        _markRupture(token, id, detailId),
+                    onAction: _onOrderAction,
+                  ),
+                  _OrdersList(
+                    token: token,
+                    statut: 'prête',
+                    fetchOrders: () => _fetchOrders(token, 'prête'),
+                    fetchDetail: (id) => _fetchOrderDetail(token, id),
+                    acceptOrder: (id) => _acceptOrder(token, id),
+                    refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+                    updateStatut: (id, s) => _updateStatut(token, id, s),
+                    markRupture: (id, detailId) =>
+                        _markRupture(token, id, detailId),
+                    onAction: _onOrderAction,
+                  ),
+                  _HistoriqueWithFilter(
+                    token: token,
+                    fetchOrders: (statut) => _fetchOrders(token, statut),
+                    fetchDetail: (id) => _fetchOrderDetail(token, id),
+                    acceptOrder: (id) => _acceptOrder(token, id),
+                    refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
+                    updateStatut: (id, s) => _updateStatut(token, id, s),
+                    markRupture: (id, detailId) =>
+                        _markRupture(token, id, detailId),
+                    onAction: _onOrderAction,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _OrdersList(
-            token: token,
-            statut: 'reçue',
-            fetchOrders: () => _fetchOrders(token, 'reçue'),
-            fetchDetail: (id) => _fetchOrderDetail(token, id),
-            acceptOrder: (id) => _acceptOrder(token, id),
-            refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
-            updateStatut: (id, s) => _updateStatut(token, id, s),
-            markRupture: (id, detailId) => _markRupture(token, id, detailId),
-            onAction: _onOrderAction,
-          ),
-          _OrdersList(
-            token: token,
-            statut: 'prête',
-            fetchOrders: () => _fetchOrders(token, 'prête'),
-            fetchDetail: (id) => _fetchOrderDetail(token, id),
-            acceptOrder: (id) => _acceptOrder(token, id),
-            refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
-            updateStatut: (id, s) => _updateStatut(token, id, s),
-            markRupture: (id, detailId) => _markRupture(token, id, detailId),
-            onAction: _onOrderAction,
-          ),
-          _HistoriqueWithFilter(
-            token: token,
-            fetchOrders: (statut) => _fetchOrders(token, statut),
-            fetchDetail: (id) => _fetchOrderDetail(token, id),
-            acceptOrder: (id) => _acceptOrder(token, id),
-            refuseOrder: (id, msg) => _refuseOrder(token, id, msg),
-            updateStatut: (id, s) => _updateStatut(token, id, s),
-            markRupture: (id, detailId) => _markRupture(token, id, detailId),
-            onAction: _onOrderAction,
-          ),
-        ],
       ),
     );
   }
