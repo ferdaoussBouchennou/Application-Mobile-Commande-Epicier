@@ -26,12 +26,16 @@ class NotificationModel {
   }
 
   String get shortTitle {
+    if (message.contains(':')) {
+       final splitted = message.split(':');
+       if (splitted.length > 1) return splitted[0].trim();
+    }
     final msg = message.toLowerCase();
     if (msg.contains('prête') || msg.contains('prete')) return 'Commande prête !';
     if (msg.contains('préparation') || msg.contains('preparation')) return 'Commande en préparation';
     if (msg.contains('livrée') || msg.contains('livree')) return 'Commande livrée';
     if (msg.contains('confirmée') || msg.contains('acceptée')) return 'Commande confirmée';
-    return 'Mise à jour commande';
+    return 'Notification';
   }
 
   bool get isOrderReady =>
@@ -43,6 +47,8 @@ class NotificationModel {
     if (msg.contains('préparation') || msg.contains('preparation')) return Icons.settings_outlined;
     if (msg.contains('livrée') || msg.contains('livree')) return Icons.local_shipping_outlined;
     if (msg.contains('confirmée') || msg.contains('acceptée')) return Icons.celebration_outlined;
+    if (msg.contains('inscription') || msg.contains('nouvel')) return Icons.person_add_outlined;
+    if (msg.contains('litige')) return Icons.gavel_outlined;
     return Icons.notifications_outlined;
   }
 
@@ -52,6 +58,8 @@ class NotificationModel {
     if (msg.contains('préparation') || msg.contains('preparation')) return const Color(0xFFFFF3E0);
     if (msg.contains('livrée') || msg.contains('livree')) return const Color(0xFFE3F2FD);
     if (msg.contains('confirmée') || msg.contains('acceptée')) return const Color(0xFFFCE4EC);
+    if (msg.contains('inscription') || msg.contains('nouvel')) return const Color(0xFFE8F5E9);
+    if (msg.contains('litige')) return const Color(0xFFFBE9E7);
     return const Color(0xFFF3E5F5);
   }
 
@@ -61,6 +69,8 @@ class NotificationModel {
     if (msg.contains('préparation') || msg.contains('preparation')) return const Color(0xFFE65100);
     if (msg.contains('livrée') || msg.contains('livree')) return const Color(0xFF1565C0);
     if (msg.contains('confirmée') || msg.contains('acceptée')) return const Color(0xFFC62828);
+    if (msg.contains('inscription') || msg.contains('nouvel')) return const Color(0xFF2D5016);
+    if (msg.contains('litige')) return const Color(0xFFD84315);
     return const Color(0xFF6A1B9A);
   }
 }
