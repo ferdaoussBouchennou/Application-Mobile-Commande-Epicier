@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../data/services/api_service.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../widgets/admin/admin_bottom_nav.dart';
+import '../../../widgets/admin/admin_header.dart';
 import '../../../../screens/auth/welcome_screen.dart';
 
 class PlatformStatsScreen extends StatefulWidget {
@@ -77,48 +78,22 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFDF6F0),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: const Color(0xFF2D5016),
-        elevation: 0,
-        title: const Text('Tableau de Bord', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF26444),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Text('ADMIN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white, size: 22),
-            onPressed: _loadData,
-            tooltip: 'Actualiser',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 22),
-            tooltip: 'Déconnexion',
-            onPressed: () {
-              context.read<AuthProvider>().logout();
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (_) => WelcomeScreen()),
-                (route) => false,
-              );
-            },
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 0),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Column(
+          children: [
+            AdminHeader(
+              title: 'Tableau de Bord',
+              trailingAction: IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white, size: 22),
+                onPressed: _loadData,
+                tooltip: 'Actualiser',
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Summary Cards row 1
@@ -128,7 +103,6 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                   child: _buildSummaryCard(
                     'Épiciers actifs',
                     summary['epiciers']['total'].toString(),
-                    '+${summary['epiciers']['growth']} ce mois',
                     Icons.store,
                     const Color(0xFF2D5016),
                   ),
@@ -138,10 +112,8 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                   child: _buildSummaryCard(
                     'Clients inscrits',
                     _toInt(summary['clients']['total']).toString(),
-                    '+${_toInt(summary['clients']['growth'])}',
                     Icons.people,
                     const Color(0xFFC06C1E),
-                    isGrowthPositive: true,
                   ),
                 ),
               ],
@@ -154,7 +126,6 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                   child: _buildSummaryCard(
                     'Commandes / jour',
                     _toInt(summary['ordersPerDay']).toString(),
-                    '+12%', // Static for now
                     Icons.shopping_bag,
                     const Color(0xFFE67E22),
                   ),
@@ -164,10 +135,8 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
                   child: _buildSummaryCard(
                     'Litiges ouverts',
                     _toInt(summary['disputes']).toString(),
-                    '-3 vs hier', // Static for now
                     Icons.gavel,
                     const Color(0xFF3498DB),
-                    isGrowthPositive: false,
                   ),
                 ),
               ],
@@ -199,6 +168,10 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
             _buildRegTrendLineChart(),
             
             const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -220,7 +193,7 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
     );
   }
 
-  Widget _buildSummaryCard(String title, String value, String growth, IconData icon, Color color, {bool isGrowthPositive = true}) {
+  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -246,25 +219,6 @@ class _PlatformStatsScreenState extends State<PlatformStatsScreen> {
           ),
           const SizedBox(height: 8),
           Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                isGrowthPositive ? Icons.arrow_upward : Icons.arrow_downward,
-                size: 12,
-                color: isGrowthPositive ? Colors.green : Colors.red,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                growth,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isGrowthPositive ? Colors.green : Colors.red,
-                ),
-              ),
-            ],
-          ),
         ],
       ),
     );
