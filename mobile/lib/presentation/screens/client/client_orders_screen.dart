@@ -8,6 +8,8 @@ import '../../../providers/cart_provider.dart';
 import '../../../providers/order_provider.dart';
 import 'reclamations/claim_submission_screen.dart';
 import 'reclamations/client_reclamations_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/api_constants.dart';
 
 /// Liste des commandes du client (onglet Commandes).
 class ClientOrdersScreen extends StatefulWidget {
@@ -56,6 +58,15 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
     final token = context.read<AuthProvider>().token;
     if (token != null) {
       await context.read<OrderProvider>().fetchOrders(token);
+    }
+  }
+
+  Future<void> _downloadFacture(int orderId) async {
+    final token = context.read<AuthProvider>().token;
+    if (token == null) return;
+    final url = Uri.parse('${ApiConstants.baseUrl}/commandes/$orderId/facture?token=$token');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Impossible d\'ouvrir la facture')));
     }
   }
 
@@ -278,6 +289,24 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
                             ],
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Bouton Télécharger Facture
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: () => _downloadFacture(detail.id),
+                        icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                        label: const Text(
+                          'Télécharger la facture (PDF)',
+                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.red.withValues(alpha: 0.05),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -580,6 +609,7 @@ class _ClientOrdersScreenState extends State<ClientOrdersScreen> {
         prix: l.prixUnitaire,
         quantite: l.quantite,
         epicierId: order.epicierId,
+        imagePrincipale: l.imagePrincipale,
       );
     }
     if (mounted) {

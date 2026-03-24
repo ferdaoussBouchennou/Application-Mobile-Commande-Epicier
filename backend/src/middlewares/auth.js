@@ -7,8 +7,8 @@ if (!JWT_SECRET) {
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  console.log('DEBUG backend auth: header=', authHeader);
-  const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const queryToken = req.query.token;
+  const token = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.slice(7) : (queryToken || null);
 
   if (!token) {
     console.log('DEBUG backend auth: token is missing or empty');
