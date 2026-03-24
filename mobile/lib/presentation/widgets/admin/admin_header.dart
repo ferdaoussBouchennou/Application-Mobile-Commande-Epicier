@@ -13,6 +13,7 @@ class AdminHeader extends StatelessWidget {
   final Function(String)? onSearch;
   final bool showBackButton;
   final VoidCallback? onBack;
+  final Widget? trailingAction;
 
   const AdminHeader({
     super.key,
@@ -23,6 +24,7 @@ class AdminHeader extends StatelessWidget {
     this.onSearch,
     this.showBackButton = false,
     this.onBack,
+    this.trailingAction,
   });
 
   @override
@@ -43,7 +45,7 @@ class AdminHeader extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Image.asset('assets/images/shop_icon.png', height: 26, errorBuilder: (_,__,___) => const Icon(Icons.store, color: Colors.white, size: 26)),
+                  Image.asset('assets/images/logo.png', height: 26, errorBuilder: (_,__,___) => const Icon(Icons.store, color: Colors.white, size: 26)),
                   const SizedBox(width: 8),
                   const Text(
                     'MyHanut',
@@ -106,6 +108,10 @@ class AdminHeader extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(width: 8),
+                  if (trailingAction != null) ...[
+                    trailingAction!,
+                    const SizedBox(width: 4),
+                  ],
                   IconButton(
                     icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 24),
                     onPressed: () {
