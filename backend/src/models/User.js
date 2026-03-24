@@ -80,11 +80,7 @@ const User = sequelize.define('User', {
   createdAt: 'date_creation',
   updatedAt: false, 
   validate: {
-    checkEpicierDoc() {
-      if (this.role === 'EPICIER' && !this.doc_verf) {
-        throw new Error("Un document de vérification est obligatoire pour s'inscrire en tant qu'épicier.");
-      }
-    }
+    // Validation supprimée pour permettre à l'admin d'ajouter un épicier sans document
   },
   hooks: {
     beforeCreate: async (user) => {
