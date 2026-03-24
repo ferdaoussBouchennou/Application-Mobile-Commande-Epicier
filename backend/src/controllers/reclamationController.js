@@ -4,6 +4,7 @@ const Reclamation = require("../models/Reclamation");
 const Commande = require("../models/Commande");
 const User = require("../models/User");
 const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
+const { notifyAdmins } = require("../utils/notification");
 
 /** Sanitise une chaîne pour en faire un nom de fichier. */
 function sanitizeName(str) {
@@ -255,6 +256,16 @@ exports.create = async (req, res) => {
       msg,
       "Nouvelle réclamation",
     ).catch(() => {});
+
+    // Notifier les admins
+    try {
+      notifyAdmins('Nouveau litige', `Un client (${commande.client?.prenom} ${commande.client?.nom}) a ouvert une réclamation pour la commande #${id}`, { 
+        type: 'NEW_DISPUTE',
+        reclamation_id: reclamation.id.toString()
+      });
+    } catch (err) {
+      console.error('Erreur notification admin litige:', err);
+    }
     res.status(201).json({
       message: "Réclamation enregistrée",
       reclamation: { id: reclamation.id, description: reclamation.description },
