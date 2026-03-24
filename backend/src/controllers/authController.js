@@ -120,7 +120,7 @@ const authController = {
       await sendOTP(email, otp, 'verify');
 
       // Notifier les admins
-      notifyAdmins('Nouvelle Inscription', `Un nouvel épicier (${prenom} ${nom}) est en attente de validation.`, { type: 'NEW_REGISTRATION' });
+      notifyAdmins('Nouvelle inscription epicier', `Un nouvel épicier (${prenom} ${nom}) est en attente de validation.`, { type: 'NEW_REGISTRATION' });
 
       res.status(201).json({
         message: 'Epicier créé avec succès. Vérifiez votre email.',
@@ -448,7 +448,7 @@ const authController = {
           });
 
           // Notifier les admins
-          notifyAdmins('Nouvelle Inscription (Google)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Google et attend sa validation.`, { type: 'NEW_REGISTRATION' });
+          notifyAdmins('Nouvelle inscription epicier (Google)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Google et attend sa validation.`, { type: 'NEW_REGISTRATION' });
         } else {
           user = await User.create({
             nom: family_name || name || 'Inconnu',
@@ -597,7 +597,7 @@ const authController = {
           });
 
           // Notifier les admins
-          notifyAdmins('Nouvelle Inscription (Facebook)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Facebook et attend sa validation.`, { type: 'NEW_REGISTRATION' });
+          notifyAdmins('Nouvelle inscription epicier (Facebook)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Facebook et attend sa validation.`, { type: 'NEW_REGISTRATION' });
         } else {
           user = await User.create({
             nom: last_name || name || 'Inconnu',
@@ -739,7 +739,7 @@ const authController = {
           });
 
           // Notifier les admins
-          notifyAdmins('Nouvelle Inscription (Instagram)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Instagram et attend sa validation.`, { type: 'NEW_REGISTRATION' });
+          notifyAdmins('Nouvelle inscription epicier (Instagram)', `Un nouvel épicier (${user.prenom} ${user.nom}) s'est inscrit via Instagram et attend sa validation.`, { type: 'NEW_REGISTRATION' });
         } else {
           user = await User.create({
             nom,
