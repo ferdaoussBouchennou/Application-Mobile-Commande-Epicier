@@ -175,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Image.asset(
-                            'assets/images/shop_icon.png', // Logo de l'appli
+                            'assets/images/logo.png', // Logo de l'appli
                             height: 36,
                             errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, color: Colors.white, size: 36),
                           ),
