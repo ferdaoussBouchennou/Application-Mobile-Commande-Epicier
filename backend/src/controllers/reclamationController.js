@@ -82,7 +82,7 @@ exports.createReclamation = async (req, res) => {
     // Notifier les admins
     try {
       const client = await User.findByPk(client_id);
-      notifyAdmins('Nouveau Litige', `Un client (${client?.prenom} ${client?.nom}) a ouvert une réclamation : ${motif}`, { 
+      notifyAdmins('Nouvelle litige reçue', `Un client (${client?.prenom} ${client?.nom}) a ouvert une réclamation : ${motif}`, { 
         type: 'NEW_DISPUTE',
         reclamation_id: reclamation.id.toString()
       });
