@@ -75,7 +75,7 @@ class WelcomeScreen extends StatelessWidget {
   
                 // Logo central
                 Image.asset(
-                  'assets/images/loading.png',
+                  'assets/images/logo.png',
                   height: 220,
                   errorBuilder: (context, error, stackTrace) => const Icon(Icons.shopping_basket, color: Color(0xFF2D5016), size: 120),
                 ),
