@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show File;
+import 'add_epicier_screen.dart';
 
 class AdminEpicierProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -133,8 +134,18 @@ class _AdminEpicierProfileScreenState extends State<AdminEpicierProfileScreen> {
             actions: [
               if (!_isSaving)
                 IconButton(
-                  icon: Icon(_isEditing ? Icons.close : Icons.edit, color: Colors.white),
-                  onPressed: () => setState(() => _isEditing = !_isEditing),
+                  icon: const Icon(Icons.edit, color: Colors.white),
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddEpicierScreen(existingUser: widget.user),
+                      ),
+                    );
+                    if (result == true) {
+                      Navigator.pop(context, true);
+                    }
+                  },
                 ),
               if (_isEditing)
                 IconButton(
