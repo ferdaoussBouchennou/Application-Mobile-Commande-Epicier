@@ -17,6 +17,11 @@ router.post('/register-epicier', uploadProductImage.fields([
   { name: 'document_verification', maxCount: 1 }
 ]), adminController.registerEpicier);
 
+router.put('/epiciers/:id', authMiddleware, requireAdmin, uploadProductImage.fields([
+  { name: 'image_boutique', maxCount: 1 },
+  { name: 'document_verification', maxCount: 1 }
+]), adminController.updateEpicierFull);
+
 // Gestion des catégories de la plateforme (CRUD admin)
 router.get('/categories', authMiddleware, requireAdmin, adminController.getCategories);
 router.post('/categories', authMiddleware, requireAdmin, adminController.createCategory);
