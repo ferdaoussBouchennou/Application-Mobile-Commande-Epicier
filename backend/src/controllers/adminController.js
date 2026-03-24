@@ -9,6 +9,7 @@ const EpicierProduct = require("../models/EpicierProduct");
 const Commande = require("../models/Commande");
 const Avis = require("../models/Avis");
 const Reclamation = require("../models/Reclamation");
+const Availability = require("../models/Availability");
 const { Op } = require("sequelize");
 const { sendNotificationToEpicier } = require("../utils/notificationEpicier");
 
@@ -242,6 +243,9 @@ exports.registerEpicier = async (req, res) => {
       telephone,
       nom_boutique,
       description_boutique,
+      latitude,
+      longitude,
+      horaires,
     } = req.body;
 
     const existingUser = await User.findOne({ where: { email } });
@@ -292,9 +296,27 @@ exports.registerEpicier = async (req, res) => {
       telephone,
       description: description_boutique,
       image_url: imagePath,
+      latitude,
+      longitude,
       statut_inscription: "ACCEPTE",
       is_active: true,
     });
+
+    if (horaires) {
+      let horairesData = [];
+      try { horairesData = typeof horaires === 'string' ? JSON.parse(horaires) : horaires; } catch(e) {}
+      if (Array.isArray(horairesData) && horairesData.length > 0) {
+        const avs = horairesData.filter(h => h.is_open === true || h.is_open === 'true').map(h => ({
+          epicier_id: newStore.id,
+          jour: h.jour,
+          heure_debut: h.heure_debut || h.heureDebut || '00:00:00',
+          heure_fin: h.heure_fin || h.heureFin || '23:59:59'
+        }));
+        if (avs.length > 0) {
+          await Availability.bulkCreate(avs);
+        }
+      }
+    }
 
     res.status(201).json({
       message: "Épicier créé manuellement avec succès",
@@ -303,6 +325,81 @@ exports.registerEpicier = async (req, res) => {
     });
   } catch (error) {
     console.error("Error registerEpicier:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateEpicierFull = async (req, res) => {
+  try {
+    const { id } = req.params; // userId
+    const { nom, prenom, email, mdp, adresse, telephone, nom_boutique, description_boutique, horaires, latitude, longitude } = req.body;
+    
+    const user = await User.findByPk(id);
+    if (!user) return res.status(404).json({ message: "Utilisateur non trouvé." });
+
+    if (email && email !== user.email) {
+      const existingEmail = await User.findOne({ where: { email } });
+      if (existingEmail) return res.status(400).json({ message: "Cet email est déjà utilisé." });
+      user.email = email;
+    }
+
+    if (nom) user.nom = nom;
+    if (prenom) user.prenom = prenom;
+    if (mdp && mdp.trim().length > 0) user.mdp = mdp;
+
+    // Fichiers
+    if (req.files) {
+      if (req.files.image_boutique && req.files.image_boutique[0]) {
+        const file = req.files.image_boutique[0];
+        const filename = `shop-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, "../../uploads/shops");
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        req.imagePath = `uploads/shops/${filename}`;
+      }
+      if (req.files.document_verification && req.files.document_verification[0]) {
+        const file = req.files.document_verification[0];
+        const filename = `doc-${Date.now()}${path.extname(file.originalname)}`;
+        const dir = path.join(__dirname, "../../uploads/documents");
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, filename), file.buffer);
+        user.doc_verf = `uploads/documents/${filename}`;
+      }
+    }
+    await user.save();
+
+    const store = await Store.findOne({ where: { utilisateur_id: user.id } });
+    if (store) {
+      if (nom_boutique) store.nom_boutique = nom_boutique;
+      if (adresse) store.adresse = adresse;
+      if (telephone) store.telephone = telephone;
+      if (description_boutique !== undefined) store.description = description_boutique;
+      if (req.imagePath) store.image_url = req.imagePath;
+      if (latitude) store.latitude = latitude;
+      if (longitude) store.longitude = longitude;
+      await store.save();
+
+      if (horaires) {
+        let horairesData = [];
+        try { horairesData = typeof horaires === 'string' ? JSON.parse(horaires) : horaires; } catch(e) {}
+        if (Array.isArray(horairesData) && horairesData.length > 0) {
+          await Availability.destroy({ where: { epicier_id: store.id } });
+          const avs = horairesData.filter(h => h.is_open === true || h.is_open === 'true').map(h => ({
+            epicier_id: store.id,
+            jour: h.jour,
+            heure_debut: h.heure_debut || h.heureDebut || '00:00:00',
+            heure_fin: h.heure_fin || h.heureFin || '23:59:59'
+          }));
+          if (avs.length > 0) {
+            await Availability.bulkCreate(avs);
+          }
+        }
+      }
+    }
+
+    res.json({ message: "Épicier mis à jour avec succès", user, store });
+  } catch (error) {
+    console.error("Error updateEpicierFull:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -665,7 +762,7 @@ exports.updateProduct = async (req, res) => {
     if (nom != null && typeof nom === "string") product.nom = nom.trim();
     if (image_principale !== undefined)
       product.image_principale = image_principale?.trim() || null;
-    
+
     await product.save();
 
     if (epicier_id != null) {
@@ -678,12 +775,12 @@ exports.updateProduct = async (req, res) => {
         await link.save();
       }
     }
-    
+
     const epicierId = epicier_id != null ? parseInt(epicier_id, 10) : null;
-    const finalLink = epicierId 
+    const finalLink = epicierId
       ? await EpicierProduct.findOne({ where: { epicier_id: epicierId, produit_id: product.id } })
       : null;
-    
+
     const store = epicierId
       ? await Store.findByPk(epicierId, { attributes: ["nom_boutique"] })
       : null;
@@ -934,7 +1031,7 @@ exports.getRecentOrders = async (req, res) => {
       limit: 50,
       order: [["date_commande", "DESC"]],
       include: [{ model: User, as: "client", attributes: ["nom", "prenom"] },
-        { model: Store, as: 'epicier', attributes: ['nom_boutique'] }],
+      { model: Store, as: 'epicier', attributes: ['nom_boutique'] }],
     });
     res.json(orders);
   } catch (error) {
@@ -1019,7 +1116,7 @@ exports.resolveDispute = async (req, res) => {
           epicierIdToNotify,
           msg,
           "Mise à jour réclamation",
-        ).catch(() => {});
+        ).catch(() => { });
       }
     }
 
