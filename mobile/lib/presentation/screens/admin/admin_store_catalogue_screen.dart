@@ -112,11 +112,11 @@ class _AdminStoreCatalogueScreenState extends State<AdminStoreCatalogueScreen> {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: const Text('Voulez-vous vraiment supprimer ce produit ?'),
+        title: const Text('Désactiver'),
+        content: const Text('Voulez-vous vraiment désactiver ce produit ?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Désactiver', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
