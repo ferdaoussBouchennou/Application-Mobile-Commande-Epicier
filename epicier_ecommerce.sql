@@ -796,6 +796,20 @@ ALTER TABLE `reclamations`
   ADD CONSTRAINT `reclamations_ibfk_2` FOREIGN KEY (`commande_id`) REFERENCES `commandes` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `reclamations_ibfk_3` FOREIGN KEY (`epicier_id`) REFERENCES `epiciers` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `reclamations_ibfk_4` FOREIGN KEY (`avis_id`) REFERENCES `avis` (`id`) ON DELETE SET NULL;
+--
+-- Correction des chemins de documents pour les épiciers
+--
+UPDATE `utilisateurs` 
+SET `doc_verf` = REPLACE(`doc_verf`, 'uploads/', 'uploads/documents/') 
+WHERE `role` = 'EPICIER' 
+  AND `doc_verf` IS NOT NULL 
+  AND `doc_verf` NOT LIKE 'uploads/documents/%';
+
+UPDATE `utilisateurs` 
+SET `doc_verf` = REPLACE(`doc_verf`, 'uploads\\', 'uploads/documents/') 
+WHERE `role` = 'EPICIER' 
+  AND `doc_verf` IS NOT NULL;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

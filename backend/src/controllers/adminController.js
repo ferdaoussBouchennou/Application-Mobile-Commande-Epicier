@@ -206,6 +206,11 @@ exports.updateUserDetails = async (req, res) => {
       user.doc_verf = `uploads/documents/${filename}`;
     }
 
+    // Force préfixe si manquant par erreur
+    if (user.doc_verf && (user.doc_verf.startsWith('uploads/') || user.doc_verf.startsWith('uploads\\')) && !user.doc_verf.includes('documents')) {
+      user.doc_verf = user.doc_verf.replace('uploads/', 'uploads/documents/').replace('uploads\\', 'uploads/documents/');
+    }
+
     await user.save();
     res.json({ message: "Utilisateur mis à jour", user });
   } catch (error) {
@@ -366,6 +371,12 @@ exports.updateEpicierFull = async (req, res) => {
         user.doc_verf = `uploads/documents/${filename}`;
       }
     }
+
+    // Force préfixe si manquant
+    if (user.doc_verf && (user.doc_verf.startsWith('uploads/') || user.doc_verf.startsWith('uploads\\')) && !user.doc_verf.includes('documents')) {
+      user.doc_verf = user.doc_verf.replace('uploads/', 'uploads/documents/').replace('uploads\\', 'uploads/documents/');
+    }
+
     await user.save();
 
     const store = await Store.findOne({ where: { utilisateur_id: user.id } });
