@@ -197,8 +197,13 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
           _showError('Le nom de la boutique est requis');
           return false;
         }
-        if (_telephoneController.text.trim().isEmpty) {
+        final phone = _telephoneController.text.trim();
+        if (phone.isEmpty) {
           _showError('Le numéro de téléphone est requis');
+          return false;
+        }
+        if (!RegExp(r'^(\+212|0)[5-7]\d{8}$').hasMatch(phone)) {
+          _showError('Numéro de téléphone invalide (ex: 06..., 05..., +212...)');
           return false;
         }
         return true;
@@ -616,7 +621,7 @@ class _GrocerSetupScreenState extends State<GrocerSetupScreen> {
             label: 'Numéro de téléphone *',
             child: _buildInputField(
               controller: _telephoneController,
-              hint: 'Ex: 0612345678',
+              hint: 'Ex: 06..., +212...',
               icon: Icons.phone_rounded,
               keyboardType: TextInputType.phone,
             ),

@@ -194,6 +194,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 enabled: _isEditing,
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ce champ est obligatoire';
+                  }
+                  if (!RegExp(r'^(\+212|0)[5-7]\d{8}$').hasMatch(value.trim())) {
+                    return 'Numéro invalide (ex: 06..., 05..., +212...)';
+                  }
+                  return null;
+                },
               ),
               
               const SizedBox(height: 40),
@@ -273,6 +282,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required bool enabled,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -301,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           fillColor: enabled ? Colors.white : Colors.grey.shade50,
           labelStyle: TextStyle(color: Colors.grey.shade600),
         ),
-        validator: (value) {
+        validator: validator ?? (value) {
           if (value == null || value.isEmpty) {
             return 'Ce champ est obligatoire';
           }

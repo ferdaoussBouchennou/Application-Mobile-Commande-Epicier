@@ -109,7 +109,7 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                                 crossAxisCount: 2,
                                 mainAxisSpacing: 10,
                                 crossAxisSpacing: 10,
-                                childAspectRatio: 1.58,
+                                childAspectRatio: 1.25,
                               ),
                           delegate: SliverChildListDelegate(
                             _buildMetricTiles(),

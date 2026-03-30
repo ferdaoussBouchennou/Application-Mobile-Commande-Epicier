@@ -83,10 +83,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final phoneRegex = RegExp(r'^\d{10}$');
+    final phoneRegex = RegExp(r'^(\+212|0)[5-7]\d{8}$');
     if (!phoneRegex.hasMatch(phone)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Le numéro de téléphone doit contenir exactement 10 chiffres (ex: 0612345678)')),
+        const SnackBar(content: Text('Numéro de téléphone invalide (ex: 06..., 05..., +212...)')),
       );
       return;
     }
@@ -352,7 +352,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 12),
 
                   _buildTextField(
-                    hintText: 'Téléphone (10 chiffres)',
+                    hintText: 'Téléphone (ex: 06..., +212...)',
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                   ),
