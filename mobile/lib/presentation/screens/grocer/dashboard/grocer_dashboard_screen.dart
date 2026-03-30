@@ -5,7 +5,6 @@ import '../../../../data/services/api_service.dart';
 import '../grocer_theme.dart';
 import 'grocer_reports_screen.dart';
 
-
 /// Tableau de bord Épicier — design inspiré des apps e-commerce pro (seller hub).
 class GrocerDashboardScreen extends StatefulWidget {
   const GrocerDashboardScreen({super.key});
@@ -81,9 +80,7 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
         child: Column(
           children: [
             if (_loading)
-              Expanded(
-                child: _buildLoadingState(),
-              )
+              Expanded(child: _buildLoadingState())
             else if (_error != null)
               Expanded(child: _buildErrorState())
             else
@@ -107,19 +104,32 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         sliver: SliverGrid(
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 1.72,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 1.58,
+                              ),
+                          delegate: SliverChildListDelegate(
+                            _buildMetricTiles(),
                           ),
-                          delegate: SliverChildListDelegate(_buildMetricTiles()),
                         ),
                       ),
                       SliverToBoxAdapter(child: _buildMergedStatusesCard()),
-                      SliverToBoxAdapter(child: _buildSectionHeading('Tendance', 'Commandes sur 7 jours')),
+                      SliverToBoxAdapter(
+                        child: _buildSectionHeading(
+                          'Tendance',
+                          'Commandes sur 7 jours',
+                        ),
+                      ),
                       SliverToBoxAdapter(child: _buildChartCard()),
-                      SliverToBoxAdapter(child: _buildSectionHeading('Catalogue', 'Produits les plus vendus')),
+                      SliverToBoxAdapter(
+                        child: _buildSectionHeading(
+                          'Catalogue',
+                          'Produits les plus vendus',
+                        ),
+                      ),
                       SliverToBoxAdapter(child: _buildTopProductsCard()),
                       const SliverToBoxAdapter(child: SizedBox(height: 88)),
                     ],
@@ -182,7 +192,11 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                 color: GrocerTheme.trendNegative.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.cloud_off_rounded, size: 48, color: GrocerTheme.trendNegative.withValues(alpha: 0.85)),
+              child: Icon(
+                Icons.cloud_off_rounded,
+                size: 48,
+                color: GrocerTheme.trendNegative.withValues(alpha: 0.85),
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -200,8 +214,13 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
               style: FilledButton.styleFrom(
                 backgroundColor: GrocerTheme.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Réessayer'),
@@ -279,7 +298,10 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
@@ -287,7 +309,11 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.insights_rounded, size: 16, color: Colors.white.withValues(alpha: 0.95)),
+                          Icon(
+                            Icons.insights_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.95),
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Performance boutique',
@@ -315,11 +341,18 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.description_outlined, size: 18, color: Colors.white.withValues(alpha: 0.95)),
+                              Icon(
+                                Icons.description_outlined,
+                                size: 18,
+                                color: Colors.white.withValues(alpha: 0.95),
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 'Rapports',
@@ -364,7 +397,9 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                     const SizedBox(width: 8),
                     Text(
                       '·',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -419,13 +454,27 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      _heroMiniStat(Icons.calendar_month_rounded, 'Ce mois', '${_formatCa(caMois)} MAD'),
-                      Container(width: 1, height: 36, color: Colors.white.withValues(alpha: 0.2)),
-                      _heroMiniStat(Icons.shopping_bag_outlined, 'Cmd. (30 j)', '$cmd30'),
+                      _heroMiniStat(
+                        Icons.calendar_month_rounded,
+                        'Ce mois',
+                        '${_formatCa(caMois)} MAD',
+                      ),
+                      Container(
+                        width: 1,
+                        height: 36,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      _heroMiniStat(
+                        Icons.shopping_bag_outlined,
+                        'Cmd. (30 j)',
+                        '$cmd30',
+                      ),
                     ],
                   ),
                 ),
@@ -546,9 +595,14 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
     final kpis = _dashboardData?['kpis'] as Map<String, dynamic>? ?? {};
     final cmd = kpis['commandesParStatut'];
     final rec = kpis['reclamationsParStatut'];
-    final cmdEntries = cmd is Map ? cmd.entries.toList() : <MapEntry<dynamic, dynamic>>[];
-    final recEntries = rec is Map ? rec.entries.toList() : <MapEntry<dynamic, dynamic>>[];
-    if (cmdEntries.isEmpty && recEntries.isEmpty) return const SizedBox.shrink();
+    final cmdEntries = cmd is Map
+        ? cmd.entries.toList()
+        : <MapEntry<dynamic, dynamic>>[];
+    final recEntries = rec is Map
+        ? rec.entries.toList()
+        : <MapEntry<dynamic, dynamic>>[];
+    if (cmdEntries.isEmpty && recEntries.isEmpty)
+      return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -558,7 +612,11 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.dashboard_customize_outlined, size: 22, color: GrocerTheme.primary.withValues(alpha: 0.9)),
+                Icon(
+                  Icons.dashboard_customize_outlined,
+                  size: 22,
+                  color: GrocerTheme.primary.withValues(alpha: 0.9),
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'Répartition',
@@ -588,11 +646,16 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                 children: cmdEntries.map((e) {
                   final n = e.value is num ? (e.value as num).toInt() : 0;
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: GrocerTheme.primarySoft,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: GrocerTheme.primary.withValues(alpha: 0.12)),
+                      border: Border.all(
+                        color: GrocerTheme.primary.withValues(alpha: 0.12),
+                      ),
                     ),
                     child: Text(
                       '${e.key} · $n',
@@ -628,11 +691,16 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                 children: recEntries.map((e) {
                   final n = e.value is num ? (e.value as num).toInt() : 0;
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF8E1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFFB74D).withValues(alpha: 0.5)),
+                      border: Border.all(
+                        color: const Color(0xFFFFB74D).withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Text(
                       '${e.key} · $n',
@@ -655,7 +723,11 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
   Widget _buildChartCard() {
     final chartData = _dashboardData?['chartData'] as List<dynamic>? ?? [];
     final maxNb = chartData.fold<int>(0, (m, e) {
-      final n = e is Map ? (e['nb'] is int ? e['nb'] as int : (e['nb'] is num ? (e['nb'] as num).toInt() : 0)) : 0;
+      final n = e is Map
+          ? (e['nb'] is int
+                ? e['nb'] as int
+                : (e['nb'] is num ? (e['nb'] as num).toInt() : 0))
+          : 0;
       return n > m ? n : m;
     });
     final maxH = maxNb > 0 ? maxNb.toDouble() : 1.0;
@@ -679,14 +751,21 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: GrocerTheme.surfaceMuted,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
                     '7 jours',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: GrocerTheme.textMuted),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: GrocerTheme.textMuted,
+                    ),
                   ),
                 ),
               ],
@@ -698,7 +777,11 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: List.generate(chartData.length, (i) {
                   final e = chartData[i];
-                  final nb = e is Map ? (e['nb'] is int ? e['nb'] as int : (e['nb'] is num ? (e['nb'] as num).toInt() : 0)) : 0;
+                  final nb = e is Map
+                      ? (e['nb'] is int
+                            ? e['nb'] as int
+                            : (e['nb'] is num ? (e['nb'] as num).toInt() : 0))
+                      : 0;
                   final label = e is Map ? (e['label'] as String? ?? '') : '';
                   final h = (nb / maxH).clamp(0.0, 1.0);
                   const barMaxHeight = 54.0;
@@ -717,23 +800,31 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
-                                  color: GrocerTheme.primary.withValues(alpha: 0.9),
+                                  color: GrocerTheme.primary.withValues(
+                                    alpha: 0.9,
+                                  ),
                                 ),
                               ),
                             ),
                           Container(
-                            height: barMaxHeight * h < 3 ? 3.0 : barMaxHeight * h,
+                            height: barMaxHeight * h < 3
+                                ? 3.0
+                                : barMaxHeight * h,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,
                                 colors: _barGradient,
                               ),
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(6),
+                              ),
                               boxShadow: nb > 0
                                   ? [
                                       BoxShadow(
-                                        color: GrocerTheme.primary.withValues(alpha: 0.2),
+                                        color: GrocerTheme.primary.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         blurRadius: 6,
                                         offset: const Offset(0, 3),
                                       ),
@@ -788,12 +879,20 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
         child: _SoftCard(
           child: Row(
             children: [
-              Icon(Icons.inventory_outlined, size: 40, color: GrocerTheme.textMuted.withValues(alpha: 0.5)),
+              Icon(
+                Icons.inventory_outlined,
+                size: 40,
+                color: GrocerTheme.textMuted.withValues(alpha: 0.5),
+              ),
               const SizedBox(width: 16),
               const Expanded(
                 child: Text(
                   'Aucune vente sur les 30 derniers jours. Vos best-sellers apparaîtront ici.',
-                  style: TextStyle(fontSize: 13, color: GrocerTheme.textMuted, height: 1.35),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: GrocerTheme.textMuted,
+                    height: 1.35,
+                  ),
                 ),
               ),
             ],
@@ -819,7 +918,10 @@ class _GrocerDashboardScreenState extends State<GrocerDashboardScreen> {
             const SizedBox(height: 4),
             Text(
               'Part relative sur 30 jours',
-              style: TextStyle(fontSize: 11, color: GrocerTheme.textMuted.withValues(alpha: 0.95)),
+              style: TextStyle(
+                fontSize: 11,
+                color: GrocerTheme.textMuted.withValues(alpha: 0.95),
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -893,13 +995,7 @@ class _MetricSpec {
   final Color accent;
   final String? detail;
 
-  _MetricSpec(
-    this.icon,
-    this.label,
-    this.value,
-    this.accent, {
-    this.detail,
-  });
+  _MetricSpec(this.icon, this.label, this.value, this.accent, {this.detail});
 }
 
 class _MetricCard extends StatelessWidget {
@@ -1023,7 +1119,9 @@ class _DonutPainter extends CustomPainter {
     double startAngle = -1.5708;
 
     for (final seg in segments) {
-      final pct = seg['pct'] is int ? seg['pct'] as int : (seg['pct'] is num ? (seg['pct'] as num).toInt() : 0);
+      final pct = seg['pct'] is int
+          ? seg['pct'] as int
+          : (seg['pct'] is num ? (seg['pct'] as num).toInt() : 0);
       final sweepAngle = (pct / 100) * 2 * 3.14159;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
