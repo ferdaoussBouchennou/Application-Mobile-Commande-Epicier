@@ -580,7 +580,7 @@ INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mdp`, `id_google`, 
 (6, 'Zied', 'Mondher', 'mondher@hanut.com', '$2b$10$oxzsRPBl4D3Nc76dDniLHuqjQqC/eVF209Tqya9hk7v8NSHLejmf2', NULL, NULL, NULL, 'EPICIER', 'uploads/documents/doc-1774122338623.png', 1, NULL, '0555334455', 1, NULL, NULL, '2026-01-02 10:20:00'),
 (7, 'Alami', 'Youssef', 'client@demo.ma', '$2b$10$0AAvlCtHz3aLpFCuPtlNCeI.wRDNOPuFPOOW7OsHoh8XpLNzxryzW', NULL, NULL, NULL, 'CLIENT', NULL, 1, NULL, '0661122334', 1, NULL, NULL, '2026-01-10 12:00:00'),
 (8, 'Idrissi', 'Fatima', 'fatima@demo.ma', '$2b$10$0AAvlCtHz3aLpFCuPtlNCeI.wRDNOPuFPOOW7OsHoh8XpLNzxryzW', NULL, NULL, NULL, 'CLIENT', NULL, 1, NULL, '0665566778', 1, NULL, NULL, '2026-01-11 12:00:00'),
-(24, 'Hamani', 'Ismail', 'ismail@gmail.com', '$2b$10$ra8ItSUxeN1JRKslaELn1e8Y4Mzrtfb9aJYyVaSrUchipZp3..jo.', NULL, NULL, NULL, 'CLIENT', NULL, 1, NULL, '0812345678', 1, NULL, NULL, '2026-03-30 08:41:32');
+(24, 'Hamani', 'Ismail', 'ismail@gmail.com', '$2b$10$ra8ItSUxeN1JRKslaELn1e8Y4Mzrtfb9aJYyVaSrUchipZp3..jo.', NULL, NULL, NULL, 'CLIENT', NULL, 1, NULL, '0612345678', 1, NULL, NULL, '2026-03-30 08:41:32');
 
 --
 -- Index pour les tables déchargées
