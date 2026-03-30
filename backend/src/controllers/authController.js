@@ -421,6 +421,13 @@ const authController = {
             console.log(`Document enregistré pour inscription Google: ${final_doc_verf}`);
           }
 
+          // Force le préfixe si manquant (cas où doc_verf vient du body sans upload)
+          if (final_doc_verf && !final_doc_verf.startsWith('uploads/')) {
+            final_doc_verf = `uploads/documents/${final_doc_verf}`;
+          } else if (final_doc_verf && (final_doc_verf.startsWith('uploads/') || final_doc_verf.startsWith('uploads\\')) && !final_doc_verf.includes('documents')) {
+            final_doc_verf = final_doc_verf.replace('uploads/', 'uploads/documents/').replace('uploads\\', 'uploads/documents/');
+          }
+
           if (!final_doc_verf) {
             return res.status(400).json({ message: "Le document de vérification est obligatoire pour s'inscrire en tant qu'épicier." });
           }
@@ -570,6 +577,13 @@ const authController = {
             console.log(`Document enregistré pour inscription Facebook: ${final_doc_verf}`);
           }
 
+          // Force le préfixe si manquant (cas où doc_verf vient du body sans upload)
+          if (final_doc_verf && !final_doc_verf.startsWith('uploads/')) {
+            final_doc_verf = `uploads/documents/${final_doc_verf}`;
+          } else if (final_doc_verf && (final_doc_verf.startsWith('uploads/') || final_doc_verf.startsWith('uploads\\')) && !final_doc_verf.includes('documents')) {
+            final_doc_verf = final_doc_verf.replace('uploads/', 'uploads/documents/').replace('uploads\\', 'uploads/documents/');
+          }
+
           if (!final_doc_verf) {
             return res.status(400).json({ message: "Le document de vérification est obligatoire." });
           }
@@ -711,6 +725,13 @@ const authController = {
             fs.writeFileSync(path.join(dir, filename), file.buffer);
             final_doc_verf = `uploads/documents/${filename}`;
             console.log(`Document enregistré pour inscription Instagram: ${final_doc_verf}`);
+          }
+
+          // Force le préfixe si manquant (cas où doc_verf vient du body sans upload)
+          if (final_doc_verf && !final_doc_verf.startsWith('uploads/')) {
+            final_doc_verf = `uploads/documents/${final_doc_verf}`;
+          } else if (final_doc_verf && (final_doc_verf.startsWith('uploads/') || final_doc_verf.startsWith('uploads\\')) && !final_doc_verf.includes('documents')) {
+            final_doc_verf = final_doc_verf.replace('uploads/', 'uploads/documents/').replace('uploads\\', 'uploads/documents/');
           }
 
           if (!final_doc_verf) return res.status(400).json({ message: "DOCUMENT_REQUIRED: Un document est requis." });

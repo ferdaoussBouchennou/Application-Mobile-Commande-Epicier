@@ -19,9 +19,21 @@ class ApiConstants {
       return path;
     }
     path = path.replaceAll('\\', '/');
+    
+    // Si le dossier backend/ a été inclus par erreur, on l'enlève
     if (path.toLowerCase().startsWith('backend/')) {
       path = path.substring('backend/'.length);
     }
+    
+    // S'il manque uploads/ mais que ça contient documents/, on le rajoute
+    if (!path.toLowerCase().startsWith('uploads/') && path.toLowerCase().contains('documents/')) {
+       // On nettoie les slashes au début d'abord
+       while (path.startsWith('/')) path = path.substring(1);
+       if (!path.toLowerCase().startsWith('uploads/')) {
+          path = 'uploads/$path';
+       }
+    }
+
     while (path.startsWith('/')) {
       path = path.substring(1);
     }
