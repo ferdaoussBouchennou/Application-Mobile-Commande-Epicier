@@ -1,3 +1,4 @@
 node_modules/
 .env
 *.log
+backend/src/config/firebase/serviceAccountKey.json
