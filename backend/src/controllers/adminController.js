@@ -1112,22 +1112,60 @@ exports.resolveDispute = async (req, res) => {
     await dispute.save();
 
     if (previousStatus !== dispute.statut) {
-      let epicierIdToNotify = null;
-      if (dispute.type === "AVIS") {
-        epicierIdToNotify = dispute.epicier_id || null;
-      } else if (dispute.commande_id) {
-        const order = await Commande.findByPk(dispute.commande_id);
-        epicierIdToNotify = order?.epicier_id || null;
-      }
+      try {
+        const { sendNotificationToUser } = require("../utils/notification");
+        
+        // 1. Récupérer les détails des parties pour les noms
+        const reclamationData = await Reclamation.findByPk(id, {
+          include: [
+            { model: User, as: "client", attributes: ["id", "nom", "prenom"] },
+            { 
+              model: Commande, 
+              as: "commande", 
+              include: [{ model: Store, as: "epicier", attributes: ["id", "nom_boutique", "utilisateur_id"] }] 
+            },
+            { 
+              model: Avis, 
+              as: "avis", 
+              include: [{ model: Store, attributes: ["id", "nom_boutique", "utilisateur_id"] }] 
+            }
+          ]
+        });
 
-      if (epicierIdToNotify) {
-        const typeLabel = dispute.type === "AVIS" ? "avis" : "commande";
-        const msg = `Statut réclamation (${typeLabel}) #${dispute.id} : ${dispute.statut}`;
-        sendNotificationToEpicier(
-          epicierIdToNotify,
-          msg,
-          "Mise à jour réclamation",
-        ).catch(() => { });
+        if (reclamationData) {
+          const client = reclamationData.client;
+          const store = (reclamationData.type === 'AVIS' ? reclamationData.avis?.Store : reclamationData.commande?.epicier);
+          
+          if (client && store) {
+            const clientName = `${client.prenom || ''} ${client.nom || ''}`.trim();
+            const shopName = store.nom_boutique || "L'épicier";
+            const newStatusLabel = dispute.statut.toLowerCase();
+            
+            let clientMsg, epicierMsg;
+
+            // Inversion de logique si plainte par Épicier (AVIS) vs Client (COMMANDE)
+            if (reclamationData.type === 'AVIS') {
+              // L'épicier s'est plaint de l'avis du client
+              epicierMsg = `Votre réclamation sur le client ${clientName} est passée au statut : ${newStatusLabel}.`;
+              clientMsg = `La réclamation de la boutique ${shopName} vous concernant est passée au statut : ${newStatusLabel}.`;
+            } else {
+              // Le client s'est plaint d'une commande
+              clientMsg = `Votre réclamation sur l'épicier ${shopName} est passée au statut : ${newStatusLabel}.`;
+              epicierMsg = `La réclamation de ${clientName} sur vous est passée au statut : ${newStatusLabel}.`;
+            }
+
+            // Envoi des notifications (SILENCIEUX = In-app only comme demandé)
+            // Vers le Client
+            await sendNotificationToUser(client.id, "Mise à jour litige", clientMsg, { type: 'DISPUTE_UPDATE', id: dispute.id.toString() }, true);
+            
+            // Vers l'Épicier (Utilisateur lié au store)
+            if (store.utilisateur_id) {
+              await sendNotificationToUser(store.utilisateur_id, "Mise à jour litige", epicierMsg, { type: 'DISPUTE_UPDATE', id: dispute.id.toString() }, true);
+            }
+          }
+        }
+      } catch (notifErr) {
+        console.error('Erreur lors de l\'envoi des notifications de litige:', notifErr);
       }
     }
 
